@@ -7,6 +7,7 @@ use tokio::sync::{mpsc, RwLock};
 use tokio::time::{interval, Duration, Instant};
 
 use tracing::{debug, error, info, warn};
+use rand::prelude::*;
 
 use crate::protocol::{messages::VoiceState, Event, Filters, Message, PlayerState, Track};
 
@@ -526,8 +527,7 @@ impl LavalinkPlayer {
 
         if self.shuffle {
             // Shuffle mode: pick a random track from the queue
-            use rand::seq::SliceRandom;
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let indices: Vec<usize> = (0..self.queue.len()).collect();
             if let Some(&random_index) = indices.choose(&mut rng) {
                 return self.queue.remove(random_index);
@@ -616,8 +616,7 @@ impl LavalinkPlayer {
 
     /// Shuffle the current queue
     pub fn shuffle_queue(&mut self) {
-        use rand::seq::SliceRandom;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         // Convert to Vec, shuffle, then back to VecDeque
         let mut tracks: Vec<Track> = self.queue.drain(..).collect();
