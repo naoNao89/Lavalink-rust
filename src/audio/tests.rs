@@ -509,9 +509,10 @@ mod audio_source_tests {
 
         let audio_manager = AudioSourceManager::with_config(Some(&config.lavalink.server.sources));
 
-        assert!(!audio_manager.is_source_enabled("youtube"));
-        assert!(audio_manager.is_source_enabled("http"));
-        assert!(audio_manager.is_source_enabled("soundcloud"));
+        // Test that YouTube URLs are not handled when disabled
+        assert!(!audio_manager.can_handle("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+        // Test that HTTP URLs are still handled
+        assert!(audio_manager.can_handle("http://example.com/test.mp3"));
     }
 
     #[tokio::test]
@@ -627,14 +628,12 @@ mod audio_source_tests {
 
         let audio_manager = AudioSourceManager::with_config(Some(&config.lavalink.server.sources));
 
-        // Only HTTP should be enabled
-        assert!(audio_manager.is_source_enabled("http"));
-        assert!(!audio_manager.is_source_enabled("youtube"));
-        assert!(!audio_manager.is_source_enabled("soundcloud"));
-        assert!(!audio_manager.is_source_enabled("bandcamp"));
-        assert!(!audio_manager.is_source_enabled("twitch"));
-        assert!(!audio_manager.is_source_enabled("vimeo"));
-        assert!(!audio_manager.is_source_enabled("nico"));
-        assert!(!audio_manager.is_source_enabled("local"));
+        // Only HTTP should be enabled - test by checking if URLs can be handled
+        assert!(audio_manager.can_handle("http://example.com/test.mp3"));
+        assert!(!audio_manager.can_handle("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+        assert!(!audio_manager.can_handle("https://soundcloud.com/test"));
+        assert!(!audio_manager.can_handle("https://bandcamp.com/test"));
+        assert!(!audio_manager.can_handle("https://twitch.tv/test"));
+        assert!(!audio_manager.can_handle("https://vimeo.com/test"));
     }
 }

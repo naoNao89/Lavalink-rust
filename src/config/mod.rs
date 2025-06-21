@@ -251,7 +251,6 @@ impl LavalinkConfig {
 
         Ok(config)
     }
-
 }
 
 impl Default for LavalinkConfig {

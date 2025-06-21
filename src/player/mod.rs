@@ -61,7 +61,6 @@ pub enum PlayerEvent {
         guild_id: String,
         state: PlayerState,
     },
-
 }
 
 /// Reasons why a track ended
@@ -210,8 +209,6 @@ impl PlayerManager {
             }
         }
     }
-
-
 
     /// Emit a player event
     pub async fn emit_event(&self, event: PlayerEvent) {
@@ -434,10 +431,6 @@ impl LavalinkPlayer {
         Ok(())
     }
 
-
-
-
-
     /// Apply filters
     pub async fn apply_filters(
         &mut self,
@@ -493,8 +486,6 @@ impl LavalinkPlayer {
         );
         self.queue.push_back(track);
     }
-
-
 
     /// Remove a track from the queue by index
     pub fn remove_from_queue(&mut self, index: usize) -> Option<Track> {
@@ -595,8 +586,6 @@ impl LavalinkPlayer {
         Ok(next_track)
     }
 
-
-
     /// Move a track from one position to another in the queue
     pub fn move_track(&mut self, from: usize, to: usize) -> Result<Track, String> {
         if from >= self.queue.len() {
@@ -655,8 +644,6 @@ impl LavalinkPlayer {
         }
     }
 
-
-
     /// Get current position (accounting for elapsed time)
     pub fn get_current_position(&self) -> u64 {
         if self.is_playing() {
@@ -666,8 +653,6 @@ impl LavalinkPlayer {
             self.position
         }
     }
-
-
 
     /// Convert to protocol Player structure
     pub fn to_protocol_player(&self) -> crate::protocol::messages::Player {
@@ -781,7 +766,6 @@ impl PlayerEventHandler {
                 let message = Message::player_update(guild_id, state);
                 self.broadcast_to_sessions(message).await;
             }
-
         }
     }
 

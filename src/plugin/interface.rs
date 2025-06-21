@@ -143,8 +143,6 @@ impl PluginInterfaceWrapper {
             ))
         }
     }
-
-
 }
 
 /// Plugin interface constants

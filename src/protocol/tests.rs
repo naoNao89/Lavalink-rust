@@ -4,7 +4,6 @@
 use super::*;
 use crate::test_utils::*;
 
-
 #[cfg(test)]
 mod info_tests {
     use super::*;

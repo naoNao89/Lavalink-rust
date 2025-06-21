@@ -5,6 +5,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use base64::Engine;
 use regex::Regex;
+use tracing::debug;
 
 use tokio::process::Command as AsyncCommand;
 
@@ -94,25 +95,25 @@ impl AudioSourceManager {
         let mut sources = Vec::new();
 
         // Order matters: more specific sources should be checked first
-        if config.map_or(true, |c| c.youtube.unwrap_or(true)) {
+        if config.is_none_or(|c| c.youtube.unwrap_or(true)) {
             sources.push(AudioSourceType::YouTube(YouTubeAudioSource));
         }
-        if config.map_or(true, |c| c.soundcloud.unwrap_or(true)) {
+        if config.is_none_or(|c| c.soundcloud.unwrap_or(true)) {
             sources.push(AudioSourceType::SoundCloud(SoundCloudAudioSource));
         }
-        if config.map_or(true, |c| c.bandcamp.unwrap_or(true)) {
+        if config.is_none_or(|c| c.bandcamp.unwrap_or(true)) {
             sources.push(AudioSourceType::Bandcamp(BandcampAudioSource));
         }
-        if config.map_or(true, |c| c.twitch.unwrap_or(true)) {
+        if config.is_none_or(|c| c.twitch.unwrap_or(true)) {
             sources.push(AudioSourceType::Twitch(TwitchAudioSource));
         }
-        if config.map_or(true, |c| c.vimeo.unwrap_or(true)) {
+        if config.is_none_or(|c| c.vimeo.unwrap_or(true)) {
             sources.push(AudioSourceType::Vimeo(VimeoAudioSource));
         }
-        if config.map_or(false, |c| c.nico.unwrap_or(false)) {
+        if config.is_some_and(|c| c.nico.unwrap_or(false)) {
             sources.push(AudioSourceType::Nico(NicoAudioSource));
         }
-        if config.map_or(false, |c| c.local.unwrap_or(false)) {
+        if config.is_some_and(|c| c.local.unwrap_or(false)) {
             sources.push(AudioSourceType::Local(LocalAudioSource));
         }
 
@@ -120,14 +121,12 @@ impl AudioSourceManager {
         sources.push(AudioSourceType::Fallback(FallbackAudioSource));
 
         // HTTP should be last as fallback
-        if config.map_or(true, |c| c.http.unwrap_or(true)) {
+        if config.is_none_or(|c| c.http.unwrap_or(true)) {
             sources.push(AudioSourceType::Http(HttpAudioSource));
         }
 
         Self { sources }
     }
-
-
 
     /// Load a track from any available source
     pub async fn load_item(&self, identifier: &str) -> Result<LoadResult> {
@@ -144,8 +143,6 @@ impl AudioSourceManager {
             data: None,
         })
     }
-
-
 }
 
 // Implementation for AudioSourceType enum
@@ -1649,6 +1646,88 @@ impl Default for AudioSourceManager {
     fn default() -> Self {
         Self::new()
     }
+}
+
+// Implement AudioSource trait for AudioSourceManager
+#[async_trait]
+impl AudioSource for AudioSourceManager {
+    fn name(&self) -> &str {
+        "manager"
+    }
+
+    fn can_handle(&self, identifier: &str) -> bool {
+        // Manager can handle anything that any of its sources can handle
+        self.sources
+            .iter()
+            .any(|source| source.can_handle(identifier))
+    }
+
+    async fn load_track(&self, identifier: &str) -> Result<LoadResult> {
+        // Try each source in order until one can handle the identifier
+        for source in &self.sources {
+            if source.can_handle(identifier) {
+                match source.load_track(identifier).await {
+                    Ok(result) => return Ok(result),
+                    Err(e) => {
+                        debug!(
+                            "Source {} failed to load {}: {}",
+                            source.name(),
+                            identifier,
+                            e
+                        );
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // If no source could handle it, return an error
+        Err(anyhow::anyhow!(
+            "No audio source could handle identifier: {}",
+            identifier
+        ))
+    }
+
+    async fn search(&self, query: &str) -> Result<LoadResult> {
+        // For search, try YouTube first as it's most comprehensive
+        for source in &self.sources {
+            if source.name() == "youtube" {
+                match source.search(query).await {
+                    Ok(result) => return Ok(result),
+                    Err(e) => {
+                        debug!("YouTube search failed for {}: {}", query, e);
+                    }
+                }
+            }
+        }
+
+        // If YouTube failed, try other sources
+        for source in &self.sources {
+            if source.name() != "youtube" {
+                match source.search(query).await {
+                    Ok(result) => return Ok(result),
+                    Err(e) => {
+                        debug!(
+                            "Source {} search failed for {}: {}",
+                            source.name(),
+                            query,
+                            e
+                        );
+                        continue;
+                    }
+                }
+            }
+        }
+
+        // If no source could search, return empty result
+        Ok(LoadResult {
+            load_type: LoadType::Empty,
+            data: None,
+        })
+    }
+}
+
+impl AudioSourceManager {
 }
 
 /// Extract a title from a URL

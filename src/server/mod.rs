@@ -15,7 +15,6 @@ use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLay
 use tracing::{info, warn};
 
 use crate::{
-
     config::LavalinkConfig,
     player::{PlayerEvent, PlayerEventHandler, PlayerManager},
     plugin::PluginManager,
@@ -59,7 +58,6 @@ impl LavalinkServer {
         let info = Info::new();
         let sessions = Arc::new(dashmap::DashMap::new());
         let stats_collector = Arc::new(StatsCollector::new());
-
 
         // Create player event channel
         let (event_sender, event_receiver) = tokio::sync::mpsc::unbounded_channel::<PlayerEvent>();
@@ -321,7 +319,11 @@ pub async fn auth_middleware(
             StatusCode::FORBIDDEN
         };
 
-        let error_code = if status_code == StatusCode::UNAUTHORIZED { 401 } else { 403 };
+        let error_code = if status_code == StatusCode::UNAUTHORIZED {
+            401
+        } else {
+            403
+        };
         let error_message = if status_code == StatusCode::UNAUTHORIZED {
             "Unauthorized"
         } else {
@@ -340,5 +342,3 @@ pub async fn auth_middleware(
     info!("Authentication successful for path: {}", path);
     next.run(request).await
 }
-
-

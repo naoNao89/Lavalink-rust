@@ -243,8 +243,6 @@ impl Message {
         }
     }
 
-
-
     /// Create a player update message
     pub fn player_update(guild_id: String, state: PlayerState) -> Self {
         Message::PlayerUpdate { guild_id, state }
@@ -270,8 +268,4 @@ impl Event {
             reason,
         }
     }
-
-
-
-
 }

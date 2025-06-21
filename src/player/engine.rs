@@ -45,8 +45,6 @@ pub struct AudioPlayerEngine {
     seeking: Arc<RwLock<bool>>,
 }
 
-
-
 impl AudioPlayerEngine {
     /// Create a new audio player engine
     pub fn new(guild_id: String, event_sender: mpsc::UnboundedSender<PlayerEvent>) -> Self {
@@ -129,14 +127,6 @@ impl AudioPlayerEngine {
         Ok(())
     }
 
-
-
-
-
-
-
-
-
     /// Apply audio filters
     pub async fn apply_filters(&self, filters: Filters) -> Result<()> {
         info!(
@@ -199,10 +189,6 @@ impl AudioPlayerEngine {
         );
         Ok(())
     }
-
-
-
-
 
     /// Load audio source for a track
     async fn load_audio_source(&self, track: &Track) -> Result<()> {

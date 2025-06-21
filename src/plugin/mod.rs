@@ -7,7 +7,6 @@ use std::collections::HashMap;
 
 use crate::config::PluginsConfig;
 
-
 pub mod interface;
 pub mod loader;
 
@@ -18,7 +17,6 @@ pub use loader::*;
 pub struct PluginManager {
     plugins: HashMap<String, Box<dyn LavalinkPlugin + Send + Sync>>,
     dynamic_loader: DynamicPluginLoader,
-
 }
 
 /// Trait for Lavalink plugins
@@ -29,11 +27,7 @@ pub trait LavalinkPlugin {
 
     /// Get the plugin version
     fn version(&self) -> &str;
-
-
 }
-
-
 
 impl PluginManager {
     /// Create a new plugin manager
@@ -57,11 +51,8 @@ impl PluginManager {
         Self {
             plugins: HashMap::new(),
             dynamic_loader,
-
         }
     }
-
-
 
     /// Get plugin by name
     pub fn get_plugin(&self, name: &str) -> Option<&(dyn LavalinkPlugin + Send + Sync)> {
@@ -92,8 +83,6 @@ impl PluginManager {
     pub fn is_dynamic_plugin_loaded(&self, name: &str) -> bool {
         self.dynamic_loader.is_plugin_loaded(name)
     }
-
-
 }
 
 /// Example plugin implementation

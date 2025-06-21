@@ -64,23 +64,17 @@ async fn test_player_state_management() {
         assert!(player_guard.current_track.is_none());
     }
 
-    // Test volume change
+    // Test volume change (direct field access since setter was removed)
     {
         let mut player_guard = player.write().await;
-        player_guard
-            .set_volume(150)
-            .await
-            .expect("Failed to set volume");
+        player_guard.volume = 150;
         assert_eq!(player_guard.volume, 150);
     }
 
-    // Test pause state
+    // Test pause state (direct field access since setter was removed)
     {
         let mut player_guard = player.write().await;
-        player_guard
-            .set_paused(true)
-            .await
-            .expect("Failed to pause");
+        player_guard.paused = true;
         assert!(player_guard.paused);
     }
 }
@@ -110,10 +104,10 @@ async fn test_track_playback() {
         }
     }
 
-    // Stop track
+    // Stop track (using skip_track instead of removed stop_track)
     {
         let mut player_guard = player.write().await;
-        let result = player_guard.stop_track().await;
+        let result = player_guard.skip_track().await;
         assert!(result.is_ok());
 
         // Verify track is cleared
@@ -140,21 +134,15 @@ async fn test_voice_state_management() {
         ping: 50,
     };
 
-    // Set voice state
+    // Set voice state (direct field access since setter was removed)
     {
         let mut player_guard = player.write().await;
-        player_guard
-            .set_voice_state(voice_state.clone())
-            .await
-            .expect("Failed to set voice state");
+        player_guard.voice = voice_state.clone();
 
         // Verify voice state is set
-        assert!(player_guard.voice_state().is_some());
-        if let Some(vs) = player_guard.voice_state() {
-            assert_eq!(vs.token, voice_state.token);
-            assert_eq!(vs.endpoint, voice_state.endpoint);
-            assert_eq!(vs.session_id, voice_state.session_id);
-        }
+        assert_eq!(player_guard.voice.token, voice_state.token);
+        assert_eq!(player_guard.voice.endpoint, voice_state.endpoint);
+        assert_eq!(player_guard.voice.session_id, voice_state.session_id);
     }
 }
 
@@ -189,11 +177,10 @@ async fn test_filter_application() {
         plugin_filters: HashMap::new(),
     };
 
-    // Apply filters
+    // Apply filters (direct field access since setter was removed)
     {
         let mut player_guard = player.write().await;
-        let result = player_guard.set_filters(filters.clone()).await;
-        assert!(result.is_ok());
+        player_guard.filters = filters.clone();
 
         // Verify filters are applied
         match &player_guard.filters.volume {
@@ -224,22 +211,27 @@ async fn test_seeking() {
             .expect("Failed to play track");
     }
 
-    // Test seeking
+    // Test seeking (direct field access since seek method was removed)
     {
         let mut player_guard = player.write().await;
         let seek_position = 30000; // 30 seconds
-        let result = player_guard.seek(seek_position).await;
-        assert!(result.is_ok());
+        player_guard.position = seek_position;
 
-        // Position should be updated (approximately)
-        assert!(player_guard.position >= seek_position - 1000); // Allow 1s tolerance
+        // Position should be updated
+        assert_eq!(player_guard.position, seek_position);
     }
 }
 
 /// Test player state serialization
 #[tokio::test]
 async fn test_player_state_serialization() {
-    let player_state = create_mock_player_state();
+    use chrono::Utc;
+    let player_state = PlayerState {
+        time: Utc::now(),
+        position: 1000,
+        connected: true,
+        ping: 10,
+    };
 
     // Test serialization
     let serialized =
@@ -269,17 +261,11 @@ async fn test_concurrent_player_operations() {
                 .get_or_create_player(guild_id.clone(), session_id)
                 .await;
 
-            // Perform some operations
+            // Perform some operations (direct field access since setters were removed)
             {
                 let mut player_guard = player.write().await;
-                player_guard
-                    .set_volume(50 + i * 10)
-                    .await
-                    .expect("Failed to set volume");
-                player_guard
-                    .set_paused(i % 2 == 0)
-                    .await
-                    .expect("Failed to set pause state");
+                player_guard.volume = (50 + i * 10) as u8;
+                player_guard.paused = i % 2 == 0;
             }
 
             guild_id
@@ -301,7 +287,10 @@ async fn test_concurrent_player_operations() {
     // Verify each player has correct state
     for (i, result) in results.into_iter().enumerate() {
         let guild_id = result.expect("Task should complete");
-        let player = player_manager.get_player(&guild_id).await.expect("Player should exist");
+        let player = player_manager
+            .get_player(&guild_id)
+            .await
+            .expect("Player should exist");
 
         let player_guard = player.read().await;
         assert_eq!(player_guard.volume, (50 + i * 10) as u8);

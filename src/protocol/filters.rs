@@ -282,8 +282,6 @@ impl Filters {
     }
 }
 
-
-
 impl Default for Karaoke {
     fn default() -> Self {
         Self {

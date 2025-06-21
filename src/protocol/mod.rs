@@ -33,8 +33,6 @@ impl<T> Omissible<T> {
         matches!(self, Omissible::Present(_))
     }
 
-
-
     pub fn is_omitted(&self) -> bool {
         matches!(self, Omissible::Omitted)
     }
@@ -45,8 +43,6 @@ impl<T> Omissible<T> {
             _ => None,
         }
     }
-
-
 }
 
 impl<T> From<Option<T>> for Omissible<T> {

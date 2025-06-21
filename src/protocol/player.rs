@@ -67,8 +67,10 @@ impl<'de> Deserialize<'de> for PlayerState {
                                 return Err(de::Error::duplicate_field("time"));
                             }
                             let timestamp_millis: i64 = map.next_value()?;
-                            time = Some(chrono::DateTime::from_timestamp_millis(timestamp_millis)
-                                .ok_or_else(|| de::Error::custom("invalid timestamp"))?);
+                            time = Some(
+                                chrono::DateTime::from_timestamp_millis(timestamp_millis)
+                                    .ok_or_else(|| de::Error::custom("invalid timestamp"))?,
+                            );
                         }
                         Field::Position => {
                             if position.is_some() {
@@ -111,7 +113,6 @@ impl<'de> Deserialize<'de> for PlayerState {
 }
 
 impl PlayerState {
-
     /// Create a disconnected player state
     pub fn disconnected() -> Self {
         Self {

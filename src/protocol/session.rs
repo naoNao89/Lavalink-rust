@@ -18,7 +18,6 @@ pub struct SessionUpdate {
 }
 
 impl Session {
-
     /// Create a non-resuming session
     pub fn non_resuming() -> Self {
         Self {
@@ -42,8 +41,6 @@ impl SessionUpdate {
             timeout: Omissible::Omitted,
         }
     }
-
-
 }
 
 impl Default for SessionUpdate {

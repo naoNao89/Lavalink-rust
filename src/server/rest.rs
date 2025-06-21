@@ -271,8 +271,6 @@ pub async fn update_session_handler(
     (StatusCode::OK, Json(response)).into_response()
 }
 
-
-
 /// Get players for session handler - /v4/sessions/{session_id}/players
 pub async fn get_session_players_handler(
     Path(session_id): Path<String>,
@@ -498,8 +496,6 @@ pub async fn update_player_handler(
 
     (StatusCode::OK, Json(response)).into_response()
 }
-
-
 
 /// Route planner status handler - /v4/routeplanner/status
 pub async fn routeplanner_status_handler(State(_state): State<Arc<AppState>>) -> impl IntoResponse {

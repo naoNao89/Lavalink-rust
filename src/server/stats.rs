@@ -67,9 +67,6 @@ impl StatsCollector {
             deficit: 2,
         }
     }
-
-
-
 }
 
 impl Default for StatsCollector {
