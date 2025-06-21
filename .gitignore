@@ -1,0 +1,52 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Compiled binaries and executables
+*.exe
+*.dll
+*.so
+*.dylib
+lavalink-rust
+lavalink-rust.exe
+
+# Rust-specific temporary files
+*.orig
+.cargo/
+*.profraw
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+log/
+
+# Lavalink-specific files
+plugins/
+application-*.yml
+!application.yml
+!application-example.yml
+
+# Nix files
+result
+result-*
+.direnv/
+nix/flake.lock
+
+# Local configuration override
+local_config/

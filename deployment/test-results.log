@@ -1,0 +1,33 @@
+=== Lavalink Rust Deployment Test Results ===
+Date: Fri Jun 20 20:16:31 +07 2025
+Project Root: /Users/henri89/Documents/augment-projects/Lavalink-rust
+
+[0;32m[SUCCESS][0m Test environment ready
+[0;34m[INFO][0m Running test: Docker Compose Configuration
+[0;32m[SUCCESS][0m ✓ Docker Compose Configuration
+[0;34m[INFO][0m Running test: Dockerfile Validation
+[1;33m[WARNING][0m Docker --dry-run not supported, checking Dockerfile manually
+[0;32m[SUCCESS][0m ✓ Dockerfile Validation
+[0;34m[INFO][0m Running test: Alpine Dockerfile Validation
+[0;32m[SUCCESS][0m ✓ Alpine Dockerfile Validation
+[0;34m[INFO][0m Running test: Deployment Script Validation
+[0;32m[SUCCESS][0m ✓ Deployment Script Validation
+[0;34m[INFO][0m Running test: Rollback Script Validation
+[0;32m[SUCCESS][0m ✓ Rollback Script Validation
+[0;34m[INFO][0m Running test: SystemD Service File Validation
+[0;32m[SUCCESS][0m ✓ SystemD Service File Validation
+[0;34m[INFO][0m Running test: Monitoring Configuration Validation
+[0;32m[SUCCESS][0m ✓ Monitoring Configuration Validation
+[0;34m[INFO][0m Running test: Required Dependencies Check
+[0;32m[SUCCESS][0m ✓ Required Dependencies Check
+[0;34m[INFO][0m Running test: Configuration Files Validation
+[0;32m[SUCCESS][0m ✓ Configuration Files Validation
+[0;34m[INFO][0m Running test: Directory Structure Validation
+[0;32m[SUCCESS][0m ✓ Directory Structure Validation
+[0;34m[INFO][0m Cleaning up test environment...
+[0;32m[SUCCESS][0m Cleanup completed
+[0;34m[INFO][0m === Test Summary ===
+[0;34m[INFO][0m Total tests: 10
+[0;32m[SUCCESS][0m Passed: 10
+[0;32m[SUCCESS][0m Failed: 0
+[0;32m[SUCCESS][0m All deployment tests passed! ✓

@@ -1,0 +1,19 @@
+=== Lavalink Rust Nix Test Results ===
+Date: Fri Jun 20 20:32:54 +07 2025
+Project Root: /Users/henri89/Documents/augment-projects/Lavalink-rust
+
+[0;32m[SUCCESS][0m Nix test environment ready
+[0;34m[INFO][0m Running test: Nix Installation Check
+[0;34m[INFO][0m Nix version: nix (Nix) 2.28.3
+[0;32m[SUCCESS][0m ✓ Nix Installation Check
+[0;34m[INFO][0m Running test: Flake Validation
+[0;31m[ERROR][0m ✗ Flake Validation: Flake validation failed
+[0;34m[INFO][0m Running test: Flake Metadata
+[0;31m[ERROR][0m ✗ Flake Metadata: Failed to read flake metadata
+[0;34m[INFO][0m Running test: NixOS Module Syntax
+[0;32m[SUCCESS][0m ✓ NixOS Module Syntax
+[0;34m[INFO][0m === Nix Test Summary ===
+[0;34m[INFO][0m Total tests: 4
+[0;32m[SUCCESS][0m Passed: 2
+[0;31m[ERROR][0m Failed: 2
+[0;31m[ERROR][0m Some Nix tests failed! ✗

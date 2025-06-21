@@ -1,0 +1,106 @@
+site_name: Lavalink Rust Documentation
+site_description: High-performance, memory-safe Lavalink implementation in Rust
+site_url: https://lavalink-rust.dev
+repo_url: https://github.com/lavalink-devs/lavalink-rust
+repo_name: lavalink-devs/lavalink-rust
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: deep orange
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: getting-started/index.md
+    - Binary Installation: getting-started/binary.md
+    - Docker Setup: getting-started/docker.md
+    - Systemd Service: getting-started/systemd.md
+    - FAQ: getting-started/faq.md
+    - Troubleshooting: getting-started/troubleshooting.md
+  - Configuration:
+    - Configuration Guide: configuration/index.md
+    - Audio Sources: configuration/sources.md
+    - Audio Filters: configuration/filters.md
+    - Performance Tuning: configuration/performance.md
+  - API Reference:
+    - REST API: api/rest.md
+    - WebSocket Protocol: api/websocket.md
+    - Plugin System: api/plugins.md
+  - Migration:
+    - From Java Lavalink: migration/from-java.md
+    - Compatibility Guide: migration/compatibility.md
+  - Advanced Topics:
+    - Fallback System: advanced/fallback-system.md
+    - Performance Optimization: advanced/performance.md
+    - System Architecture: advanced/architecture.md
+  - Plugin Development:
+    - Development Guide: plugins/development.md
+    - API Reference: plugins/api-reference.md
+    - Examples: plugins/examples.md
+  - Changelog:
+    - Rust v1.x: changelog/rust-v1.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - footnotes
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/lavalink-devs/lavalink-rust
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/lavalink
+  version:
+    provider: mike
+
+extra_css:
+  - assets/css/extra.css
+
+copyright: Copyright &copy; 2024 Lavalink Rust Contributors

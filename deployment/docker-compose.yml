@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  lavalink-rust:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: lavalink-rust
+    restart: unless-stopped
+    environment:
+      # Rust-specific environment variables
+      - RUST_LOG=info
+      - RUST_BACKTRACE=1
+      # Lavalink configuration
+      - LAVALINK_SERVER_PASSWORD=youshallnotpass
+      - LAVALINK_SERVER_PORT=2333
+      - LAVALINK_SERVER_ADDRESS=0.0.0.0
+    volumes:
+      # Mount configuration file
+      - ../application.yml:/app/application.yml:ro
+      # Mount logs directory
+      - ./logs:/app/logs
+      # Optional: Mount plugins directory (for future plugin support)
+      - ./plugins:/app/plugins:ro
+    networks:
+      - lavalink
+    expose:
+      - 2333
+    ports:
+      # Expose Lavalink port
+      - "2333:2333"
+      # Optional: Expose metrics port for monitoring
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2333/v4/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          # Rust uses significantly less memory than Java
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: lavalink-prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - lavalink
+
+  # Optional: Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: lavalink-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - lavalink
+
+networks:
+  lavalink:
+    name: lavalink
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

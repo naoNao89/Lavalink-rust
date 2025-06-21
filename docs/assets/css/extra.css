@@ -1,0 +1,248 @@
+/* Lavalink Rust Documentation Custom Styles */
+
+/* Brand colors */
+:root {
+  --lavalink-orange: #ff6b35;
+  --lavalink-dark-orange: #e55a2b;
+  --rust-orange: #ce422b;
+  --code-bg: #f8f8f8;
+  --code-border: #e1e4e8;
+}
+
+/* Custom styling for code blocks */
+.highlight {
+  background-color: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+/* Rust code highlighting */
+.language-rust .highlight {
+  border-left: 4px solid var(--rust-orange);
+}
+
+/* YAML code highlighting */
+.language-yaml .highlight {
+  border-left: 4px solid var(--lavalink-orange);
+}
+
+/* Custom admonition styles */
+.admonition.rust {
+  border-left: 4px solid var(--rust-orange);
+}
+
+.admonition.rust .admonition-title {
+  background-color: rgba(206, 66, 43, 0.1);
+}
+
+.admonition.rust .admonition-title::before {
+  content: "🦀";
+  margin-right: 8px;
+}
+
+/* Performance improvement callouts */
+.admonition.performance {
+  border-left: 4px solid #28a745;
+}
+
+.admonition.performance .admonition-title {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+.admonition.performance .admonition-title::before {
+  content: "⚡";
+  margin-right: 8px;
+}
+
+/* Migration callouts */
+.admonition.migration {
+  border-left: 4px solid #007bff;
+}
+
+.admonition.migration .admonition-title {
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+.admonition.migration .admonition-title::before {
+  content: "🔄";
+  margin-right: 8px;
+}
+
+/* API endpoint styling */
+.api-endpoint {
+  background-color: #f6f8fa;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.api-endpoint .method {
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 8px;
+}
+
+.api-endpoint .method.get {
+  background-color: #28a745;
+  color: white;
+}
+
+.api-endpoint .method.post {
+  background-color: #007bff;
+  color: white;
+}
+
+.api-endpoint .method.patch {
+  background-color: #ffc107;
+  color: black;
+}
+
+.api-endpoint .method.delete {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.status-badge.implemented {
+  background-color: #28a745;
+  color: white;
+}
+
+.status-badge.partial {
+  background-color: #ffc107;
+  color: black;
+}
+
+.status-badge.missing {
+  background-color: #dc3545;
+  color: white;
+}
+
+.status-badge.fallback {
+  background-color: #17a2b8;
+  color: white;
+}
+
+/* Feature comparison tables */
+.feature-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.feature-table th,
+.feature-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.feature-table th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.feature-table .check {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.feature-table .cross {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.feature-table .partial {
+  color: #ffc107;
+  font-weight: bold;
+}
+
+/* Performance metrics styling */
+.performance-metric {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 8px 0;
+  text-align: center;
+}
+
+.performance-metric .value {
+  font-size: 2em;
+  font-weight: bold;
+  display: block;
+}
+
+.performance-metric .label {
+  font-size: 0.9em;
+  opacity: 0.9;
+}
+
+/* Code snippet improvements */
+.codehilite {
+  position: relative;
+}
+
+.codehilite .copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Dark mode adjustments */
+[data-md-color-scheme="slate"] {
+  --code-bg: #2d3748;
+  --code-border: #4a5568;
+}
+
+[data-md-color-scheme="slate"] .highlight {
+  background-color: var(--code-bg);
+  border-color: var(--code-border);
+}
+
+[data-md-color-scheme="slate"] .api-endpoint {
+  background-color: #2d3748;
+  border-color: #4a5568;
+  color: #e2e8f0;
+}
+
+[data-md-color-scheme="slate"] .feature-table th {
+  background-color: #2d3748;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .performance-metric {
+    margin: 4px 0;
+    padding: 12px;
+  }
+  
+  .performance-metric .value {
+    font-size: 1.5em;
+  }
+  
+  .api-endpoint {
+    padding: 8px;
+    font-size: 14px;
+  }
+}

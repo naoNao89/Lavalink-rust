@@ -1,0 +1,72 @@
+groups:
+  - name: lavalink_rust_alerts
+    rules:
+      # Service availability
+      - alert: LavalinkDown
+        expr: up{job="lavalink-rust"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Lavalink Rust service is down"
+          description: "Lavalink Rust has been down for more than 1 minute"
+
+      # High memory usage
+      - alert: LavalinkHighMemoryUsage
+        expr: (process_resident_memory_bytes{job="lavalink-rust"} / 1024 / 1024) > 800
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lavalink Rust high memory usage"
+          description: "Lavalink Rust memory usage is above 800MB for more than 5 minutes"
+
+      # High CPU usage
+      - alert: LavalinkHighCPUUsage
+        expr: rate(process_cpu_seconds_total{job="lavalink-rust"}[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lavalink Rust high CPU usage"
+          description: "Lavalink Rust CPU usage is above 80% for more than 5 minutes"
+
+      # Too many active players
+      - alert: LavalinkTooManyPlayers
+        expr: lavalink_players_total{job="lavalink-rust"} > 1000
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lavalink Rust has too many active players"
+          description: "Lavalink Rust has more than 1000 active players"
+
+      # WebSocket connection issues
+      - alert: LavalinkWebSocketErrors
+        expr: increase(lavalink_websocket_errors_total{job="lavalink-rust"}[5m]) > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lavalink Rust WebSocket errors"
+          description: "Lavalink Rust has more than 10 WebSocket errors in the last 5 minutes"
+
+      # Track loading failures
+      - alert: LavalinkTrackLoadingFailures
+        expr: increase(lavalink_track_loading_failures_total{job="lavalink-rust"}[5m]) > 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Lavalink Rust track loading failures"
+          description: "Lavalink Rust has more than 20 track loading failures in the last 5 minutes"
+
+      # Disk space (if available)
+      - alert: LavalinkLowDiskSpace
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space on Lavalink server"
+          description: "Disk space is below 10% on the Lavalink server"

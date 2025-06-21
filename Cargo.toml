@@ -1,0 +1,80 @@
+[package]
+name = "lavalink-rust"
+version = "4.0.0"
+edition = "2021"
+authors = ["Lavalink Rust Contributors"]
+description = "A standalone audio sending node for Discord, written in Rust"
+license = "MIT"
+repository = "https://github.com/lavalink-devs/lavalink-rust"
+keywords = ["discord", "audio", "music", "bot", "voice"]
+categories = ["multimedia::audio", "network-programming", "web-programming"]
+
+[dependencies]
+# Core async runtime and web framework
+tokio = { version = "1.0", features = ["full"] }
+axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
+tower = { version = "0.4", features = ["util", "timeout", "load-shed", "limit"] }
+tower-http = { version = "0.5", features = ["fs", "trace", "cors", "compression-gzip"] }
+hyper = { version = "1.0", features = ["full"] }
+
+# Serialization and data handling
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+
+# Configuration management
+config = "0.14"
+clap = { version = "4.0", features = ["derive"] }
+
+# Audio processing and Discord integration
+songbird = { version = "0.4", features = ["builtin-queue"] }
+serenity = { version = "0.12", default-features = false, features = ["voice", "gateway"] }
+
+# Audio decoding and processing (simplified for cross-platform compatibility)
+symphonia = { version = "0.5", features = ["mp3", "aac", "flac", "vorbis", "wav"] }
+rubato = "0.14"
+
+# HTTP client for audio sources
+reqwest = { version = "0.11", features = ["json", "stream"] }
+
+# Async utilities
+futures = "0.3"
+futures-util = "0.3"
+async-trait = "0.1"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Plugin system
+libloading = "0.8"
+libc = "0.2"
+
+# Metrics and monitoring
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+
+# Utilities
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+dashmap = "5.5"
+once_cell = "1.19"
+num_cpus = "1.0"
+base64 = "0.21"
+url = "2.4"
+regex = "1.10"
+rand = "0.8"
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockall = "0.12"
+wiremock = "0.6"
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3.8"
+assert_matches = "1.5"
+axum-test = "14.0"

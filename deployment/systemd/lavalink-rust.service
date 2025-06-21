@@ -1,0 +1,53 @@
+[Unit]
+Description=Lavalink Rust Service - Audio sending node for Discord
+Documentation=https://github.com/lavalink-devs/Lavalink
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+
+# User and group to run the service
+User=lavalink
+Group=lavalink
+
+# Working directory
+WorkingDirectory=/opt/lavalink-rust
+
+# Environment variables
+Environment=RUST_LOG=info
+Environment=RUST_BACKTRACE=1
+
+# Command to start Lavalink Rust
+ExecStart=/opt/lavalink-rust/lavalink-rust --config /opt/lavalink-rust/application.yml
+
+# Restart configuration
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/lavalink-rust/logs
+ReadOnlyPaths=/opt/lavalink-rust
+
+# Resource limits (adjust as needed)
+MemoryMax=1G
+CPUQuota=100%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lavalink-rust
+
+# Process management
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+[Install]
+WantedBy=multi-user.target
