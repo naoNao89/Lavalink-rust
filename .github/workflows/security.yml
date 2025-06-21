@@ -52,6 +52,8 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    env:
+      CODEQL_ENABLE_EXPERIMENTAL_FEATURES: true
     strategy:
       fail-fast: false
       matrix:
