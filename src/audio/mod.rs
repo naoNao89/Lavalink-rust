@@ -1727,8 +1727,7 @@ impl AudioSource for AudioSourceManager {
     }
 }
 
-impl AudioSourceManager {
-}
+impl AudioSourceManager {}
 
 /// Extract a title from a URL
 fn extract_title_from_url(url: &str) -> String {

@@ -6,8 +6,8 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::{interval, Duration, Instant};
 
-use tracing::{debug, error, info, warn};
 use rand::prelude::*;
+use tracing::{debug, error, info, warn};
 
 use crate::protocol::{messages::VoiceState, Event, Filters, Message, PlayerState, Track};
 
@@ -471,8 +471,6 @@ impl LavalinkPlayer {
     pub fn get_filters(&self) -> &Filters {
         &self.filters
     }
-
-
 
     /// Check if the player is playing
     pub fn is_playing(&self) -> bool {

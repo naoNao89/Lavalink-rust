@@ -64,8 +64,6 @@ pub fn create_test_config() -> LavalinkConfig {
     }
 }
 
-
-
 /// Test helper for JSON serialization/deserialization validation
 pub fn test_json_roundtrip<T>(json_str: &str) -> anyhow::Result<T>
 where
@@ -85,8 +83,6 @@ where
 
     Ok(deserialized)
 }
-
-
 
 /// Mock track data for testing
 pub fn create_mock_track() -> crate::protocol::Track {
@@ -111,8 +107,6 @@ pub fn create_mock_track() -> crate::protocol::Track {
         user_data: HashMap::new(),
     }
 }
-
-
 
 /// Mock exception for testing
 pub fn create_mock_exception() -> crate::protocol::Exception {
@@ -148,5 +142,3 @@ macro_rules! assert_contains_fields {
         }
     };
 }
-
-
