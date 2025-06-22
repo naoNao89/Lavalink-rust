@@ -1,36 +1,4 @@
-# Multi-stage build for Rust Lavalink (Alpine variant)
-FROM rust:1.70-alpine as builder
-
-# Install build dependencies
-RUN apk add --no-cache \
-    musl-dev \
-    pkgconfig \
-    openssl-dev \
-    openssl-libs-static \
-    opus-dev \
-    ffmpeg-dev \
-    curl
-
-# Set working directory
-WORKDIR /build
-
-# Copy Cargo files for dependency caching
-COPY Cargo.toml Cargo.lock ./
-
-# Create dummy main.rs to build dependencies
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-
-# Build dependencies (this layer will be cached)
-RUN cargo build --release --target x86_64-unknown-linux-musl && rm -rf src
-
-# Copy source code
-COPY src ./src
-COPY tests ./tests
-
-# Build the actual application
-RUN cargo build --release --target x86_64-unknown-linux-musl
-
-# Runtime stage
+# Runtime stage for pre-built binary (Alpine variant)
 FROM alpine:3.18
 
 # Install runtime dependencies
@@ -44,6 +12,7 @@ RUN apk add --no-cache \
     curl
 
 # Install yt-dlp for audio source extraction
+# Note: Alpine doesn't have PEP 668 restrictions, but keeping consistent
 RUN pip3 install --no-cache-dir yt-dlp
 
 # Create non-root user
@@ -53,8 +22,8 @@ RUN addgroup -g 322 lavalink && \
 # Set working directory
 WORKDIR /app
 
-# Copy binary from builder stage
-COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/lavalink-rust /app/lavalink-rust
+# Copy pre-built binary from CI
+COPY lavalink-rust-musl /app/lavalink-rust
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/plugins && \
