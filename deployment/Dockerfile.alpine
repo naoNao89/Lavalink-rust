@@ -23,7 +23,7 @@ RUN addgroup -g 322 lavalink && \
 WORKDIR /app
 
 # Copy pre-built binary from CI
-COPY lavalink-rust /app/lavalink-rust
+COPY lavalink-rust-musl /app/lavalink-rust
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/plugins && \
