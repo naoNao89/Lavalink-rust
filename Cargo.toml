@@ -62,7 +62,7 @@ libc = "0.2"
 
 # Metrics and monitoring
 metrics = "0.22"
-metrics-exporter-prometheus = "0.13"
+metrics-exporter-prometheus = { version = "0.17", default-features = false, features = ["http-listener", "hyper-rustls"] }
 
 # Utilities
 uuid = { version = "1.11", features = ["v4", "serde"] }
