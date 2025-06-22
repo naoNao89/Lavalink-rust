@@ -112,17 +112,33 @@ pub async fn decode_track_handler(
 /// Decode tracks handler - /v4/decodetracks
 pub async fn decode_tracks_handler(
     State(_state): State<Arc<AppState>>,
-    Json(_request): Json<DecodeTracksRequest>,
+    Json(request): Json<DecodeTracksRequest>,
 ) -> impl IntoResponse {
-    // TODO: Implement tracks decoding
-    let error = ErrorResponse::new(
-        501,
-        "Not Implemented".to_string(),
-        Some("Tracks decoding not yet implemented".to_string()),
-        "/v4/decodetracks".to_string(),
+    let mut decoded_tracks = Vec::new();
+    let mut failed_tracks = Vec::new();
+    let total_tracks = request.tracks.len();
+
+    for encoded_track in request.tracks {
+        match Track::decode(&encoded_track) {
+            Ok(track) => decoded_tracks.push(track),
+            Err(e) => {
+                error!("Failed to decode track {}: {}", encoded_track, e);
+                failed_tracks.push(encoded_track);
+            }
+        }
+    }
+
+    if !failed_tracks.is_empty() {
+        warn!("Failed to decode {} tracks", failed_tracks.len());
+    }
+
+    info!(
+        "Successfully decoded {}/{} tracks",
+        decoded_tracks.len(),
+        total_tracks
     );
 
-    (StatusCode::NOT_IMPLEMENTED, Json(error))
+    (StatusCode::OK, Json(decoded_tracks)).into_response()
 }
 
 /// Info handler - /v4/info

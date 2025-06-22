@@ -1657,7 +1657,7 @@ dependencies = [
  "hyper 1.6.0",
  "libc",
  "libloading",
- "metrics 0.22.4",
+ "metrics",
  "metrics-exporter-prometheus",
  "mockall",
  "num_cpus",
@@ -1778,16 +1778,6 @@ checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
 
 [[package]]
 name = "metrics"
-version = "0.22.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56d05972e8cbac2671e85aa9d04d9160d193f8bebd1a5c1a2f4542c62e65d1d0"
-dependencies = [
- "ahash",
- "portable-atomic",
-]
-
-[[package]]
-name = "metrics"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25dea7ac8057892855ec285c440160265225438c3c45072613c25a4b26e98ef5"
@@ -1809,7 +1799,7 @@ dependencies = [
  "hyper-util",
  "indexmap",
  "ipnet",
- "metrics 0.24.2",
+ "metrics",
  "metrics-util",
  "quanta",
  "thiserror 2.0.12",
@@ -1826,7 +1816,7 @@ dependencies = [
  "crossbeam-epoch",
  "crossbeam-utils",
  "hashbrown 0.15.4",
- "metrics 0.24.2",
+ "metrics",
  "quanta",
  "rand 0.9.1",
  "rand_xoshiro",
