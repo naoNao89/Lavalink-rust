@@ -67,7 +67,7 @@ pub struct LavalinkInnerConfig {
     pub timeouts: Option<TimeoutsConfig>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct SourcesConfig {
     pub youtube: Option<bool>,
     pub bandcamp: Option<bool>,

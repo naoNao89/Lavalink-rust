@@ -74,6 +74,8 @@ base64 = "0.22"
 url = "2.5"
 regex = "1.11"
 rand = "0.9"
+urlencoding = "2.1"
+html-escape = "0.2"
 
 [dev-dependencies]
 tokio-test = "0.4"

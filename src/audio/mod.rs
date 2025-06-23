@@ -5,7 +5,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use base64::Engine;
 use regex::Regex;
-use tracing::debug;
+use tracing::{debug, info, warn};
 
 use tokio::process::Command as AsyncCommand;
 
@@ -13,6 +13,7 @@ use crate::config::SourcesConfig;
 use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity};
 
 /// Audio source manager for loading tracks from various sources
+#[derive(Clone)]
 pub struct AudioSourceManager {
     sources: Vec<AudioSourceType>,
 }
@@ -59,13 +60,52 @@ pub struct YouTubeAudioSource;
 #[derive(Clone)]
 pub struct SoundCloudAudioSource;
 
+impl SoundCloudAudioSource {
+    #[allow(dead_code)] // Used in tests
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for SoundCloudAudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Bandcamp audio source (placeholder)
 #[derive(Clone)]
 pub struct BandcampAudioSource;
 
+impl BandcampAudioSource {
+    #[allow(dead_code)] // Used in tests
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for BandcampAudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Twitch audio source (placeholder)
 #[derive(Clone)]
 pub struct TwitchAudioSource;
+
+impl TwitchAudioSource {
+    #[allow(dead_code)] // Used in tests
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for TwitchAudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Vimeo audio source (placeholder)
 #[derive(Clone)]
@@ -863,25 +903,116 @@ impl AudioSource for BandcampAudioSource {
     }
 
     async fn search(&self, query: &str) -> Result<LoadResult> {
-        // Note: Bandcamp doesn't have a direct search API like YouTube
-        // For now, return empty results for search queries
-        // In a real implementation, you might want to:
-        // 1. Use Bandcamp's API if available
-        // 2. Implement web scraping (with proper rate limiting)
-        // 3. Return a helpful error message suggesting direct URLs
+        info!("Searching Bandcamp for: {}", query);
 
-        Ok(LoadResult {
-            load_type: LoadType::Error,
-            data: Some(LoadResultData::Exception(Exception {
-                message: Some(format!("Bandcamp search is not currently supported. Please use direct Bandcamp URLs instead. Search query was: '{}'", query)),
-                severity: Severity::Common,
-                cause: "Bandcamp search not implemented".to_string(),
-            }))
-        })
+        // Implement basic Bandcamp search using web scraping
+        match self.search_bandcamp_web(query).await {
+            Ok(tracks) => {
+                if tracks.is_empty() {
+                    Ok(LoadResult {
+                        load_type: LoadType::Empty,
+                        data: None,
+                    })
+                } else {
+                    Ok(LoadResult {
+                        load_type: LoadType::Search,
+                        data: Some(LoadResultData::Search(tracks)),
+                    })
+                }
+            }
+            Err(e) => {
+                warn!("Bandcamp search failed: {}", e);
+                Ok(LoadResult {
+                    load_type: LoadType::Error,
+                    data: Some(LoadResultData::Exception(Exception {
+                        message: Some(format!("Bandcamp search failed: {}. Try using direct Bandcamp URLs instead.", e)),
+                        severity: Severity::Common,
+                        cause: format!("Search error: {}", e),
+                    }))
+                })
+            }
+        }
     }
 }
 
 impl BandcampAudioSource {
+    /// Search Bandcamp using web scraping
+    async fn search_bandcamp_web(&self, query: &str) -> Result<Vec<crate::protocol::Track>> {
+        let search_url = format!("https://bandcamp.com/search?q={}", urlencoding::encode(query));
+
+        // Add rate limiting to be respectful
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+        let response = reqwest::Client::new()
+            .get(&search_url)
+            .header("User-Agent", "Mozilla/5.0 (compatible; Lavalink-Rust/4.0)")
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("HTTP error: {}", response.status()));
+        }
+
+        let html = response.text().await?;
+        self.parse_bandcamp_search_results(&html, query).await
+    }
+
+    /// Parse Bandcamp search results from HTML
+    async fn parse_bandcamp_search_results(&self, html: &str, query: &str) -> Result<Vec<crate::protocol::Track>> {
+        let mut tracks = Vec::new();
+
+        // Simple regex-based parsing for Bandcamp search results
+        let track_pattern = regex::Regex::new(
+            r#"<div class="searchresult track">.*?<div class="heading">.*?<a href="([^"]+)"[^>]*>([^<]+)</a>.*?<div class="subhead">.*?by\s*<a[^>]*>([^<]+)</a>"#
+        ).unwrap();
+
+        for (count, captures) in track_pattern.captures_iter(html).enumerate() {
+            if count >= 10 {
+                break; // Limit to 10 results
+            }
+
+            let url = captures.get(1).map(|m| m.as_str()).unwrap_or("");
+            let title = captures.get(2).map(|m| m.as_str()).unwrap_or("Unknown Title");
+            let artist = captures.get(3).map(|m| m.as_str()).unwrap_or("Unknown Artist");
+
+            // Clean up HTML entities
+            let title = html_escape::decode_html_entities(title).to_string();
+            let artist = html_escape::decode_html_entities(artist).to_string();
+
+            // Create a track info
+            let track_info = crate::protocol::TrackInfo {
+                identifier: url.to_string(),
+                is_seekable: true,
+                author: artist.clone(),
+                length: 0, // Unknown length from search results
+                is_stream: false,
+                position: 0,
+                title: title.clone(),
+                uri: Some(url.to_string()),
+                artwork_url: None,
+                isrc: None,
+                source_name: "bandcamp".to_string(),
+            };
+
+            // Create encoded track data
+            let track_data = serde_json::to_vec(&track_info)?;
+            let encoded = base64::engine::general_purpose::STANDARD.encode(&track_data);
+
+            let track = crate::protocol::Track {
+                encoded,
+                info: track_info,
+                plugin_info: std::collections::HashMap::new(),
+                user_data: std::collections::HashMap::new(),
+            };
+
+            tracks.push(track);
+        }
+
+        info!("Found {} Bandcamp tracks for query: {}", tracks.len(), query);
+        Ok(tracks)
+    }
+
     /// Validate if the identifier is a valid Bandcamp URL
     fn is_valid_bandcamp_url(&self, identifier: &str) -> bool {
         // Bandcamp URL patterns
@@ -1905,3 +2036,6 @@ impl FallbackAudioSource {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod integration_tests;

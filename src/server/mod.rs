@@ -21,13 +21,19 @@ use crate::{
     protocol::{ErrorResponse, Info},
 };
 
+use self::routeplanner::RoutePlanner;
+
 mod auth;
 mod rest;
+mod routeplanner;
 mod stats;
 mod websocket;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod rest_tests;
 
 pub use auth::*;
 
@@ -50,6 +56,7 @@ pub struct AppState {
 
     pub player_manager: Arc<PlayerManager>,
     pub plugin_manager: Arc<std::sync::RwLock<PluginManager>>,
+    pub route_planner: Option<Arc<RoutePlanner>>,
 }
 
 impl LavalinkServer {
@@ -83,6 +90,30 @@ impl LavalinkServer {
 
         let plugin_manager = Arc::new(std::sync::RwLock::new(plugin_manager));
 
+        // Initialize route planner if configured
+        let route_planner = if let Some(ratelimit_config) = &config.lavalink.server.ratelimit {
+            match routeplanner::RoutePlannerConfig::try_from(ratelimit_config) {
+                Ok(rp_config) => {
+                    match RoutePlanner::new(rp_config) {
+                        Ok(rp) => {
+                            info!("Route planner initialized successfully");
+                            Some(Arc::new(rp))
+                        }
+                        Err(e) => {
+                            warn!("Failed to initialize route planner: {}", e);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Invalid route planner configuration: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         let app_state = Arc::new(AppState {
             config: config.clone(),
             sessions,
@@ -91,6 +122,7 @@ impl LavalinkServer {
 
             player_manager,
             plugin_manager,
+            route_planner,
         });
 
         Ok(Self { config, app_state })

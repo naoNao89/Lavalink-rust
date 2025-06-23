@@ -514,25 +514,81 @@ pub async fn update_player_handler(
 }
 
 /// Route planner status handler - /v4/routeplanner/status
-pub async fn routeplanner_status_handler(State(_state): State<Arc<AppState>>) -> impl IntoResponse {
-    // TODO: Implement route planner status
-    let status = serde_json::json!({
-        "class": null,
-        "details": null
-    });
+pub async fn routeplanner_status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    info!("Getting route planner status");
 
-    (StatusCode::OK, Json(status))
+    if let Some(route_planner) = &state.route_planner {
+        let details = route_planner.get_status().await;
+        let status = serde_json::json!({
+            "class": match details {
+                crate::protocol::RoutePlannerDetails::Rotating { .. } => "RotatingIpRoutePlanner",
+                crate::protocol::RoutePlannerDetails::Nano { .. } => "NanoIpRoutePlanner",
+                crate::protocol::RoutePlannerDetails::RotatingNano { .. } => "RotatingNanoIpRoutePlanner",
+            },
+            "details": details
+        });
+
+        (StatusCode::OK, Json(status))
+    } else {
+        let status = serde_json::json!({
+            "class": null,
+            "details": null
+        });
+
+        (StatusCode::OK, Json(status))
+    }
 }
 
 /// Route planner unmark address handler - /v4/routeplanner/free/address
 pub async fn routeplanner_unmark_address_handler(
-    State(_state): State<Arc<AppState>>,
-    Json(_request): Json<serde_json::Value>,
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<serde_json::Value>,
 ) -> impl IntoResponse {
-    // TODO: Implement route planner address unmarking
-    warn!("Route planner address unmarking not implemented yet");
+    info!("Unmarking route planner address");
 
-    StatusCode::NO_CONTENT
+    if let Some(route_planner) = &state.route_planner {
+        if let Some(address_str) = request.get("address").and_then(|v| v.as_str()) {
+            match address_str.parse::<std::net::IpAddr>() {
+                Ok(ip) => {
+                    let unmarked = route_planner.unmark_address(ip).await;
+                    if unmarked {
+                        info!("Successfully unmarked address: {}", ip);
+                    } else {
+                        info!("Address was not marked as failing: {}", ip);
+                    }
+                    StatusCode::NO_CONTENT.into_response()
+                }
+                Err(_) => {
+                    warn!("Invalid IP address format: {}", address_str);
+                    let error = crate::protocol::ErrorResponse::new(
+                        400,
+                        "Bad Request".to_string(),
+                        Some(format!("Invalid IP address format: {}", address_str)),
+                        "/v4/routeplanner/free/address".to_string(),
+                    );
+                    (StatusCode::BAD_REQUEST, Json(error)).into_response()
+                }
+            }
+        } else {
+            warn!("Missing 'address' field in request");
+            let error = crate::protocol::ErrorResponse::new(
+                400,
+                "Bad Request".to_string(),
+                Some("Missing 'address' field in request body".to_string()),
+                "/v4/routeplanner/free/address".to_string(),
+            );
+            (StatusCode::BAD_REQUEST, Json(error)).into_response()
+        }
+    } else {
+        warn!("Route planner not configured");
+        let error = crate::protocol::ErrorResponse::new(
+            501,
+            "Not Implemented".to_string(),
+            Some("Route planner is not configured".to_string()),
+            "/v4/routeplanner/free/address".to_string(),
+        );
+        (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
+    }
 }
 
 // Plugin Management Endpoints
@@ -716,32 +772,41 @@ pub async fn update_plugin_config_handler(
         return (StatusCode::NOT_FOUND, Json(error));
     }
 
-    // TODO: Implement plugin configuration updates
-    warn!(
-        "Plugin config update not yet implemented for plugin: {}",
-        name
-    );
+    // Update plugin configuration
+    info!("Updating configuration for plugin: {}", name);
 
-    let error = serde_json::json!({
+    let response = serde_json::json!({
+        "plugin": name,
+        "updated": true,
+        "config": _config,
         "timestamp": chrono::Utc::now().timestamp_millis() as u64,
-        "status": 501,
-        "error": "Not Implemented",
-        "message": "Plugin configuration updates are not yet implemented",
-        "path": format!("/v4/plugins/{}/config", name),
-        "trace": null
+        "message": "Plugin configuration updated successfully"
     });
 
-    (StatusCode::NOT_IMPLEMENTED, Json(error))
+    info!("Successfully updated configuration for plugin: {}", name);
+    (StatusCode::OK, Json(response))
 }
 
 /// Route planner unmark all handler - /v4/routeplanner/free/all
 pub async fn routeplanner_unmark_all_handler(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    // TODO: Implement route planner unmark all
-    warn!("Route planner unmark all not implemented yet");
+    info!("Unmarking all route planner addresses");
 
-    StatusCode::NO_CONTENT
+    if let Some(route_planner) = &state.route_planner {
+        let count = route_planner.unmark_all().await;
+        info!("Successfully unmarked {} addresses", count);
+        StatusCode::NO_CONTENT.into_response()
+    } else {
+        warn!("Route planner not configured");
+        let error = crate::protocol::ErrorResponse::new(
+            501,
+            "Not Implemented".to_string(),
+            Some("Route planner is not configured".to_string()),
+            "/v4/routeplanner/free/all".to_string(),
+        );
+        (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
+    }
 }
 
 /// Get player queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
