@@ -144,7 +144,10 @@ impl RoutePlanner {
     /// Generate IPv4 range from CIDR
     fn generate_ipv4_range(base: Ipv4Addr, prefix_len: u8) -> Result<Vec<IpAddr>> {
         if prefix_len > 32 {
-            return Err(anyhow::anyhow!("Invalid IPv4 prefix length: {}", prefix_len));
+            return Err(anyhow::anyhow!(
+                "Invalid IPv4 prefix length: {}",
+                prefix_len
+            ));
         }
 
         let mut ips = Vec::new();
@@ -168,14 +171,17 @@ impl RoutePlanner {
     /// Generate IPv6 range from CIDR (simplified implementation)
     fn generate_ipv6_range(base: Ipv6Addr, prefix_len: u8) -> Result<Vec<IpAddr>> {
         if prefix_len > 128 {
-            return Err(anyhow::anyhow!("Invalid IPv6 prefix length: {}", prefix_len));
+            return Err(anyhow::anyhow!(
+                "Invalid IPv6 prefix length: {}",
+                prefix_len
+            ));
         }
 
         // For IPv6, we'll only generate a limited number of addresses
         // to prevent memory issues. In practice, IPv6 ranges are huge.
         let mut ips = Vec::new();
         let base_segments = base.segments();
-        
+
         // Generate up to 100 IPv6 addresses by incrementing the last segment
         for i in 0..100 {
             let mut segments = base_segments;
@@ -233,7 +239,7 @@ impl RoutePlanner {
             .as_millis() as u64;
 
         let mut failing_addresses = self.failing_addresses.write().await;
-        
+
         let retry_count = failing_addresses
             .get(&ip)
             .map(|info| info.retry_count + 1)
@@ -246,24 +252,21 @@ impl RoutePlanner {
         };
 
         failing_addresses.insert(ip, info);
-        
-        info!(
-            "Marked IP {} as failing (retry count: {})",
-            ip, retry_count
-        );
+
+        info!("Marked IP {} as failing (retry count: {})", ip, retry_count);
     }
 
     /// Unmark a specific IP address
     pub async fn unmark_address(&self, ip: IpAddr) -> bool {
         let mut failing_addresses = self.failing_addresses.write().await;
         let removed = failing_addresses.remove(&ip).is_some();
-        
+
         if removed {
             info!("Unmarked IP {} as failing", ip);
         } else {
             debug!("IP {} was not marked as failing", ip);
         }
-        
+
         removed
     }
 
@@ -272,7 +275,7 @@ impl RoutePlanner {
         let mut failing_addresses = self.failing_addresses.write().await;
         let count = failing_addresses.len();
         failing_addresses.clear();
-        
+
         info!("Unmarked {} failing IP addresses", count);
         count
     }
@@ -289,10 +292,12 @@ impl RoutePlanner {
             .map(|info| FailingAddress {
                 address: info.address.to_string(),
                 failing_timestamp: info.failing_timestamp,
-                failing_time: chrono::DateTime::from_timestamp_millis(info.failing_timestamp as i64)
-                    .unwrap_or_default()
-                    .format("%Y-%m-%d %H:%M:%S UTC")
-                    .to_string(),
+                failing_time: chrono::DateTime::from_timestamp_millis(
+                    info.failing_timestamp as i64,
+                )
+                .unwrap_or_default()
+                .format("%Y-%m-%d %H:%M:%S UTC")
+                .to_string(),
             })
             .collect();
 

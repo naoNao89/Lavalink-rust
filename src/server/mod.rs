@@ -93,18 +93,16 @@ impl LavalinkServer {
         // Initialize route planner if configured
         let route_planner = if let Some(ratelimit_config) = &config.lavalink.server.ratelimit {
             match routeplanner::RoutePlannerConfig::try_from(ratelimit_config) {
-                Ok(rp_config) => {
-                    match RoutePlanner::new(rp_config) {
-                        Ok(rp) => {
-                            info!("Route planner initialized successfully");
-                            Some(Arc::new(rp))
-                        }
-                        Err(e) => {
-                            warn!("Failed to initialize route planner: {}", e);
-                            None
-                        }
+                Ok(rp_config) => match RoutePlanner::new(rp_config) {
+                    Ok(rp) => {
+                        info!("Route planner initialized successfully");
+                        Some(Arc::new(rp))
                     }
-                }
+                    Err(e) => {
+                        warn!("Failed to initialize route planner: {}", e);
+                        None
+                    }
+                },
                 Err(e) => {
                     warn!("Invalid route planner configuration: {}", e);
                     None

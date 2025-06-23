@@ -158,7 +158,7 @@ mod rest_api_feature_tests {
 
         let json: Value = response.json();
         assert!(json.is_array());
-        
+
         // Should have decoded at least one track (the valid one)
         let tracks = json.as_array().unwrap();
         assert!(!tracks.is_empty());
@@ -220,7 +220,7 @@ mod rest_api_feature_tests {
 
         let json: Value = response.json();
         assert!(json.get("loadType").is_some());
-        
+
         // Should handle the search (even if it fails due to network issues in tests)
         let load_type = json["loadType"].as_str().unwrap();
         assert!(["search", "empty", "error"].contains(&load_type));
@@ -240,12 +240,17 @@ mod rest_api_feature_tests {
 
         let json: Value = response.json();
         assert_eq!(json["loadType"], "error");
-        
+
         if let Some(data) = json.get("data") {
             if let Some(message) = data.get("message") {
                 let msg = message.as_str().unwrap();
                 // Accept various error messages for invalid URLs
-                assert!(msg.contains("Invalid") || msg.contains("not supported") || msg.contains("failed") || msg.contains("error"));
+                assert!(
+                    msg.contains("Invalid")
+                        || msg.contains("not supported")
+                        || msg.contains("failed")
+                        || msg.contains("error")
+                );
             }
         }
     }
@@ -299,7 +304,7 @@ mod rest_api_feature_tests {
             .await;
 
         response.assert_status(axum::http::StatusCode::OK);
-        
+
         // Check that CORS headers are present (added by CorsLayer::permissive())
         let headers = response.headers();
         assert!(headers.contains_key("access-control-allow-origin"));

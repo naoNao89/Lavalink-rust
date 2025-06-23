@@ -925,10 +925,13 @@ impl AudioSource for BandcampAudioSource {
                 Ok(LoadResult {
                     load_type: LoadType::Error,
                     data: Some(LoadResultData::Exception(Exception {
-                        message: Some(format!("Bandcamp search failed: {}. Try using direct Bandcamp URLs instead.", e)),
+                        message: Some(format!(
+                            "Bandcamp search failed: {}. Try using direct Bandcamp URLs instead.",
+                            e
+                        )),
                         severity: Severity::Common,
                         cause: format!("Search error: {}", e),
-                    }))
+                    })),
                 })
             }
         }
@@ -938,7 +941,10 @@ impl AudioSource for BandcampAudioSource {
 impl BandcampAudioSource {
     /// Search Bandcamp using web scraping
     async fn search_bandcamp_web(&self, query: &str) -> Result<Vec<crate::protocol::Track>> {
-        let search_url = format!("https://bandcamp.com/search?q={}", urlencoding::encode(query));
+        let search_url = format!(
+            "https://bandcamp.com/search?q={}",
+            urlencoding::encode(query)
+        );
 
         // Add rate limiting to be respectful
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -959,7 +965,11 @@ impl BandcampAudioSource {
     }
 
     /// Parse Bandcamp search results from HTML
-    async fn parse_bandcamp_search_results(&self, html: &str, query: &str) -> Result<Vec<crate::protocol::Track>> {
+    async fn parse_bandcamp_search_results(
+        &self,
+        html: &str,
+        query: &str,
+    ) -> Result<Vec<crate::protocol::Track>> {
         let mut tracks = Vec::new();
 
         // Simple regex-based parsing for Bandcamp search results
@@ -973,8 +983,14 @@ impl BandcampAudioSource {
             }
 
             let url = captures.get(1).map(|m| m.as_str()).unwrap_or("");
-            let title = captures.get(2).map(|m| m.as_str()).unwrap_or("Unknown Title");
-            let artist = captures.get(3).map(|m| m.as_str()).unwrap_or("Unknown Artist");
+            let title = captures
+                .get(2)
+                .map(|m| m.as_str())
+                .unwrap_or("Unknown Title");
+            let artist = captures
+                .get(3)
+                .map(|m| m.as_str())
+                .unwrap_or("Unknown Artist");
 
             // Clean up HTML entities
             let title = html_escape::decode_html_entities(title).to_string();
@@ -1009,7 +1025,11 @@ impl BandcampAudioSource {
             tracks.push(track);
         }
 
-        info!("Found {} Bandcamp tracks for query: {}", tracks.len(), query);
+        info!(
+            "Found {} Bandcamp tracks for query: {}",
+            tracks.len(),
+            query
+        );
         Ok(tracks)
     }
 

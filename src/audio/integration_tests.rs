@@ -13,12 +13,9 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_bandcamp_search_functionality() {
         let bandcamp_source = BandcampAudioSource::new();
-        
+
         // Test search with a simple query
-        let result = timeout(
-            Duration::from_secs(10),
-            bandcamp_source.search("jazz")
-        ).await;
+        let result = timeout(Duration::from_secs(10), bandcamp_source.search("jazz")).await;
 
         match result {
             Ok(Ok(load_result)) => {
@@ -53,12 +50,16 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_bandcamp_url_validation() {
         let bandcamp_source = BandcampAudioSource::new();
-        
+
         // Valid Bandcamp URLs
-        assert!(bandcamp_source.is_valid_bandcamp_url("https://artist.bandcamp.com/track/song-name"));
-        assert!(bandcamp_source.is_valid_bandcamp_url("https://artist.bandcamp.com/album/album-name"));
+        assert!(
+            bandcamp_source.is_valid_bandcamp_url("https://artist.bandcamp.com/track/song-name")
+        );
+        assert!(
+            bandcamp_source.is_valid_bandcamp_url("https://artist.bandcamp.com/album/album-name")
+        );
         assert!(bandcamp_source.can_handle("https://artist.bandcamp.com/track/test"));
-        
+
         // Invalid URLs
         assert!(!bandcamp_source.is_valid_bandcamp_url("https://youtube.com/watch?v=test"));
         assert!(!bandcamp_source.is_valid_bandcamp_url("https://spotify.com/track/test"));
@@ -68,14 +69,15 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_bandcamp_search_prefix() {
         let bandcamp_source = BandcampAudioSource::new();
-        
+
         // Test search prefix handling
         assert!(bandcamp_source.can_handle("bcsearch:test query"));
-        
+
         let result = timeout(
             Duration::from_secs(5),
-            bandcamp_source.load_track("bcsearch:ambient")
-        ).await;
+            bandcamp_source.load_track("bcsearch:ambient"),
+        )
+        .await;
 
         match result {
             Ok(Ok(load_result)) => {
@@ -94,7 +96,7 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_soundcloud_integration() {
         let soundcloud_source = SoundCloudAudioSource::new();
-        
+
         // Test SoundCloud URL handling
         assert!(soundcloud_source.can_handle("https://soundcloud.com/artist/track"));
         assert!(soundcloud_source.can_handle("scsearch:test query"));
@@ -104,12 +106,12 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_twitch_integration() {
         let twitch_source = TwitchAudioSource::new();
-        
+
         // Test Twitch URL validation
         assert!(twitch_source.is_valid_twitch_url("https://www.twitch.tv/streamer"));
         assert!(twitch_source.is_valid_twitch_url("https://twitch.tv/videos/123456"));
         assert!(twitch_source.is_valid_twitch_url("https://www.twitch.tv/streamer/clip/clipname"));
-        
+
         assert!(!twitch_source.is_valid_twitch_url("https://youtube.com/watch?v=test"));
         assert!(!twitch_source.is_valid_twitch_url("https://twitch.tv/invalid/path"));
     }
@@ -117,14 +119,14 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_audio_source_manager_integration() {
         let audio_manager = AudioSourceManager::new();
-        
+
         // Test that all sources are properly registered
         assert!(audio_manager.can_handle("https://youtube.com/watch?v=test"));
         assert!(audio_manager.can_handle("https://soundcloud.com/artist/track"));
         assert!(audio_manager.can_handle("https://artist.bandcamp.com/track/song"));
         assert!(audio_manager.can_handle("https://twitch.tv/streamer"));
         assert!(audio_manager.can_handle("http://example.com/audio.mp3"));
-        
+
         // Test search prefixes
         assert!(audio_manager.can_handle("ytsearch:test"));
         assert!(audio_manager.can_handle("scsearch:test"));
@@ -135,12 +137,13 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_fallback_system() {
         let audio_manager = AudioSourceManager::new();
-        
+
         // Test with an identifier that might fail on primary source
         let result = timeout(
             Duration::from_secs(5),
-            audio_manager.load_item("https://example.com/nonexistent.mp3")
-        ).await;
+            audio_manager.load_item("https://example.com/nonexistent.mp3"),
+        )
+        .await;
 
         match result {
             Ok(Ok(load_result)) => {
@@ -159,7 +162,7 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_concurrent_loading() {
         let audio_manager = AudioSourceManager::new();
-        
+
         // Test concurrent loading of multiple tracks
         let identifiers = vec![
             "bcsearch:jazz",
@@ -169,24 +172,24 @@ mod audio_integration_tests {
         ];
 
         let mut handles = Vec::new();
-        
+
         for identifier in identifiers {
             let manager = audio_manager.clone();
             let id = identifier.to_string();
-            
+
             let handle = tokio::spawn(async move {
                 timeout(Duration::from_secs(5), manager.load_item(&id)).await
             });
-            
+
             handles.push(handle);
         }
 
         // Wait for all requests to complete
         let results = futures::future::join_all(handles).await;
-        
+
         // All requests should complete (though they may fail due to network issues)
         assert_eq!(results.len(), 4);
-        
+
         for result in results {
             assert!(result.is_ok()); // Task should complete without panicking
         }
@@ -195,21 +198,18 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_rate_limiting() {
         let bandcamp_source = BandcampAudioSource::new();
-        
+
         // Test that rate limiting doesn't cause errors
         let start_time = std::time::Instant::now();
-        
+
         // Make multiple requests
         for i in 0..3 {
             let query = format!("test{}", i);
-            let _ = timeout(
-                Duration::from_secs(2),
-                bandcamp_source.search(&query)
-            ).await;
+            let _ = timeout(Duration::from_secs(2), bandcamp_source.search(&query)).await;
         }
-        
+
         let elapsed = start_time.elapsed();
-        
+
         // Should take at least 1 second due to rate limiting (500ms * 2 requests)
         assert!(elapsed >= Duration::from_millis(1000));
     }
@@ -217,7 +217,7 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_error_handling() {
         let audio_manager = AudioSourceManager::new();
-        
+
         // Test with various invalid inputs
         let invalid_inputs = vec![
             "",
@@ -228,10 +228,7 @@ mod audio_integration_tests {
         ];
 
         for input in invalid_inputs {
-            let result = timeout(
-                Duration::from_secs(2),
-                audio_manager.load_item(input)
-            ).await;
+            let result = timeout(Duration::from_secs(2), audio_manager.load_item(input)).await;
 
             match result {
                 Ok(Ok(load_result)) => {
@@ -251,7 +248,7 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_track_encoding_decoding() {
         use crate::protocol::Track;
-        
+
         // Create a test track
         let track_info = crate::protocol::TrackInfo {
             identifier: "test123".to_string(),
@@ -280,7 +277,7 @@ mod audio_integration_tests {
 
         // Test decoding
         let decoded_track = Track::decode(&encoded).unwrap();
-        
+
         assert_eq!(decoded_track.info.identifier, track_info.identifier);
         assert_eq!(decoded_track.info.title, track_info.title);
         assert_eq!(decoded_track.info.author, track_info.author);
@@ -290,16 +287,16 @@ mod audio_integration_tests {
     #[tokio::test]
     async fn test_source_configuration() {
         use crate::config::SourcesConfig;
-        
+
         // Test with different source configurations
         let mut config = SourcesConfig::default();
         config.bandcamp = Some(false);
-        
+
         let audio_manager = AudioSourceManager::with_config(Some(&config));
-        
+
         // Bandcamp should be disabled
         assert!(!audio_manager.can_handle("https://artist.bandcamp.com/track/test"));
-        
+
         // Other sources should still work
         assert!(audio_manager.can_handle("https://youtube.com/watch?v=test"));
         assert!(audio_manager.can_handle("http://example.com/audio.mp3"));
