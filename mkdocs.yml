@@ -4,6 +4,9 @@ site_url: https://lavalink-rust.dev
 repo_url: https://github.com/lavalink-devs/lavalink-rust
 repo_name: lavalink-devs/lavalink-rust
 
+# Set docs_dir to docs directory
+docs_dir: docs
+
 theme:
   name: material
   palette:
