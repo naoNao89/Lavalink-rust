@@ -289,8 +289,10 @@ mod audio_integration_tests {
         use crate::config::SourcesConfig;
 
         // Test with different source configurations
-        let mut config = SourcesConfig::default();
-        config.bandcamp = Some(false);
+        let config = SourcesConfig {
+            bandcamp: Some(false),
+            ..Default::default()
+        };
 
         let audio_manager = AudioSourceManager::with_config(Some(&config));
 
