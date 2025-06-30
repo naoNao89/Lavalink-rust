@@ -204,7 +204,7 @@ mod audio_integration_tests {
 
         // Make multiple requests
         for i in 0..3 {
-            let query = format!("test{}", i);
+            let query = format!("test{i}");
             let _ = timeout(Duration::from_secs(2), bandcamp_source.search(&query)).await;
         }
 

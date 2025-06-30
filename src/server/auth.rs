@@ -76,6 +76,7 @@ mod tests {
                     youtube_config: None,
                     http_config: None,
                     timeouts: None,
+                    discord_bot_token: None,
                 },
                 plugins: None,
             },

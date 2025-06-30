@@ -413,7 +413,7 @@ mod deserialization_tests {
         let result: Result<UpdatePlayerRequest, _> = serde_json::from_str(json);
         match result {
             Ok(request) => {
-                println!("Successfully deserialized: {:?}", request);
+                println!("Successfully deserialized: {request:?}");
                 assert!(request.track.is_some());
                 if let Some(TrackRequest::Identifier { identifier }) = request.track {
                     assert_eq!(identifier, "test-track-id");
@@ -422,7 +422,7 @@ mod deserialization_tests {
                 assert_eq!(request.paused, Some(false));
             }
             Err(e) => {
-                panic!("Failed to deserialize: {}", e);
+                panic!("Failed to deserialize: {e}");
             }
         }
     }
@@ -439,12 +439,12 @@ mod deserialization_tests {
         });
 
         let json_str = serde_json::to_string(&json).unwrap();
-        println!("JSON string: {}", json_str);
+        println!("JSON string: {json_str}");
 
         let result: Result<UpdatePlayerRequest, _> = serde_json::from_str(&json_str);
         match result {
             Ok(request) => {
-                println!("Successfully deserialized exact test JSON: {:?}", request);
+                println!("Successfully deserialized exact test JSON: {request:?}");
                 assert!(request.track.is_some());
                 if let Some(TrackRequest::Identifier { identifier }) = request.track {
                     assert_eq!(identifier, "test-track-id");
@@ -453,7 +453,7 @@ mod deserialization_tests {
                 assert_eq!(request.paused, Some(false));
             }
             Err(e) => {
-                panic!("Failed to deserialize exact test JSON: {}", e);
+                panic!("Failed to deserialize exact test JSON: {e}");
             }
         }
     }

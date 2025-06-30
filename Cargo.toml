@@ -9,13 +9,31 @@ repository = "https://github.com/lavalink-devs/lavalink-rust"
 keywords = ["discord", "audio", "music", "bot", "voice"]
 categories = ["multimedia::audio", "network-programming", "web-programming"]
 
+# Feature flags for optional functionality
+[features]
+default = ["discord", "audio-processing", "metrics"]
+
+# Core features
+discord = ["songbird", "serenity"]
+audio-processing = ["symphonia", "rubato"]
+metrics = ["dep:metrics", "dep:metrics-exporter-prometheus"]
+
+# Optional audio codecs
+codec-aac = ["symphonia/aac"]
+codec-vorbis = ["symphonia/vorbis"]
+codec-opus = ["songbird/builtin-queue"]
+
+# Development and testing features
+dev-tools = ["mockall", "wiremock", "criterion"]
+full-audio = ["codec-aac", "codec-vorbis", "codec-opus"]
+
 [dependencies]
-# Core async runtime and web framework
-tokio = { version = "1.45", features = ["full"] }
+# Core async runtime and web framework (optimized features)
+tokio = { version = "1.45", features = ["rt-multi-thread", "net", "time", "sync", "macros", "signal"] }
 axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
 tower = { version = "0.5", features = ["util", "timeout", "load-shed", "limit"] }
 tower-http = { version = "0.6", features = ["fs", "trace", "cors", "compression-gzip"] }
-hyper = { version = "1.6", features = ["full"] }
+hyper = { version = "1.6", features = ["http1", "http2", "client", "server"] }
 
 # Serialization and data handling
 serde = { version = "1.0", features = ["derive"] }
@@ -31,13 +49,13 @@ tracing-appender = "0.2"
 config = "0.14"
 clap = { version = "4.0", features = ["derive"] }
 
-# Audio processing and Discord integration
-songbird = { version = "0.5", features = ["builtin-queue"], default-features = false }
-serenity = { version = "0.12", default-features = false, features = ["voice", "gateway", "rustls_backend"] }
+# Audio processing and Discord integration (optimized features)
+songbird = { version = "0.5", features = ["driver", "gateway", "serenity", "rustls", "tungstenite", "receive"], default-features = false, optional = true }
+serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model"], optional = true }
 
-# Audio decoding and processing (simplified for cross-platform compatibility)
-symphonia = { version = "0.5", features = ["mp3", "aac", "flac", "vorbis", "wav"] }
-rubato = "0.14"
+# Audio decoding and processing (essential codecs only)
+symphonia = { version = "0.5", features = ["mp3", "flac", "wav"], default-features = false, optional = true }
+rubato = { version = "0.14", default-features = false, optional = true }
 
 # HTTP client for audio sources
 reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
@@ -60,9 +78,9 @@ rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] 
 libloading = "0.8"
 libc = "0.2"
 
-# Metrics and monitoring
-metrics = "0.24"
-metrics-exporter-prometheus = { version = "0.17", default-features = false, features = ["http-listener", "hyper-rustls"] }
+# Metrics and monitoring (optional)
+metrics = { version = "0.24", optional = true }
+metrics-exporter-prometheus = { version = "0.17", default-features = false, features = ["http-listener", "hyper-rustls"], optional = true }
 
 # Utilities
 uuid = { version = "1.11", features = ["v4", "serde"] }
@@ -77,28 +95,37 @@ rand = "0.9"
 urlencoding = "2.1"
 html-escape = "0.2"
 
+# Optional development and testing dependencies
+mockall = { version = "0.13", optional = true }
+wiremock = { version = "0.6", optional = true }
+criterion = { version = "0.5", features = ["html_reports"], optional = true }
+
 [dev-dependencies]
 tokio-test = "0.4"
-mockall = "0.13"
-wiremock = "0.6"
-criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3.14"
 assert_matches = "1.5"
 axum-test = "15.0"
 
 # Build optimization profiles
 [profile.dev]
-# Faster compilation for development
+# Optimized for fastest compilation
 opt-level = 0
-debug = true
+debug = 1  # Reduced debug info for faster builds
 split-debuginfo = "unpacked"
 debug-assertions = true
 overflow-checks = true
 lto = false
 panic = "unwind"
 incremental = true
-codegen-units = 256
+codegen-units = 512  # Increased for faster parallel compilation
 rpath = false
+
+# Fast development profile with some optimizations
+[profile.dev-opt]
+inherits = "dev"
+opt-level = 1
+debug = 1
+codegen-units = 256
 
 [profile.release]
 # Optimized for performance and size
@@ -112,6 +139,14 @@ panic = "abort"
 incremental = false
 codegen-units = 1
 rpath = false
+strip = true  # Strip symbols for smaller binary
+
+# Fast release profile for CI/testing
+[profile.release-fast]
+inherits = "release"
+lto = false
+codegen-units = 16
+strip = false
 
 [profile.test]
 # Optimized for test performance
@@ -121,7 +156,6 @@ split-debuginfo = "unpacked"
 debug-assertions = true
 overflow-checks = true
 lto = false
-panic = "unwind"
 incremental = true
 codegen-units = 256
 
@@ -133,6 +167,22 @@ split-debuginfo = "packed"
 debug-assertions = false
 overflow-checks = false
 lto = "thin"
-panic = "abort"
 incremental = false
 codegen-units = 1
+
+# Workspace optimization settings
+[workspace]
+resolver = "2"
+
+# Optimize dependencies for faster builds
+[profile.dev.package."*"]
+opt-level = 1  # Optimize dependencies even in dev mode
+
+[profile.dev.package.symphonia]
+opt-level = 2  # Audio processing needs optimization
+
+[profile.dev.package.songbird]
+opt-level = 2  # Voice processing needs optimization
+
+[profile.dev.package.serenity]
+opt-level = 1  # Discord client optimization

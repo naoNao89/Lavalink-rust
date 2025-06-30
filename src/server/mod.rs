@@ -16,10 +16,12 @@ use tracing::{info, warn};
 
 use crate::{
     config::LavalinkConfig,
-    player::{PlayerEvent, PlayerEventHandler, PlayerManager},
     plugin::PluginManager,
     protocol::{ErrorResponse, Info},
 };
+
+#[cfg(feature = "discord")]
+use crate::player::{PlayerEvent, PlayerEventHandler, PlayerManager};
 
 use self::routeplanner::RoutePlanner;
 
@@ -54,6 +56,7 @@ pub struct AppState {
     pub stats_collector: Arc<StatsCollector>,
     pub info: Info,
 
+    #[cfg(feature = "discord")]
     pub player_manager: Arc<PlayerManager>,
     pub plugin_manager: Arc<std::sync::RwLock<PluginManager>>,
     pub route_planner: Option<Arc<RoutePlanner>>,
@@ -66,18 +69,42 @@ impl LavalinkServer {
         let sessions = Arc::new(dashmap::DashMap::new());
         let stats_collector = Arc::new(StatsCollector::new());
 
-        // Create player event channel
-        let (event_sender, event_receiver) = tokio::sync::mpsc::unbounded_channel::<PlayerEvent>();
-        let player_manager = Arc::new(PlayerManager::with_event_sender(event_sender));
+        // Initialize player manager if Discord feature is enabled
+        #[cfg(feature = "discord")]
+        let player_manager = {
+            // Create player event channel
+            let (event_sender, event_receiver) =
+                tokio::sync::mpsc::unbounded_channel::<PlayerEvent>();
+            let player_manager = Arc::new(PlayerManager::with_event_sender(event_sender));
 
-        // Start player event handler
-        let event_handler = PlayerEventHandler::new(event_receiver, sessions.clone());
-        tokio::spawn(async move {
-            event_handler.start().await;
-        });
+            // Initialize Discord voice client if bot token is provided
+            if let Some(ref bot_token) = config.lavalink.server.discord_bot_token {
+                info!("Initializing Discord voice client with provided bot token");
+                let voice_manager = player_manager.voice_manager();
+                let voice_client = voice_manager.voice_client();
 
-        // Start player update service
-        player_manager.start_update_service().await;
+                if let Err(e) = voice_client.initialize_discord(bot_token.clone()).await {
+                    warn!("Failed to initialize Discord voice client: {}", e);
+                    warn!("Voice connections will not be available");
+                } else {
+                    info!("Discord voice client initialized successfully");
+                }
+            } else {
+                warn!("No Discord bot token provided in configuration");
+                warn!("Voice connections will not be available");
+                warn!("Add 'discordBotToken' to lavalink.server configuration to enable voice");
+            }
+
+            // Start player event handler
+            let event_handler = PlayerEventHandler::new(event_receiver, sessions.clone());
+            tokio::spawn(async move {
+                event_handler.start().await;
+            });
+
+            // Start player update service
+            player_manager.start_update_service().await;
+            player_manager
+        };
 
         // Initialize plugin manager
         let plugin_config = config.lavalink.plugins.clone().unwrap_or_default();
@@ -118,6 +145,7 @@ impl LavalinkServer {
             stats_collector,
             info,
 
+            #[cfg(feature = "discord")]
             player_manager,
             plugin_manager,
             route_planner,
@@ -125,6 +153,8 @@ impl LavalinkServer {
 
         Ok(Self { config, app_state })
     }
+
+
 
     /// Run the server
     pub async fn run(self) -> Result<()> {

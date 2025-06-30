@@ -3,12 +3,20 @@ use clap::Parser;
 use std::path::PathBuf;
 use tracing::info;
 
-mod audio;
 mod config;
-mod player;
 mod plugin;
 mod protocol;
 mod server;
+
+// Conditional compilation for optional features
+#[cfg(feature = "audio-processing")]
+mod audio;
+
+#[cfg(feature = "discord")]
+mod player;
+
+#[cfg(feature = "discord")]
+mod voice;
 
 #[cfg(test)]
 mod test_utils;

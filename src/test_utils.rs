@@ -54,6 +54,7 @@ pub fn create_test_config() -> LavalinkConfig {
                 youtube_config: None,
                 http_config: None,
                 timeouts: None,
+                discord_bot_token: None,
             },
             plugins: Some(PluginsConfig::default()),
         },

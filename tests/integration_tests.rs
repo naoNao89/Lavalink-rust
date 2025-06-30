@@ -369,7 +369,7 @@ async fn test_concurrent_operations() {
 
     // Test sequential operations (TestServer doesn't support clone)
     for i in 0..3 {
-        let identifier = format!("http://example.com/test{}.mp3", i);
+        let identifier = format!("http://example.com/test{i}.mp3");
 
         let response = server
             .get("/v4/loadtracks")

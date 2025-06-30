@@ -1,6 +1,9 @@
 // Audio processing and source management module
 // This will handle audio sources, track loading, and audio processing
 
+pub mod quality;
+pub mod streaming;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use base64::Engine;
@@ -360,7 +363,7 @@ impl AudioSource for HttpAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Failed to load HTTP resource: {}", e)),
+                    message: Some(format!("Failed to load HTTP resource: {e}")),
                     severity: Severity::Common,
                     cause: "Network error".to_string(),
                 })),
@@ -431,7 +434,7 @@ impl AudioSource for YouTubeAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("YouTube extraction failed: {}", e)),
+                    message: Some(format!("YouTube extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -442,7 +445,7 @@ impl AudioSource for YouTubeAudioSource {
     async fn search(&self, query: &str) -> Result<LoadResult> {
         // Use yt-dlp command-line to search YouTube
         match self
-            .extract_video_info(&format!("ytsearch5:{}", query))
+            .extract_video_info(&format!("ytsearch5:{query}"))
             .await
         {
             Ok(tracks) => {
@@ -461,7 +464,7 @@ impl AudioSource for YouTubeAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("YouTube search failed: {}", e)),
+                    message: Some(format!("YouTube search failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp search error".to_string(),
                 })),
@@ -666,7 +669,7 @@ impl AudioSource for SoundCloudAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("SoundCloud extraction failed: {}", e)),
+                    message: Some(format!("SoundCloud extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -676,7 +679,7 @@ impl AudioSource for SoundCloudAudioSource {
 
     async fn search(&self, query: &str) -> Result<LoadResult> {
         // Use yt-dlp to search SoundCloud
-        let search_query = format!("scsearch5:{}", query);
+        let search_query = format!("scsearch5:{query}");
 
         match self.extract_track_info(&search_query).await {
             Ok(tracks) => {
@@ -695,7 +698,7 @@ impl AudioSource for SoundCloudAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("SoundCloud search failed: {}", e)),
+                    message: Some(format!("SoundCloud search failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp search error".to_string(),
                 })),
@@ -766,7 +769,7 @@ impl SoundCloudAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -894,7 +897,7 @@ impl AudioSource for BandcampAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Bandcamp extraction failed: {}", e)),
+                    message: Some(format!("Bandcamp extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -926,11 +929,10 @@ impl AudioSource for BandcampAudioSource {
                     load_type: LoadType::Error,
                     data: Some(LoadResultData::Exception(Exception {
                         message: Some(format!(
-                            "Bandcamp search failed: {}. Try using direct Bandcamp URLs instead.",
-                            e
+                            "Bandcamp search failed: {e}. Try using direct Bandcamp URLs instead."
                         )),
                         severity: Severity::Common,
-                        cause: format!("Search error: {}", e),
+                        cause: format!("Search error: {e}"),
                     })),
                 })
             }
@@ -1093,7 +1095,7 @@ impl BandcampAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -1221,7 +1223,7 @@ impl AudioSource for TwitchAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Twitch extraction failed: {}", e)),
+                    message: Some(format!("Twitch extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error or stream offline".to_string(),
                 })),
@@ -1234,7 +1236,7 @@ impl AudioSource for TwitchAudioSource {
         let channel_url = if query.starts_with("https://") {
             query.to_string()
         } else {
-            format!("https://www.twitch.tv/{}", query)
+            format!("https://www.twitch.tv/{query}")
         };
 
         match self.extract_stream_info(&channel_url).await {
@@ -1323,7 +1325,7 @@ impl TwitchAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -1466,7 +1468,7 @@ impl AudioSource for VimeoAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Vimeo extraction failed: {}", e)),
+                    message: Some(format!("Vimeo extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -1485,7 +1487,7 @@ impl AudioSource for VimeoAudioSource {
         Ok(LoadResult {
             load_type: LoadType::Error,
             data: Some(LoadResultData::Exception(Exception {
-                message: Some(format!("Vimeo search is not currently supported. Please use direct Vimeo URLs instead. Search query was: '{}'", query)),
+                message: Some(format!("Vimeo search is not currently supported. Please use direct Vimeo URLs instead. Search query was: '{query}'")),
                 severity: Severity::Common,
                 cause: "Vimeo search not implemented".to_string(),
             }))
@@ -1555,7 +1557,7 @@ impl VimeoAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -1748,7 +1750,7 @@ impl AudioSource for LocalAudioSource {
             is_stream: false,
             position: 0,
             title: title.to_string(),
-            uri: Some(format!("file://{}", file_path)),
+            uri: Some(format!("file://{file_path}")),
             artwork_url: None,
             isrc: None,
             source_name: "local".to_string(),
@@ -1895,7 +1897,7 @@ fn extract_title_from_url(url: &str) -> String {
     // Fallback to domain name
     if let Ok(parsed) = url::Url::parse(url) {
         if let Some(host) = parsed.host_str() {
-            return format!("Audio from {}", host);
+            return format!("Audio from {host}");
         }
     }
 
@@ -2005,7 +2007,7 @@ impl FallbackAudioSource {
             // For demo purposes, we'll create a generic search query
             // In production, you'd call Spotify API to get track details
             tracing::info!("Converting Spotify track {} to YouTube search", track_id);
-            Some(format!("spotify track {}", track_id))
+            Some(format!("spotify track {track_id}"))
         } else {
             None
         }

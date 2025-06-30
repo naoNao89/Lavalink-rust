@@ -10,6 +10,29 @@ use rand::prelude::*;
 use tracing::{debug, error, info, warn};
 
 use crate::protocol::{messages::VoiceState, Event, Filters, Message, PlayerState, Track};
+use crate::voice::{connection::VoiceConnectionEvent, VoiceConnectionManager};
+
+/// Enhanced player state with voice connection details
+#[derive(Debug, Clone)]
+pub struct EnhancedPlayerState {
+    pub voice_quality: VoiceQuality,
+}
+
+/// Voice connection quality levels
+#[derive(Debug, Clone, PartialEq)]
+pub enum VoiceQuality {
+    Excellent,    // 0-50ms ping
+    Good,         // 51-100ms ping
+    Fair,         // 101-200ms ping
+    Poor,         // 201-500ms ping
+    Critical,     // >500ms ping
+    Disconnected, // No connection
+}
+
+/// Voice connection statistics across all players
+#[derive(Debug, Clone, Default)]
+pub struct VoiceConnectionStats {
+}
 
 pub mod engine;
 pub use engine::AudioPlayerEngine;
@@ -18,6 +41,7 @@ pub use engine::AudioPlayerEngine;
 pub struct PlayerManager {
     players: Arc<RwLock<HashMap<String, Arc<RwLock<LavalinkPlayer>>>>>,
     event_sender: Option<mpsc::UnboundedSender<PlayerEvent>>,
+    voice_manager: Arc<VoiceConnectionManager>,
 }
 
 /// Individual audio player for a Discord guild
@@ -43,6 +67,8 @@ pub struct LavalinkPlayer {
     pub repeat_queue: bool,
     /// Whether to shuffle the queue
     pub shuffle: bool,
+    /// Voice connection manager reference
+    pub voice_manager: Option<Arc<VoiceConnectionManager>>,
 }
 
 /// Events that can be emitted by players
@@ -62,6 +88,11 @@ pub enum PlayerEvent {
         guild_id: String,
         state: PlayerState,
     },
+
+    VoiceConnectionEvent {
+        guild_id: String,
+        event: VoiceConnectionEvent,
+    },
 }
 
 /// Reasons why a track ended
@@ -78,19 +109,55 @@ pub enum TrackEndReason {
 impl PlayerManager {
     /// Create a new player manager
     pub fn new() -> Self {
+        let mut voice_manager = VoiceConnectionManager::new();
+        let event_sender: Option<mpsc::UnboundedSender<PlayerEvent>> = None;
+
+        // Set up voice event broadcasting if we have an event sender
+        if let Some(ref sender) = event_sender {
+            let sender_clone = sender.clone();
+            voice_manager.set_event_broadcaster(move |guild_id, voice_event| {
+                let _ = sender_clone.send(PlayerEvent::VoiceConnectionEvent {
+                    guild_id,
+                    event: voice_event,
+                });
+            });
+        }
+
         Self {
             players: Arc::new(RwLock::new(HashMap::new())),
-            event_sender: None,
+            event_sender,
+            voice_manager: Arc::new(voice_manager),
         }
     }
 
     /// Create a new player manager with event sender
     pub fn with_event_sender(event_sender: mpsc::UnboundedSender<PlayerEvent>) -> Self {
+        let mut voice_manager = VoiceConnectionManager::new();
+
+        // Set up voice event broadcasting
+        let sender_clone = event_sender.clone();
+        voice_manager.set_event_broadcaster(move |guild_id, voice_event| {
+            let _ = sender_clone.send(PlayerEvent::VoiceConnectionEvent {
+                guild_id,
+                event: voice_event,
+            });
+        });
+
         Self {
             players: Arc::new(RwLock::new(HashMap::new())),
             event_sender: Some(event_sender),
+            voice_manager: Arc::new(voice_manager),
         }
     }
+
+    /// Get the voice connection manager
+    pub fn voice_manager(&self) -> Arc<VoiceConnectionManager> {
+        self.voice_manager.clone()
+    }
+
+
+
+
 
     /// Get or create a player for a guild
     pub async fn get_or_create_player(
@@ -109,6 +176,9 @@ impl PlayerManager {
                 if let Some(ref sender) = self.event_sender {
                     new_player.initialize_audio_engine(sender.clone());
                 }
+
+                // Set voice manager reference
+                new_player.voice_manager = Some(self.voice_manager.clone());
 
                 Arc::new(RwLock::new(new_player))
             })
@@ -366,8 +436,6 @@ impl LavalinkPlayer {
                 token: String::new(),
                 endpoint: String::new(),
                 session_id: String::new(),
-                connected: false,
-                ping: -1,
             },
             position: 0,
             last_update: Instant::now(),
@@ -377,6 +445,7 @@ impl LavalinkPlayer {
             repeat_track: false,
             repeat_queue: false,
             shuffle: false,
+            voice_manager: None,
         }
     }
 
@@ -386,6 +455,454 @@ impl LavalinkPlayer {
             self.guild_id.clone(),
             event_sender,
         )));
+    }
+
+    /// Update voice state and establish/disconnect voice connection
+    #[allow(dead_code)]
+    pub async fn update_voice_state(
+        &mut self,
+        voice_state: VoiceState,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        info!("Updating voice state for guild {}", self.guild_id);
+
+        // Update the voice state (only voice server information)
+        self.voice.token = voice_state.token.clone();
+        self.voice.endpoint = voice_state.endpoint.clone();
+        self.voice.session_id = voice_state.session_id.clone();
+
+        // Update connection state timestamp
+        self.state.time = chrono::Utc::now();
+
+        // Handle voice connection through voice manager
+        if let Some(ref voice_manager) = self.voice_manager {
+            match voice_manager
+                .update_voice_state(self.guild_id.clone(), voice_state)
+                .await
+            {
+                Ok(Some(call)) => {
+                    info!("Voice connection established for guild {}", self.guild_id);
+                    self.state.connected = true;
+
+                    // Connect the voice call to the audio engine
+                    if let Some(ref audio_engine) = self.audio_engine {
+                        audio_engine.set_voice_call(call).await;
+                        info!(
+                            "Audio engine connected to voice call for guild {}",
+                            self.guild_id
+                        );
+                    }
+
+                    // Update ping from voice connection if available
+                    // For now, we'll use a placeholder value since Songbird doesn't expose ping directly
+                    self.state.ping = 0; // Will be updated by voice gateway events
+                }
+                Ok(None) => {
+                    info!("Voice connection disconnected for guild {}", self.guild_id);
+                    self.state.connected = false;
+                    self.state.ping = -1; // Indicate no connection
+
+                    // Disconnect the audio engine from voice
+                    if let Some(ref audio_engine) = self.audio_engine {
+                        audio_engine.remove_voice_call().await;
+                        info!(
+                            "Audio engine disconnected from voice call for guild {}",
+                            self.guild_id
+                        );
+                    }
+                }
+                Err(e) => {
+                    error!(
+                        "Failed to update voice connection for guild {}: {}",
+                        self.guild_id, e
+                    );
+                    self.state.connected = false;
+                    self.state.ping = -1;
+                    return Err(format!("Voice connection failed: {e}").into());
+                }
+            }
+        } else {
+            warn!("No voice manager available for guild {}", self.guild_id);
+            self.state.connected = false;
+            self.state.ping = -1;
+        }
+
+        Ok(())
+    }
+
+    /// Handle voice connection events and update player state accordingly
+    pub async fn handle_voice_event(&mut self, event: &VoiceConnectionEvent) {
+        match event {
+            // Basic Connection Events
+            VoiceConnectionEvent::Connected | VoiceConnectionEvent::GatewayReady { .. } => {
+                self.state.connected = true;
+                self.state.ping = 0; // Will be updated by actual ping measurements
+                info!("Voice connection established for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::Disconnected | VoiceConnectionEvent::GatewayClosed { .. } => {
+                self.state.connected = false;
+                self.state.ping = -1;
+                info!("Voice connection lost for guild {}", self.guild_id);
+
+                // Pause playback when voice connection is lost
+                if self.current_track.is_some() && !self.paused {
+                    self.paused = true;
+                    info!(
+                        "Paused playback due to voice connection loss for guild {}",
+                        self.guild_id
+                    );
+                }
+            }
+            VoiceConnectionEvent::Error(ref error) => {
+                error!(
+                    "Voice connection error for guild {}: {}",
+                    self.guild_id, error
+                );
+                // Connection errors may indicate connection issues but don't necessarily disconnect
+            }
+            VoiceConnectionEvent::GatewayError(_) => {
+                // Gateway errors may indicate connection issues but don't necessarily disconnect
+                warn!("Voice gateway error for guild {}", self.guild_id);
+            }
+
+            // Connection State Transitions
+            VoiceConnectionEvent::Connecting => {
+                info!("Voice connection starting for guild {}", self.guild_id);
+                // Keep current connection state during connection attempt
+            }
+            VoiceConnectionEvent::Reconnecting => {
+                info!("Voice connection reconnecting for guild {}", self.guild_id);
+                self.state.ping = -1; // Indicate unstable connection during reconnect
+            }
+            VoiceConnectionEvent::ConnectionTimeout => {
+                warn!("Voice connection timeout for guild {}", self.guild_id);
+                self.state.connected = false;
+                self.state.ping = -1;
+            }
+            VoiceConnectionEvent::ConnectionLost => {
+                warn!("Voice connection lost for guild {}", self.guild_id);
+                self.state.connected = false;
+                self.state.ping = -1;
+
+                // Pause playback when connection is lost
+                if self.current_track.is_some() && !self.paused {
+                    self.paused = true;
+                    info!(
+                        "Paused playback due to connection loss for guild {}",
+                        self.guild_id
+                    );
+                }
+            }
+            VoiceConnectionEvent::ConnectionRestored => {
+                info!("Voice connection restored for guild {}", self.guild_id);
+                self.state.connected = true;
+                self.state.ping = 0;
+
+                // Resume playback if it was paused due to connection loss
+                if self.current_track.is_some() && self.paused {
+                    self.paused = false;
+                    info!(
+                        "Resumed playback after connection restoration for guild {}",
+                        self.guild_id
+                    );
+                }
+            }
+
+            // Recovery Events
+            VoiceConnectionEvent::RecoveryStarted { attempt, delay: _ } => {
+                info!(
+                    "Voice connection recovery started for guild {} (attempt {})",
+                    self.guild_id, attempt
+                );
+                // During recovery, we're still considered connected but with degraded service
+                self.state.ping = -1; // Indicate degraded connection
+            }
+            VoiceConnectionEvent::RecoverySucceeded { total_attempts } => {
+                info!(
+                    "Voice connection recovery succeeded for guild {} after {} attempts",
+                    self.guild_id, total_attempts
+                );
+                self.state.connected = true;
+                self.state.ping = 0; // Will be updated by actual measurements
+
+                // Resume playback if it was paused during recovery
+                if self.current_track.is_some() && self.paused {
+                    self.paused = false;
+                    info!(
+                        "Resumed playback after successful recovery for guild {}",
+                        self.guild_id
+                    );
+                }
+            }
+            VoiceConnectionEvent::RecoveryFailed {
+                total_attempts,
+                ref error,
+            } => {
+                error!(
+                    "Voice connection recovery failed for guild {} after {} attempts: {}",
+                    self.guild_id, total_attempts, error
+                );
+                self.state.connected = false;
+                self.state.ping = -1;
+
+                // Ensure playback is paused after recovery failure
+                if self.current_track.is_some() && !self.paused {
+                    self.paused = true;
+                    info!(
+                        "Paused playback due to recovery failure for guild {}",
+                        self.guild_id
+                    );
+                }
+            }
+            VoiceConnectionEvent::RecoveryAborted { ref reason } => {
+                warn!(
+                    "Voice connection recovery aborted for guild {}: {}",
+                    self.guild_id, reason
+                );
+                self.state.connected = false;
+                self.state.ping = -1;
+            }
+
+            // Circuit Breaker Events
+            VoiceConnectionEvent::CircuitBreakerOpened => {
+                warn!("Circuit breaker opened for guild {}", self.guild_id);
+                self.state.connected = false;
+                self.state.ping = -1;
+
+                // Pause playback when circuit breaker opens
+                if self.current_track.is_some() && !self.paused {
+                    self.paused = true;
+                    info!(
+                        "Paused playback due to circuit breaker opening for guild {}",
+                        self.guild_id
+                    );
+                }
+            }
+            VoiceConnectionEvent::CircuitBreakerClosed => {
+                info!("Circuit breaker closed for guild {}", self.guild_id);
+                // Don't automatically set connected=true, wait for actual connection event
+            }
+            VoiceConnectionEvent::CircuitBreakerHalfOpen => {
+                info!("Circuit breaker half-open for guild {}", self.guild_id);
+                // Connection is being tested, keep current state
+            }
+
+            // Performance Events - Update ping with actual measurements
+            VoiceConnectionEvent::LatencyUpdate { latency_ms } => {
+                self.state.ping = *latency_ms as i32;
+                debug!(
+                    "Updated ping for guild {} to {}ms",
+                    self.guild_id, latency_ms
+                );
+            }
+            VoiceConnectionEvent::PacketLoss { loss_percentage } => {
+                if *loss_percentage > 5.0 {
+                    warn!(
+                        "High packet loss detected for guild {}: {:.2}%",
+                        self.guild_id, loss_percentage
+                    );
+                    // Consider degrading connection quality indicator
+                    if self.state.ping >= 0 {
+                        self.state.ping += 50; // Add penalty for packet loss
+                    }
+                }
+            }
+            VoiceConnectionEvent::JitterUpdate { jitter_ms } => {
+                if *jitter_ms > 50.0 {
+                    warn!(
+                        "High jitter detected for guild {}: {:.2}ms",
+                        self.guild_id, jitter_ms
+                    );
+                }
+            }
+
+            // Audio Quality Events
+            VoiceConnectionEvent::AudioQualityChanged {
+                old_bitrate,
+                new_bitrate,
+                ref reason,
+            } => {
+                info!(
+                    "Audio quality changed for guild {} from {} to {} kbps: {}",
+                    self.guild_id, old_bitrate, new_bitrate, reason
+                );
+                // Quality changes don't affect connection state but are important for monitoring
+            }
+
+            // Health Events
+            VoiceConnectionEvent::HealthCheckPassed => {
+                debug!("Health check passed for guild {}", self.guild_id);
+                // Health checks passing indicate stable connection
+                if self.state.connected && self.state.ping < 0 {
+                    self.state.ping = 0; // Reset ping if it was indicating degraded state
+                }
+            }
+            VoiceConnectionEvent::HealthCheckFailed { ref reason } => {
+                warn!(
+                    "Health check failed for guild {}: {}",
+                    self.guild_id, reason
+                );
+                // Failed health checks may indicate connection degradation
+                if self.state.ping >= 0 {
+                    self.state.ping += 100; // Add penalty for failed health check
+                }
+            }
+            VoiceConnectionEvent::ConnectionDegraded { ref severity } => {
+                warn!(
+                    "Connection degraded for guild {} (severity: {})",
+                    self.guild_id, severity
+                );
+                // Indicate degraded connection in ping
+                if self.state.ping >= 0 {
+                    self.state.ping += 200; // Significant penalty for degraded connection
+                }
+            }
+            VoiceConnectionEvent::ConnectionHealthy => {
+                info!("Connection healthy for guild {}", self.guild_id);
+                // Reset ping penalties when connection becomes healthy
+                if self.state.connected && self.state.ping > 100 {
+                    self.state.ping = 0; // Reset to baseline
+                }
+            }
+
+            // State Events
+            VoiceConnectionEvent::SpeakingStateChanged { speaking: _ } => {
+                // Speaking state changes don't affect player connection state
+                debug!("Speaking state changed for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::MuteStateChanged { muted: _ } => {
+                debug!("Mute state changed for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::DeafenStateChanged { deafened: _ } => {
+                debug!("Deafen state changed for guild {}", self.guild_id);
+            }
+
+            // Audio Stream Events
+            VoiceConnectionEvent::AudioStreamStarted => {
+                debug!("Audio stream started for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::AudioStreamStopped => {
+                debug!("Audio stream stopped for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::AudioStreamPaused => {
+                debug!("Audio stream paused for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::AudioStreamResumed => {
+                debug!("Audio stream resumed for guild {}", self.guild_id);
+            }
+
+            // Pool Events
+            VoiceConnectionEvent::PoolConnectionCreated => {
+                debug!("Pool connection created for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::PoolConnectionDestroyed => {
+                debug!("Pool connection destroyed for guild {}", self.guild_id);
+            }
+            VoiceConnectionEvent::PoolConnectionReused => {
+                debug!("Pool connection reused for guild {}", self.guild_id);
+            }
+
+            // Error Events
+            VoiceConnectionEvent::CriticalError {
+                ref error,
+                ref context,
+            } => {
+                error!(
+                    "Critical voice error for guild {}: {} (context: {:?})",
+                    self.guild_id, error, context
+                );
+                self.state.connected = false;
+                self.state.ping = -1;
+
+                // Pause playback on critical errors
+                if self.current_track.is_some() && !self.paused {
+                    self.paused = true;
+                    info!(
+                        "Paused playback due to critical error for guild {}",
+                        self.guild_id
+                    );
+                }
+            }
+            VoiceConnectionEvent::ErrorRecovered {
+                ref error,
+                ref recovery_action,
+            } => {
+                info!(
+                    "Error recovered for guild {} - Error: {}, Action: {}",
+                    self.guild_id, error, recovery_action
+                );
+                // Error recovery doesn't automatically restore connection state
+                // Wait for explicit connection events
+            }
+
+            // Gateway Events
+            VoiceConnectionEvent::GatewayReconnecting => {
+                info!("Voice gateway reconnecting for guild {}", self.guild_id);
+                self.state.ping = -1; // Indicate unstable connection
+            }
+        }
+
+        // Update state timestamp for all events
+        self.state.time = chrono::Utc::now();
+    }
+
+    /// Validate player state consistency with voice connection
+    pub async fn validate_state_consistency(&mut self) -> bool {
+        let mut is_consistent = true;
+
+        // Check if voice manager is available when we think we're connected
+        if self.state.connected {
+            if let Some(ref _voice_manager) = self.voice_manager {
+                // Try to get connection status from voice manager
+                // This is a basic consistency check - in a real implementation,
+                // we'd query the actual voice connection state
+                debug!(
+                    "Voice connection state appears consistent for guild {}",
+                    self.guild_id
+                );
+            } else {
+                warn!(
+                    "Player state shows connected but no voice manager available for guild {}",
+                    self.guild_id
+                );
+                self.state.connected = false;
+                self.state.ping = -1;
+                is_consistent = false;
+            }
+        }
+
+        // Check if we should pause playback when disconnected
+        if !self.state.connected && self.current_track.is_some() && !self.paused {
+            info!(
+                "Auto-pausing playback due to voice disconnection for guild {}",
+                self.guild_id
+            );
+            self.paused = true;
+            is_consistent = false; // State was inconsistent but now fixed
+        }
+
+        // Update timestamp if we made changes
+        if !is_consistent {
+            self.state.time = chrono::Utc::now();
+        }
+
+        is_consistent
+    }
+
+    /// Get enhanced player state with voice connection details
+    pub fn get_enhanced_state(&self) -> EnhancedPlayerState {
+        EnhancedPlayerState {
+            voice_quality: if self.state.ping >= 0 {
+                match self.state.ping {
+                    0..=50 => VoiceQuality::Excellent,
+                    51..=100 => VoiceQuality::Good,
+                    101..=200 => VoiceQuality::Fair,
+                    201..=500 => VoiceQuality::Poor,
+                    _ => VoiceQuality::Critical,
+                }
+            } else {
+                VoiceQuality::Disconnected
+            },
+        }
     }
 
     /// Play a track
@@ -423,7 +940,7 @@ impl LavalinkPlayer {
         if let Some(ref engine) = self.audio_engine {
             if let Err(e) = engine.play_track(track, start_time).await {
                 error!("Failed to start audio playback: {}", e);
-                return Err(format!("Audio playback failed: {}", e).into());
+                return Err(format!("Audio playback failed: {e}").into());
             }
         } else {
             warn!("No audio engine available for guild {}", self.guild_id);
@@ -692,6 +1209,7 @@ impl Clone for LavalinkPlayer {
             repeat_track: self.repeat_track,
             repeat_queue: self.repeat_queue,
             shuffle: self.shuffle,
+            voice_manager: self.voice_manager.clone(),
         }
     }
 }
@@ -706,6 +1224,7 @@ impl Default for PlayerManager {
 pub struct PlayerEventHandler {
     event_receiver: mpsc::UnboundedReceiver<PlayerEvent>,
     websocket_sessions: Arc<dashmap::DashMap<String, crate::server::WebSocketSession>>,
+    player_manager: Option<Arc<PlayerManager>>,
 }
 
 impl PlayerEventHandler {
@@ -717,6 +1236,21 @@ impl PlayerEventHandler {
         Self {
             event_receiver,
             websocket_sessions,
+            player_manager: None,
+        }
+    }
+
+    /// Create a new event handler with player manager reference
+    #[allow(dead_code)]
+    pub fn with_player_manager(
+        event_receiver: mpsc::UnboundedReceiver<PlayerEvent>,
+        websocket_sessions: Arc<dashmap::DashMap<String, crate::server::WebSocketSession>>,
+        player_manager: Arc<PlayerManager>,
+    ) -> Self {
+        Self {
+            event_receiver,
+            websocket_sessions,
+            player_manager: Some(player_manager),
         }
     }
 
@@ -763,6 +1297,87 @@ impl PlayerEventHandler {
                 let message = Message::player_update(guild_id, state);
                 self.broadcast_to_sessions(message).await;
             }
+
+            PlayerEvent::VoiceConnectionEvent { guild_id, event } => {
+                debug!("Voice connection event for guild {}: {:?}", guild_id, event);
+
+                // Update player state based on voice connection event
+                if let Some(ref player_manager) = self.player_manager {
+                    if let Some(player) = player_manager.get_player(&guild_id).await {
+                        let mut player_guard = player.write().await;
+                        player_guard.handle_voice_event(&event).await;
+
+                        // Validate state consistency after handling the event
+                        let is_consistent = player_guard.validate_state_consistency().await;
+                        if !is_consistent {
+                            info!(
+                                "Player state inconsistency detected and corrected for guild {}",
+                                guild_id
+                            );
+                        }
+
+                        // Get enhanced state for better monitoring
+                        let enhanced_state = player_guard.get_enhanced_state();
+                        let updated_state = player_guard.state.clone();
+
+                        // Log voice quality changes
+                        match enhanced_state.voice_quality {
+                            VoiceQuality::Poor | VoiceQuality::Critical => {
+                                warn!(
+                                    "Voice quality degraded for guild {}: {:?} (ping: {}ms)",
+                                    guild_id, enhanced_state.voice_quality, updated_state.ping
+                                );
+                            }
+                            VoiceQuality::Excellent | VoiceQuality::Good => {
+                                if updated_state.connected {
+                                    debug!(
+                                        "Voice quality good for guild {}: {:?} (ping: {}ms)",
+                                        guild_id, enhanced_state.voice_quality, updated_state.ping
+                                    );
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        drop(player_guard); // Release the lock before sending event
+
+                        let message = Message::player_update(guild_id.clone(), updated_state);
+                        self.broadcast_to_sessions(message).await;
+                    }
+                }
+
+                // Handle specific voice events that should be broadcast to clients
+                match event {
+                    VoiceConnectionEvent::GatewayClosed {
+                        code,
+                        reason,
+                        by_remote,
+                    } => {
+                        // Create WebSocket closed event similar to original Lavalink
+                        let websocket_event = crate::protocol::Event::websocket_closed(
+                            guild_id, code, reason, by_remote,
+                        );
+                        let message = Message::event(websocket_event);
+                        self.broadcast_to_sessions(message).await;
+                    }
+                    VoiceConnectionEvent::GatewayError(error) => {
+                        warn!("Voice gateway error for guild {}: {}", guild_id, error);
+                        // Gateway errors are logged but not necessarily broadcast
+                    }
+                    VoiceConnectionEvent::Connected | VoiceConnectionEvent::GatewayReady { .. } => {
+                        // Connection established events are handled by player state update above
+                        info!("Voice connection established for guild {}", guild_id);
+                    }
+                    VoiceConnectionEvent::Disconnected => {
+                        // Connection lost events are handled by player state update above
+                        info!("Voice connection lost for guild {}", guild_id);
+                    }
+                    _ => {
+                        // Other events are handled internally and don't need client notification
+                        debug!("Internal voice event for guild {}: {:?}", guild_id, event);
+                    }
+                }
+            }
         }
     }
 
@@ -776,5 +1391,128 @@ impl PlayerEventHandler {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_voice_event_handling() {
+        let mut player = LavalinkPlayer::new("test_guild".to_string(), "test_session".to_string());
+
+        // Test connection event
+        player
+            .handle_voice_event(&VoiceConnectionEvent::Connected)
+            .await;
+        assert!(player.state.connected);
+        assert_eq!(player.state.ping, 0);
+
+        // Test disconnection event
+        player
+            .handle_voice_event(&VoiceConnectionEvent::Disconnected)
+            .await;
+        assert!(!player.state.connected);
+        assert_eq!(player.state.ping, -1);
+    }
+
+    #[tokio::test]
+    async fn test_playback_pause_on_voice_loss() {
+        let mut player = LavalinkPlayer::new("test_guild".to_string(), "test_session".to_string());
+
+        // Set up a mock track
+        let track = Track {
+            encoded: "test_encoded".to_string(),
+            info: crate::protocol::TrackInfo {
+                identifier: "test_id".to_string(),
+                is_seekable: true,
+                author: "test_author".to_string(),
+                length: 180000,
+                is_stream: false,
+                position: 0,
+                title: "Test Track".to_string(),
+                uri: Some("test_uri".to_string()),
+                source_name: "test_source".to_string(),
+                artwork_url: None,
+                isrc: None,
+            },
+            plugin_info: std::collections::HashMap::new(),
+            user_data: std::collections::HashMap::new(),
+        };
+
+        player.current_track = Some(track);
+        player.paused = false;
+        player.state.connected = true;
+
+        // Test that playback is paused when connection is lost
+        player
+            .handle_voice_event(&VoiceConnectionEvent::ConnectionLost)
+            .await;
+        assert!(player.paused);
+        assert!(!player.state.connected);
+
+        // Test that playback resumes when connection is restored
+        player
+            .handle_voice_event(&VoiceConnectionEvent::ConnectionRestored)
+            .await;
+        assert!(!player.paused);
+        assert!(player.state.connected);
+    }
+
+    #[tokio::test]
+    async fn test_ping_updates() {
+        let mut player = LavalinkPlayer::new("test_guild".to_string(), "test_session".to_string());
+        player.state.connected = true;
+
+        // Test latency update
+        player
+            .handle_voice_event(&VoiceConnectionEvent::LatencyUpdate { latency_ms: 75.5 })
+            .await;
+        assert_eq!(player.state.ping, 75);
+
+        // Test packet loss penalty
+        player
+            .handle_voice_event(&VoiceConnectionEvent::PacketLoss {
+                loss_percentage: 10.0,
+            })
+            .await;
+        assert_eq!(player.state.ping, 125); // 75 + 50 penalty
+    }
+
+    #[tokio::test]
+    async fn test_voice_quality_assessment() {
+        let mut player = LavalinkPlayer::new("test_guild".to_string(), "test_session".to_string());
+        player.state.connected = true;
+
+        // Test excellent quality
+        player.state.ping = 25;
+        let state = player.get_enhanced_state();
+        assert_eq!(state.voice_quality, VoiceQuality::Excellent);
+
+        // Test poor quality
+        player.state.ping = 300;
+        let state = player.get_enhanced_state();
+        assert_eq!(state.voice_quality, VoiceQuality::Poor);
+
+        // Test disconnected
+        player.state.connected = false;
+        player.state.ping = -1;
+        let state = player.get_enhanced_state();
+        assert_eq!(state.voice_quality, VoiceQuality::Disconnected);
+    }
+
+    #[tokio::test]
+    async fn test_state_consistency_validation() {
+        let mut player = LavalinkPlayer::new("test_guild".to_string(), "test_session".to_string());
+
+        // Set up inconsistent state (connected but no voice manager)
+        player.state.connected = true;
+        player.voice_manager = None;
+
+        let is_consistent = player.validate_state_consistency().await;
+        assert!(!is_consistent);
+        assert!(!player.state.connected); // Should be corrected
+        assert_eq!(player.state.ping, -1);
     }
 }

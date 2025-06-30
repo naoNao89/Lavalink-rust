@@ -23,11 +23,10 @@ async fn test_server_startup_performance() {
     // Server should start within 5 seconds
     assert!(
         startup_time < Duration::from_secs(5),
-        "Server startup took too long: {:?}",
-        startup_time
+        "Server startup took too long: {startup_time:?}"
     );
 
-    println!("Server startup time: {:?}", startup_time);
+    println!("Server startup time: {startup_time:?}");
 }
 
 /// Test sequential request handling performance
@@ -52,18 +51,15 @@ async fn test_sequential_request_performance() {
     // Should handle 20 sequential requests within 10 seconds
     assert!(
         total_time < Duration::from_secs(10),
-        "Sequential requests took too long: {:?}",
-        total_time
+        "Sequential requests took too long: {total_time:?}"
     );
 
     let avg_time = total_time / num_requests as u32;
     println!(
-        "Average request time for {} sequential requests: {:?}",
-        num_requests, avg_time
+        "Average request time for {num_requests} sequential requests: {avg_time:?}"
     );
     println!(
-        "Total time for {} sequential requests: {:?}",
-        num_requests, total_time
+        "Total time for {num_requests} sequential requests: {total_time:?}"
     );
 }
 
@@ -78,7 +74,7 @@ async fn test_track_loading_performance() {
 
     // Make sequential track loading requests
     for i in 0..num_loads {
-        let identifier = format!("http://example.com/test{}.mp3", i);
+        let identifier = format!("http://example.com/test{i}.mp3");
         let load_start = Instant::now();
 
         let response = server
@@ -103,18 +99,17 @@ async fn test_track_loading_performance() {
     let avg_time = total_time / num_loads as u32;
     let median_time = load_times[load_times.len() / 2];
 
-    println!("Track loading performance for {} loads:", num_loads);
-    println!("  Total time: {:?}", total_time);
-    println!("  Average time: {:?}", avg_time);
-    println!("  Median time: {:?}", median_time);
-    println!("  Min time: {:?}", min_time);
-    println!("  Max time: {:?}", max_time);
+    println!("Track loading performance for {num_loads} loads:");
+    println!("  Total time: {total_time:?}");
+    println!("  Average time: {avg_time:?}");
+    println!("  Median time: {median_time:?}");
+    println!("  Min time: {min_time:?}");
+    println!("  Max time: {max_time:?}");
 
     // Each load should complete within 5 seconds
     assert!(
         max_time < &Duration::from_secs(5),
-        "Track loading took too long: {:?}",
-        max_time
+        "Track loading took too long: {max_time:?}"
     );
 }
 
@@ -129,8 +124,8 @@ async fn test_player_management_performance() {
 
     // Create players sequentially
     for i in 0..num_players {
-        let guild_id = format!("guild_{}", i);
-        let session_id = format!("session_{}", i);
+        let guild_id = format!("guild_{i}");
+        let session_id = format!("session_{i}");
         let create_start = Instant::now();
 
         let player = player_manager
@@ -156,24 +151,22 @@ async fn test_player_management_performance() {
     let max_time = create_times.last().unwrap();
     let avg_time = total_time / num_players as u32;
 
-    println!("Player management performance for {} players:", num_players);
-    println!("  Total time: {:?}", total_time);
-    println!("  Average time: {:?}", avg_time);
-    println!("  Min time: {:?}", min_time);
-    println!("  Max time: {:?}", max_time);
+    println!("Player management performance for {num_players} players:");
+    println!("  Total time: {total_time:?}");
+    println!("  Average time: {avg_time:?}");
+    println!("  Min time: {min_time:?}");
+    println!("  Max time: {max_time:?}");
 
     // Player creation should be fast
     assert!(
         max_time < &Duration::from_millis(500),
-        "Player creation took too long: {:?}",
-        max_time
+        "Player creation took too long: {max_time:?}"
     );
 
     // Total time should be reasonable
     assert!(
         total_time < Duration::from_secs(10),
-        "Total player creation took too long: {:?}",
-        total_time
+        "Total player creation took too long: {total_time:?}"
     );
 }
 
@@ -197,7 +190,7 @@ async fn test_memory_usage() {
         // Reduced for sequential testing
         // Load tracks
         for j in 0..3 {
-            let identifier = format!("http://example.com/test{}_{}.mp3", i, j);
+            let identifier = format!("http://example.com/test{i}_{j}.mp3");
             server
                 .get("/v4/loadtracks")
                 .add_header(auth_header().0, auth_header().1)
@@ -219,15 +212,14 @@ async fn test_memory_usage() {
     let memory_increase = final_memory.saturating_sub(initial_memory);
 
     println!("Memory usage test:");
-    println!("  Initial memory: {} bytes", initial_memory);
-    println!("  Final memory: {} bytes", final_memory);
-    println!("  Memory increase: {} bytes", memory_increase);
+    println!("  Initial memory: {initial_memory} bytes");
+    println!("  Final memory: {final_memory} bytes");
+    println!("  Memory increase: {memory_increase} bytes");
 
     // Memory increase should be reasonable (less than 100MB for this test)
     assert!(
         memory_increase < 100_000_000,
-        "Memory usage increased too much: {} bytes",
-        memory_increase
+        "Memory usage increased too much: {memory_increase} bytes"
     );
 }
 
@@ -265,26 +257,24 @@ async fn test_response_time_consistency() {
     let p95_index = (num_requests as f64 * 0.95) as usize;
     let p95_time = response_times[p95_index.min(response_times.len() - 1)];
 
-    println!("Response time consistency for {} requests:", num_requests);
-    println!("  Average: {:?}", avg_time);
-    println!("  Median: {:?}", median_time);
-    println!("  Min: {:?}", min_time);
-    println!("  Max: {:?}", max_time);
-    println!("  95th percentile: {:?}", p95_time);
+    println!("Response time consistency for {num_requests} requests:");
+    println!("  Average: {avg_time:?}");
+    println!("  Median: {median_time:?}");
+    println!("  Min: {min_time:?}");
+    println!("  Max: {max_time:?}");
+    println!("  95th percentile: {p95_time:?}");
 
     // Response times should be consistent
     assert!(
         p95_time < Duration::from_millis(500),
-        "95th percentile response time too high: {:?}",
-        p95_time
+        "95th percentile response time too high: {p95_time:?}"
     );
 
     // Max response time shouldn't be too much higher than average
     let max_avg_ratio = max_time.as_nanos() as f64 / avg_time.as_nanos() as f64;
     assert!(
         max_avg_ratio < 20.0,
-        "Response time variance too high: max/avg ratio = {:.2}",
-        max_avg_ratio
+        "Response time variance too high: max/avg ratio = {max_avg_ratio:.2}"
     );
 }
 
