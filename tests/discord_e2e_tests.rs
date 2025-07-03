@@ -446,7 +446,7 @@ async fn test_audio_quality_integration() {
             let quality_manager = env.quality_manager.lock().await;
 
             // Test quality metrics update
-            quality_manager
+            let _ = quality_manager
                 .update_quality_metrics(
                     128, // bitrate
                     85,  // buffer_health
@@ -701,7 +701,7 @@ async fn test_quality_degradation_detection() {
         let quality_manager = env.quality_manager.lock().await;
 
         // Simulate gradual quality degradation
-        let degradation_steps = vec![
+        let degradation_steps = [
             (128u32, 95u8, 95u8, 95u8), // Good quality
             (120u32, 90u8, 90u8, 90u8), // Slight degradation
             (100u32, 80u8, 85u8, 80u8), // Moderate degradation
@@ -721,7 +721,7 @@ async fn test_quality_degradation_detection() {
                 stream_stability
             );
 
-            quality_manager
+            let _ = quality_manager
                 .update_quality_metrics(*bitrate, *buffer_health, *encoding_perf, *stream_stability)
                 .await;
 
@@ -789,7 +789,7 @@ async fn test_concurrent_operations() {
             let qm = quality_manager.clone();
             let handle = tokio::spawn(async move {
                 let manager = qm.lock().await;
-                manager
+                let _ = manager
                     .update_quality_metrics(
                         128 + i * 10,       // varying bitrate
                         (80 + i * 2) as u8, // varying buffer health
@@ -855,7 +855,7 @@ async fn test_performance_under_load() {
             let quality_manager = env.quality_manager.lock().await;
 
             // Rapid quality updates
-            quality_manager
+            let _ = quality_manager
                 .update_quality_metrics(128, 85 + (i % 10) as u8, 90, 88)
                 .await;
 
@@ -922,7 +922,7 @@ async fn test_full_integration_workflow() {
         // Step 1: Initialize quality management
         {
             let quality_manager = env.quality_manager.lock().await;
-            quality_manager
+            let _ = quality_manager
                 .update_quality_metrics(128, 95, 95, 95)
                 .await;
             info!("Step 1: Quality management initialized");

@@ -156,6 +156,7 @@ impl LavalinkServer {
     }
 
     /// Get access to the application state
+    #[allow(dead_code)] // Used in tests
     pub fn app_state(&self) -> Arc<AppState> {
         self.app_state.clone()
     }

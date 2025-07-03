@@ -25,6 +25,7 @@ mod audio_quality_performance_tests {
     }
 
     /// Helper function to create test track
+    #[allow(dead_code)]
     fn create_test_track() -> Track {
         Track {
             encoded: "test_encoded_track".to_string(),
