@@ -952,7 +952,7 @@ impl AudioQualityManager {
     async fn calculate_quality_trend(&self, current_score: u8) -> QualityTrend {
         let history = self.quality_history.read().await;
 
-        if history.len() < 3 {
+        if history.len() < 2 {
             return QualityTrend::Stable;
         }
 
@@ -960,7 +960,7 @@ impl AudioQualityManager {
         let mut recent_scores: Vec<u8> = history
             .iter()
             .rev()
-            .take(4) // Take last 4 historical scores
+            .take(10) // Take last 10 historical scores for better trend detection
             .map(|point| point.quality_score)
             .collect();
 
@@ -975,17 +975,26 @@ impl AudioQualityManager {
         let oldest_score = recent_scores[recent_scores.len() - 1] as f32;
         let newest_score = recent_scores[0] as f32;
         let score_change = newest_score - oldest_score;
-        let window_size = recent_scores.len() as f32;
 
-        // Calculate average change per step
-        let _trend_slope = score_change / window_size;
+        // Also check for consistent direction in recent changes
+        let mut declining_count = 0;
+        let mut improving_count = 0;
+
+        for i in 1..recent_scores.len() {
+            if recent_scores[i-1] < recent_scores[i] {
+                declining_count += 1;
+            } else if recent_scores[i-1] > recent_scores[i] {
+                improving_count += 1;
+            }
+        }
 
         // Use more sensitive thresholds for gradual changes
-        let trend_threshold = 5.0; // Minimum change to consider a trend
+        let trend_threshold = 3.0; // More sensitive threshold
+        let consistency_threshold = recent_scores.len() / 3; // At least 1/3 of changes in same direction
 
-        if score_change > trend_threshold {
+        if score_change > trend_threshold || improving_count >= consistency_threshold {
             QualityTrend::Improving
-        } else if score_change < -trend_threshold {
+        } else if score_change < -trend_threshold || declining_count >= consistency_threshold {
             QualityTrend::Degrading
         } else {
             QualityTrend::Stable
