@@ -952,6 +952,22 @@ impl VoiceConnectionManager {
         self.voice_client.cleanup_all().await;
     }
 
+    /// Shutdown the voice connection manager
+    pub async fn shutdown(&self) {
+        info!("Shutting down voice connection manager");
+
+        // Cleanup all connections
+        self.cleanup_all_connections().await;
+
+        // Clear recovery states
+        {
+            let mut recovery_states = self.recovery_states.write().await;
+            recovery_states.clear();
+        }
+
+        info!("Voice connection manager shutdown complete");
+    }
+
     /// Get connection pool metrics (if pooling is enabled)
     pub async fn get_pool_metrics(&self) -> Option<pool::ConnectionMetrics> {
         self.voice_client.get_pool_metrics().await
