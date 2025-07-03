@@ -981,9 +981,9 @@ impl AudioQualityManager {
         let mut improving_count = 0;
 
         for i in 1..recent_scores.len() {
-            if recent_scores[i-1] < recent_scores[i] {
+            if recent_scores[i - 1] < recent_scores[i] {
                 declining_count += 1;
-            } else if recent_scores[i-1] > recent_scores[i] {
+            } else if recent_scores[i - 1] > recent_scores[i] {
                 improving_count += 1;
             }
         }
