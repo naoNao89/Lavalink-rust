@@ -310,11 +310,11 @@ mod audio_quality_performance_tests {
         );
 
         // Verify report contains expected data
-        assert!(report.guild_id == "test_guild");
-        assert!(report.performance_insights.overall_score > 0);
+        assert!(report["guild_id"] == "test_guild");
+        assert!(report["current_metrics"]["average_quality_score"].as_u64().unwrap_or(0) > 0);
 
         println!("Quality analytics generated in {analytics_time:?}");
-        println!("Report generated for guild: {}", report.guild_id);
+        println!("Report generated for guild: {}", report["guild_id"]);
     }
 
     #[tokio::test]

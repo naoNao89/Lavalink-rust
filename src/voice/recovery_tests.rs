@@ -1,4 +1,6 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
+#[allow(dead_code)] // Test utilities may not be used in all test configurations
 mod recovery_tests {
     use crate::protocol::messages::VoiceState;
     use crate::voice::connection::*;

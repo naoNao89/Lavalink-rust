@@ -150,7 +150,12 @@ pub struct QualityMetrics {
 /// Quality trend indicators
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum QualityTrend {
+    /// Quality is improving over time
+    Improving,
+    /// Quality is stable
     Stable,
+    /// Quality is degrading over time
+    Degrading,
 }
 
 /// Quality alert levels
@@ -976,7 +981,15 @@ impl AudioQualityManager {
         let _trend_slope = score_change / window_size;
 
         // Use more sensitive thresholds for gradual changes
-        QualityTrend::Stable
+        let trend_threshold = 5.0; // Minimum change to consider a trend
+
+        if score_change > trend_threshold {
+            QualityTrend::Improving
+        } else if score_change < -trend_threshold {
+            QualityTrend::Degrading
+        } else {
+            QualityTrend::Stable
+        }
     }
 
     /// Add quality data point to history
@@ -1291,5 +1304,47 @@ impl AudioQualityManager {
             QualityPreset::Maximum => QualityPreset::Maximum, // Can't go higher
             QualityPreset::Custom => QualityPreset::High,     // Safe upgrade
         }
+    }
+
+    /// Generate a comprehensive quality report
+    pub async fn generate_quality_report(&self) -> Result<serde_json::Value> {
+        let metrics = self.quality_metrics.read().await;
+        let history = self.quality_history.read().await;
+
+        let report = serde_json::json!({
+            "guild_id": self.guild_id,
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            "current_metrics": {
+                "effective_bitrate": metrics.effective_bitrate,
+                "buffer_health": metrics.buffer_health,
+                "encoding_performance": metrics.encoding_performance,
+                "stream_stability": metrics.stream_stability,
+                "average_quality_score": metrics.average_quality_score,
+                "quality_trend": format!("{:?}", metrics.quality_trend),
+                "degradation_events": metrics.degradation_events
+            },
+            "network_quality": {
+                "score": self.network_quality_score(),
+                "packet_loss": self.network_metrics.packet_loss,
+                "rtt_ms": self.network_metrics.rtt_ms,
+                "jitter_ms": self.network_metrics.jitter_ms,
+                "bandwidth_kbps": self.network_metrics.bandwidth_kbps
+            },
+            "configuration": {
+                "quality_preset": format!("{:?}", self.config.quality_preset),
+                "target_bitrate": self.config.bitrate,
+                "adaptive_quality": self.config.adaptive_quality,
+                "monitoring_enabled": self.monitoring_config.auto_adjustment_enabled
+            },
+            "history": {
+                "data_points": history.len(),
+                "window_size": self.monitoring_config.history_window_size
+            }
+        });
+
+        Ok(report)
     }
 }

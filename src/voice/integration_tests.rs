@@ -1,4 +1,6 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
+#[allow(dead_code)] // Test utilities may not be used in all test configurations
 mod integration_tests {
     use crate::protocol::messages::VoiceState;
     use crate::voice::connection::{VoiceConnectionEvent, VoiceConnectionManager};
@@ -246,7 +248,7 @@ mod integration_tests {
     async fn test_mock_discord_client_creation() {
         let _mock_client = MockDiscordVoiceClient::new();
         // Basic test to ensure the mock client can be created
-        assert!(true);
+        // Test passed if we reach here without panicking
     }
 
     #[tokio::test]

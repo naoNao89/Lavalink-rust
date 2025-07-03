@@ -527,7 +527,7 @@ async fn test_streaming_manager_integration() {
 
         // Test streaming manager initialization
         let quality_data = streaming_manager.get_stream_quality_data().await;
-        assert!(quality_data.effective_bitrate >= 0);
+        assert!(quality_data.effective_bitrate > 0);
         assert!(quality_data.buffer_health <= 100);
         assert!(quality_data.encoding_performance <= 100);
         assert!(quality_data.stream_stability <= 100);
@@ -661,7 +661,7 @@ async fn test_voice_event_logging() {
         }
 
         // Verify event system is functional (no panic)
-        assert!(events.len() >= 0); // At minimum, no panic should occur
+        // At minimum, no panic should occur - events vector exists
 
         info!("Voice event logging test completed");
         Ok(())
