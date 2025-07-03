@@ -155,8 +155,6 @@ impl LavalinkServer {
         Ok(Self { config, app_state })
     }
 
-
-
     /// Run the server
     pub async fn run(self) -> Result<()> {
         let addr = format!("{}:{}", self.config.server.address, self.config.server.port);

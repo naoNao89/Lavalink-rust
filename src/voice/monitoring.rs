@@ -15,8 +15,7 @@ use crate::voice::connection::VoiceConnectionEvent;
 use crate::voice::logging::{VoiceEventLogger, VoiceEventType};
 
 /// Voice connection health status
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum HealthStatus {
     /// Connection is healthy and functioning normally
     Healthy,
@@ -30,7 +29,6 @@ pub enum HealthStatus {
     #[default]
     Unknown,
 }
-
 
 /// Connection performance metrics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

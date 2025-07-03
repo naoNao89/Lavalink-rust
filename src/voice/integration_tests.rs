@@ -186,9 +186,7 @@ mod integration_tests {
 
         pub async fn is_connected(&self, guild_id: &str) -> bool {
             let connections = self.connections.read().await;
-            connections
-                .get(guild_id)
-                .is_some_and(|conn| conn.connected)
+            connections.get(guild_id).is_some_and(|conn| conn.connected)
         }
     }
 

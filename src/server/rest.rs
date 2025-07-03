@@ -1423,9 +1423,7 @@ pub async fn move_track_in_queue_handler(
             404,
             "Session not found".to_string(),
             Some(format!("Session {session_id} not found")),
-            format!(
-                "/v4/sessions/{session_id}/players/{guild_id}/queue/move"
-            ),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1443,9 +1441,7 @@ pub async fn move_track_in_queue_handler(
                     Some(format!(
                         "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!(
-                        "/v4/sessions/{session_id}/players/{guild_id}/queue/move"
-                    ),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1465,9 +1461,7 @@ pub async fn move_track_in_queue_handler(
                         400,
                         "Move failed".to_string(),
                         Some(e),
-                        format!(
-                            "/v4/sessions/{session_id}/players/{guild_id}/queue/move"
-                        ),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
                     );
                     (StatusCode::BAD_REQUEST, Json(error)).into_response()
                 }
@@ -1478,9 +1472,7 @@ pub async fn move_track_in_queue_handler(
                 404,
                 "Player not found".to_string(),
                 Some(format!("Player for guild {guild_id} not found")),
-                format!(
-                    "/v4/sessions/{session_id}/players/{guild_id}/queue/move"
-                ),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1504,9 +1496,7 @@ pub async fn shuffle_queue_handler(
             404,
             "Session not found".to_string(),
             Some(format!("Session {session_id} not found")),
-            format!(
-                "/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"
-            ),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1524,9 +1514,7 @@ pub async fn shuffle_queue_handler(
                     Some(format!(
                         "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!(
-                        "/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"
-                    ),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1546,9 +1534,7 @@ pub async fn shuffle_queue_handler(
                 404,
                 "Player not found".to_string(),
                 Some(format!("Player for guild {guild_id} not found")),
-                format!(
-                    "/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"
-                ),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1803,9 +1789,7 @@ pub async fn apply_filter_preset_handler(
             404,
             "Session not found".to_string(),
             Some(format!("Session {session_id} not found")),
-            format!(
-                "/v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}"
-            ),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }

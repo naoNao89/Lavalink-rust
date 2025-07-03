@@ -78,9 +78,7 @@ mod audio_quality_performance_tests {
             "Quality manager creation took too long: {creation_time:?}"
         );
 
-        println!(
-            "Created {num_managers} quality managers in {creation_time:?}"
-        );
+        println!("Created {num_managers} quality managers in {creation_time:?}");
         println!(
             "Average creation time: {:?}",
             creation_time / num_managers as u32
@@ -120,9 +118,7 @@ mod audio_quality_performance_tests {
             "Quality metrics updates took too long: {update_time:?}"
         );
 
-        println!(
-            "Performed {num_updates} metrics updates in {update_time:?}"
-        );
+        println!("Performed {num_updates} metrics updates in {update_time:?}");
         println!(
             "Average update time: {:?}",
             update_time / num_updates as u32
@@ -177,9 +173,7 @@ mod audio_quality_performance_tests {
             "Streaming manager creation took too long: {creation_time:?}"
         );
 
-        println!(
-            "Created {num_managers} streaming managers in {creation_time:?}"
-        );
+        println!("Created {num_managers} streaming managers in {creation_time:?}");
         println!(
             "Average creation time: {:?}",
             creation_time / num_managers as u32
@@ -245,9 +239,7 @@ mod audio_quality_performance_tests {
             "Bitrate adjustments took too long: {adjustment_time:?}"
         );
 
-        println!(
-            "Performed {num_adjustments} bitrate adjustments in {adjustment_time:?}"
-        );
+        println!("Performed {num_adjustments} bitrate adjustments in {adjustment_time:?}");
         println!(
             "Average adjustment time: {:?}",
             adjustment_time / num_adjustments as u32
@@ -284,9 +276,7 @@ mod audio_quality_performance_tests {
             "Quality monitoring performance too low: {updates_per_second:.2} updates/sec"
         );
 
-        println!(
-            "Quality monitoring: {updates_per_second:.2} updates/sec over {total_time:?}"
-        );
+        println!("Quality monitoring: {updates_per_second:.2} updates/sec over {total_time:?}");
     }
 
     #[tokio::test]
@@ -382,9 +372,7 @@ mod audio_quality_performance_tests {
             "Concurrent quality operations took too long: {concurrent_time:?}"
         );
 
-        println!(
-            "Completed {num_concurrent_ops} concurrent operations in {concurrent_time:?}"
-        );
+        println!("Completed {num_concurrent_ops} concurrent operations in {concurrent_time:?}");
         println!(
             "Average operation time: {:?}",
             concurrent_time / num_concurrent_ops as u32
@@ -395,11 +383,13 @@ mod audio_quality_performance_tests {
     async fn test_quality_preset_switching_performance() {
         let manager =
             AudioQualityManager::new("test_guild".to_string(), create_test_quality_config());
-        let presets = [QualityPreset::Voice,
+        let presets = [
+            QualityPreset::Voice,
             QualityPreset::Low,
             QualityPreset::Medium,
             QualityPreset::High,
-            QualityPreset::Maximum];
+            QualityPreset::Maximum,
+        ];
 
         let num_switches = 100;
         let start_time = Instant::now();
@@ -424,9 +414,7 @@ mod audio_quality_performance_tests {
             "Quality preset switching took too long: {switching_time:?}"
         );
 
-        println!(
-            "Performed {num_switches} preset switches in {switching_time:?}"
-        );
+        println!("Performed {num_switches} preset switches in {switching_time:?}");
         println!(
             "Average switch time: {:?}",
             switching_time / num_switches as u32
@@ -476,9 +464,7 @@ mod audio_quality_performance_tests {
             "Quality adaptation under stress too slow: {adaptations_per_second:.2} adaptations/sec"
         );
 
-        println!(
-            "Quality adaptation under stress: {adaptations_per_second:.2} adaptations/sec"
-        );
+        println!("Quality adaptation under stress: {adaptations_per_second:.2} adaptations/sec");
     }
 
     #[tokio::test]
@@ -578,9 +564,7 @@ mod audio_quality_performance_tests {
             "Streaming-quality integration took too long: {integration_time:?}"
         );
 
-        println!(
-            "Completed {num_operations} integration operations in {integration_time:?}"
-        );
+        println!("Completed {num_operations} integration operations in {integration_time:?}");
         println!(
             "Average integration operation time: {:?}",
             integration_time / num_operations as u32

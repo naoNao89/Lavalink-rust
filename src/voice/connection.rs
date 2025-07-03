@@ -49,8 +49,7 @@ impl Default for VoiceEventFilter {
     }
 }
 
-impl VoiceEventFilter {
-}
+impl VoiceEventFilter {}
 
 /// Event severity levels for filtering
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -306,8 +305,6 @@ impl VoiceEventSubscriptionManager {
 
         events
     }
-
-
 }
 
 /// Voice connection manager that integrates with the player system
@@ -1720,7 +1717,6 @@ pub struct RecoveryState {
     /// Total retry attempts
     pub total_retries: u32,
 }
-
 
 /// Voice connection events
 #[derive(Debug, Clone, serde::Serialize)]

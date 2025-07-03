@@ -444,10 +444,7 @@ impl AudioSource for YouTubeAudioSource {
 
     async fn search(&self, query: &str) -> Result<LoadResult> {
         // Use yt-dlp command-line to search YouTube
-        match self
-            .extract_video_info(&format!("ytsearch5:{query}"))
-            .await
-        {
+        match self.extract_video_info(&format!("ytsearch5:{query}")).await {
             Ok(tracks) => {
                 if tracks.is_empty() {
                     Ok(LoadResult {

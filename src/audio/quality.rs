@@ -256,28 +256,6 @@ struct QualityDataPoint {
     quality_score: u8,
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 impl Default for AudioQualityConfig {
     fn default() -> Self {
         Self {
@@ -356,11 +334,7 @@ impl Default for QualityAdjustmentState {
     }
 }
 
-
-
-impl AdjustmentPolicy {
-
-}
+impl AdjustmentPolicy {}
 
 impl AudioSampleRate {
     /// Convert to Songbird SampleRate enum
@@ -905,43 +879,6 @@ impl AudioQualityManager {
         self.config.quality_preset
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     /// Get current quality metrics
     pub async fn get_quality_metrics(&self) -> QualityMetrics {
         self.quality_metrics.read().await.clone()
@@ -1046,9 +983,7 @@ impl AudioQualityManager {
     async fn add_quality_data_point(&self, quality_score: u8, _bitrate: u32) {
         let mut history = self.quality_history.write().await;
 
-        let data_point = QualityDataPoint {
-            quality_score,
-        };
+        let data_point = QualityDataPoint { quality_score };
 
         history.push_back(data_point);
 
@@ -1189,13 +1124,13 @@ impl AudioQualityManager {
         let current_preset = self.config.quality_preset;
 
         // Check if we should downgrade due to poor conditions
-        if overall_score < self.monitoring_config.degradation_threshold
-            && metrics.packet_loss > 5.0 {
-                return Some((
-                    self.get_downgrade_preset(current_preset),
-                    AdjustmentReason::NetworkDegradation,
-                ));
-            }
+        if overall_score < self.monitoring_config.degradation_threshold && metrics.packet_loss > 5.0
+        {
+            return Some((
+                self.get_downgrade_preset(current_preset),
+                AdjustmentReason::NetworkDegradation,
+            ));
+        }
 
         // Check if we can upgrade (only if stable for required period)
         if let Some(stable_since) = state.stable_since {

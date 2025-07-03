@@ -31,8 +31,7 @@ pub enum VoiceQuality {
 
 /// Voice connection statistics across all players
 #[derive(Debug, Clone, Default)]
-pub struct VoiceConnectionStats {
-}
+pub struct VoiceConnectionStats {}
 
 pub mod engine;
 pub use engine::AudioPlayerEngine;
@@ -154,10 +153,6 @@ impl PlayerManager {
     pub fn voice_manager(&self) -> Arc<VoiceConnectionManager> {
         self.voice_manager.clone()
     }
-
-
-
-
 
     /// Get or create a player for a guild
     pub async fn get_or_create_player(
