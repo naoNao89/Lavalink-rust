@@ -14,7 +14,8 @@ use crate::protocol::Track;
 use crate::voice::logging::{CorrelationId, PerformanceTimer, VoiceEvent, VoiceEventType};
 
 /// Type alias for quality change callback
-type QualityChangeCallback = Arc<RwLock<Option<Box<dyn Fn(QualityPreset, QualityPreset) + Send + Sync>>>>;
+type QualityChangeCallback =
+    Arc<RwLock<Option<Box<dyn Fn(QualityPreset, QualityPreset) + Send + Sync>>>>;
 
 /// Audio streaming manager for Discord voice connections
 #[allow(dead_code)] // Fields used in streaming management and quality control
@@ -122,8 +123,6 @@ pub struct StreamOptions {
     /// Enable stream monitoring
     pub enable_monitoring: bool,
 }
-
-
 
 /// Stream quality monitoring data
 #[derive(Debug, Clone)]

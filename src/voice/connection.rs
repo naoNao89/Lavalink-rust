@@ -49,8 +49,7 @@ impl Default for VoiceEventFilter {
     }
 }
 
-impl VoiceEventFilter {
-}
+impl VoiceEventFilter {}
 
 /// Event severity levels for filtering
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -306,8 +305,6 @@ impl VoiceEventSubscriptionManager {
 
         events
     }
-
-
 }
 
 /// Voice connection manager that integrates with the player system
@@ -950,6 +947,22 @@ impl VoiceConnectionManager {
     pub async fn cleanup_all_connections(&self) {
         info!("Cleaning up all voice connections");
         self.voice_client.cleanup_all().await;
+    }
+
+    /// Shutdown the voice connection manager
+    pub async fn shutdown(&self) {
+        info!("Shutting down voice connection manager");
+
+        // Cleanup all connections
+        self.cleanup_all_connections().await;
+
+        // Clear recovery states
+        {
+            let mut recovery_states = self.recovery_states.write().await;
+            recovery_states.clear();
+        }
+
+        info!("Voice connection manager shutdown complete");
     }
 
     /// Get connection pool metrics (if pooling is enabled)
@@ -1704,7 +1717,6 @@ pub struct RecoveryState {
     /// Total retry attempts
     pub total_retries: u32,
 }
-
 
 /// Voice connection events
 #[derive(Debug, Clone, serde::Serialize)]

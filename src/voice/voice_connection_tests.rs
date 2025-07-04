@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod voice_connection_tests {
     use super::super::connection::*;
     use super::super::VoiceConnectionManager;
@@ -83,7 +84,7 @@ mod voice_connection_tests {
         let _manager = VoiceEventSubscriptionManager::new(100);
 
         // Basic functionality test - manager should be created successfully
-        assert!(true); // Manager creation succeeded if we get here
+        // Manager creation succeeded if we get here
     }
 
     #[tokio::test]
@@ -119,6 +120,6 @@ mod voice_connection_tests {
         let _filter_severity = VoiceEventFilter::default();
 
         // Basic functionality test - filters should be created successfully
-        assert!(true); // Filter creation succeeded if we get here
+        // Filter creation succeeded if we get here
     }
 }

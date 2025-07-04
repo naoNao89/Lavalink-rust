@@ -55,12 +55,8 @@ async fn test_sequential_request_performance() {
     );
 
     let avg_time = total_time / num_requests as u32;
-    println!(
-        "Average request time for {num_requests} sequential requests: {avg_time:?}"
-    );
-    println!(
-        "Total time for {num_requests} sequential requests: {total_time:?}"
-    );
+    println!("Average request time for {num_requests} sequential requests: {avg_time:?}");
+    println!("Total time for {num_requests} sequential requests: {total_time:?}");
 }
 
 /// Test track loading performance
