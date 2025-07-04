@@ -126,11 +126,14 @@ jobs:
           # Use vendored OpenSSL for cross-compilation targets to avoid linking issues
           OPENSSL_STATIC: ${{ (matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-gnu') && '1' || '' }}
           OPENSSL_VENDORED: ${{ (matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-gnu') && '1' || '' }}
-          # For musl builds, use system opus library to avoid math library linking issues
-          LIBOPUS_NO_PKG: ${{ matrix.target == 'x86_64-unknown-linux-musl' && '1' || '' }}
-          LIBOPUS_LIB_DIR: ${{ matrix.target == 'x86_64-unknown-linux-musl' && '/usr/lib/x86_64-linux-gnu' || '' }}
-          LIBOPUS_INCLUDE_DIR: ${{ matrix.target == 'x86_64-unknown-linux-musl' && '/usr/include' || '' }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          if [ "${{ matrix.target }}" = "x86_64-unknown-linux-musl" ]; then
+            # Build musl without discord features to avoid opus dependency issues
+            cargo build --release --target ${{ matrix.target }} --no-default-features --features "audio-processing,metrics"
+          else
+            # Build with all default features for other targets
+            cargo build --release --target ${{ matrix.target }}
+          fi
 
       - name: Create artifact name
         id: artifact
