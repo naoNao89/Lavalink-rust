@@ -121,20 +121,15 @@ jobs:
           key: ${{ matrix.target }}
           cache-on-failure: true
 
-      - name: Configure musl linker
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: |
-          mkdir -p .cargo
-          cat > .cargo/config.toml << 'EOF'
-          [target.x86_64-unknown-linux-musl]
-          rustflags = ["-C", "link-args=-lm"]
-          EOF
-
       - name: Build binary
         env:
           # Use vendored OpenSSL for cross-compilation targets to avoid linking issues
           OPENSSL_STATIC: ${{ (matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-gnu') && '1' || '' }}
           OPENSSL_VENDORED: ${{ (matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-gnu') && '1' || '' }}
+          # For musl builds, use system opus library to avoid math library linking issues
+          LIBOPUS_NO_PKG: ${{ matrix.target == 'x86_64-unknown-linux-musl' && '1' || '' }}
+          LIBOPUS_LIB_DIR: ${{ matrix.target == 'x86_64-unknown-linux-musl' && '/usr/lib/x86_64-linux-gnu' || '' }}
+          LIBOPUS_INCLUDE_DIR: ${{ matrix.target == 'x86_64-unknown-linux-musl' && '/usr/include' || '' }}
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create artifact name
