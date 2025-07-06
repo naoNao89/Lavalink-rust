@@ -563,7 +563,10 @@ pub async fn get_session_players_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
 ) -> Response {
-    info!("Getting players for session: {} (non-Discord mode)", session_id);
+    info!(
+        "Getting players for session: {} (non-Discord mode)",
+        session_id
+    );
 
     // Check if session exists
     if !state.sessions.contains_key(&session_id) {
