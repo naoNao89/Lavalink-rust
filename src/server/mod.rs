@@ -10,6 +10,7 @@ use axum::{
 };
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tokio::net::TcpListener;
+use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
 use tracing::{info, warn};
@@ -154,7 +155,11 @@ impl LavalinkServer {
         Ok(Self { config, app_state })
     }
 
-
+    /// Get access to the application state
+    #[allow(dead_code)] // Used in tests
+    pub fn app_state(&self) -> Arc<AppState> {
+        self.app_state.clone()
+    }
 
     /// Run the server
     pub async fn run(self) -> Result<()> {
@@ -169,18 +174,94 @@ impl LavalinkServer {
         let listener = TcpListener::bind(&addr).await?;
         info!("Lavalink is ready to accept connections on {}", addr);
 
-        axum::serve(
+        // Set up graceful shutdown signal handling
+        let shutdown_signal = async {
+            let ctrl_c = async {
+                signal::ctrl_c()
+                    .await
+                    .expect("failed to install Ctrl+C handler");
+            };
+
+            #[cfg(unix)]
+            let terminate = async {
+                signal::unix::signal(signal::unix::SignalKind::terminate())
+                    .expect("failed to install signal handler")
+                    .recv()
+                    .await;
+            };
+
+            #[cfg(not(unix))]
+            let terminate = std::future::pending::<()>();
+
+            tokio::select! {
+                _ = ctrl_c => {
+                    info!("Received Ctrl+C signal, initiating graceful shutdown...");
+                },
+                _ = terminate => {
+                    info!("Received SIGTERM signal, initiating graceful shutdown...");
+                },
+            }
+        };
+
+        // Run server with graceful shutdown
+        let result = axum::serve(
             listener,
             app.into_make_service_with_connect_info::<SocketAddr>(),
         )
-        .await?;
+        .with_graceful_shutdown(shutdown_signal)
+        .await;
 
-        Ok(())
+        // Perform cleanup
+        info!("Performing cleanup...");
+        self.cleanup().await;
+        info!("Server shutdown complete");
+
+        result.map_err(Into::into)
+    }
+
+    /// Perform cleanup operations during shutdown
+    async fn cleanup(&self) {
+        info!("Shutting down Lavalink server...");
+
+        // Cleanup sessions and players
+        let session_count = self.app_state.sessions.len();
+        if session_count > 0 {
+            info!("Cleaning up {} active sessions", session_count);
+
+            // Close all WebSocket sessions gracefully
+            for session_ref in self.app_state.sessions.iter() {
+                let session = session_ref.value();
+                if let Err(e) = session.close().await {
+                    warn!("Failed to close session {}: {}", session_ref.key(), e);
+                }
+            }
+
+            // Clear sessions
+            self.app_state.sessions.clear();
+        }
+
+        #[cfg(feature = "discord")]
+        {
+            // Shutdown player manager
+            info!("Shutting down player manager...");
+            if let Err(e) = self.app_state.player_manager.shutdown().await {
+                warn!("Failed to shutdown player manager: {}", e);
+            }
+        }
+
+        // Shutdown plugin manager
+        info!("Shutting down plugin manager...");
+        if let Ok(mut plugin_manager) = self.app_state.plugin_manager.write() {
+            plugin_manager.unload_all_plugins();
+        }
+
+        info!("Cleanup completed");
     }
 
     /// Build the Axum router
     pub fn build_router(&self) -> Router {
-        Router::new()
+        #[allow(unused_mut)]
+        let mut router = Router::new()
             // WebSocket endpoint
             .route("/v4/websocket", get(websocket_handler))
             // REST API endpoints
@@ -253,14 +334,6 @@ impl LavalinkServer {
                 "/v4/sessions/:session_id/players/:guild_id/filters",
                 patch(rest::update_player_filters_handler),
             )
-            .route(
-                "/v4/sessions/:session_id/players/:guild_id/filters",
-                delete(rest::clear_player_filters_handler),
-            )
-            .route(
-                "/v4/sessions/:session_id/players/:guild_id/filters/preset/:preset_name",
-                post(rest::apply_filter_preset_handler),
-            )
             // Filter presets
             .route("/v4/filters/presets", get(rest::get_filter_presets_handler))
             // Plugin management
@@ -294,7 +367,23 @@ impl LavalinkServer {
             .route(
                 "/v4/routeplanner/free/all",
                 post(rest::routeplanner_unmark_all_handler),
-            )
+            );
+
+        // Add Discord-specific routes conditionally
+        #[cfg(feature = "discord")]
+        {
+            router = router
+                .route(
+                    "/v4/sessions/:session_id/players/:guild_id/filters",
+                    delete(rest::clear_player_filters_handler),
+                )
+                .route(
+                    "/v4/sessions/:session_id/players/:guild_id/filters/preset/:preset_name",
+                    post(rest::apply_filter_preset_handler),
+                );
+        }
+
+        router
             // Middleware - auth first, then other layers
             .layer(middleware::from_fn_with_state(
                 self.app_state.clone(),

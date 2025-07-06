@@ -3,16 +3,72 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use songbird::{
-    driver::{Channels, MixMode, SampleRate},
-    Config as SongbirdConfig,
-};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
 use tracing::{debug, error, info, warn};
+
+// Discord-specific imports
+#[cfg(feature = "discord")]
+use songbird::{
+    driver::{Channels, MixMode, SampleRate},
+    Config as SongbirdConfig,
+};
+
+// Non-Discord alternatives
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Channels {
+    Mono,
+    Stereo,
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MixMode {
+    Mono,
+    Stereo,
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SampleRate {
+    Hz8000,
+    Hz16000,
+    Hz22050,
+    Hz24000,
+    Hz44100,
+    Hz48000,
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone)]
+pub struct SongbirdConfig {
+    pub sample_rate: SampleRate,
+    pub channels: Channels,
+    pub mix_mode: MixMode,
+}
+
+#[cfg(not(feature = "discord"))]
+impl SongbirdConfig {
+    pub fn mix_mode(mut self, mix_mode: MixMode) -> Self {
+        self.mix_mode = mix_mode;
+        self
+    }
+}
+
+#[cfg(not(feature = "discord"))]
+impl Default for SongbirdConfig {
+    fn default() -> Self {
+        Self {
+            sample_rate: SampleRate::Hz48000,
+            channels: Channels::Stereo,
+            mix_mode: MixMode::Stereo,
+        }
+    }
+}
 
 /// Audio quality configuration for Discord voice streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,7 +206,12 @@ pub struct QualityMetrics {
 /// Quality trend indicators
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum QualityTrend {
+    /// Quality is improving over time
+    Improving,
+    /// Quality is stable
     Stable,
+    /// Quality is degrading over time
+    Degrading,
 }
 
 /// Quality alert levels
@@ -256,28 +317,6 @@ struct QualityDataPoint {
     quality_score: u8,
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 impl Default for AudioQualityConfig {
     fn default() -> Self {
         Self {
@@ -356,11 +395,7 @@ impl Default for QualityAdjustmentState {
     }
 }
 
-
-
-impl AdjustmentPolicy {
-
-}
+impl AdjustmentPolicy {}
 
 impl AudioSampleRate {
     /// Convert to Songbird SampleRate enum
@@ -905,43 +940,6 @@ impl AudioQualityManager {
         self.config.quality_preset
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     /// Get current quality metrics
     pub async fn get_quality_metrics(&self) -> QualityMetrics {
         self.quality_metrics.read().await.clone()
@@ -1010,7 +1008,7 @@ impl AudioQualityManager {
     async fn calculate_quality_trend(&self, current_score: u8) -> QualityTrend {
         let history = self.quality_history.read().await;
 
-        if history.len() < 3 {
+        if history.len() < 2 {
             return QualityTrend::Stable;
         }
 
@@ -1018,7 +1016,7 @@ impl AudioQualityManager {
         let mut recent_scores: Vec<u8> = history
             .iter()
             .rev()
-            .take(4) // Take last 4 historical scores
+            .take(10) // Take last 10 historical scores for better trend detection
             .map(|point| point.quality_score)
             .collect();
 
@@ -1033,22 +1031,37 @@ impl AudioQualityManager {
         let oldest_score = recent_scores[recent_scores.len() - 1] as f32;
         let newest_score = recent_scores[0] as f32;
         let score_change = newest_score - oldest_score;
-        let window_size = recent_scores.len() as f32;
 
-        // Calculate average change per step
-        let _trend_slope = score_change / window_size;
+        // Also check for consistent direction in recent changes
+        let mut declining_count = 0;
+        let mut improving_count = 0;
+
+        for i in 1..recent_scores.len() {
+            if recent_scores[i - 1] < recent_scores[i] {
+                declining_count += 1;
+            } else if recent_scores[i - 1] > recent_scores[i] {
+                improving_count += 1;
+            }
+        }
 
         // Use more sensitive thresholds for gradual changes
-        QualityTrend::Stable
+        let trend_threshold = 3.0; // More sensitive threshold
+        let consistency_threshold = recent_scores.len() / 3; // At least 1/3 of changes in same direction
+
+        if score_change > trend_threshold || improving_count >= consistency_threshold {
+            QualityTrend::Improving
+        } else if score_change < -trend_threshold || declining_count >= consistency_threshold {
+            QualityTrend::Degrading
+        } else {
+            QualityTrend::Stable
+        }
     }
 
     /// Add quality data point to history
     async fn add_quality_data_point(&self, quality_score: u8, _bitrate: u32) {
         let mut history = self.quality_history.write().await;
 
-        let data_point = QualityDataPoint {
-            quality_score,
-        };
+        let data_point = QualityDataPoint { quality_score };
 
         history.push_back(data_point);
 
@@ -1189,13 +1202,13 @@ impl AudioQualityManager {
         let current_preset = self.config.quality_preset;
 
         // Check if we should downgrade due to poor conditions
-        if overall_score < self.monitoring_config.degradation_threshold
-            && metrics.packet_loss > 5.0 {
-                return Some((
-                    self.get_downgrade_preset(current_preset),
-                    AdjustmentReason::NetworkDegradation,
-                ));
-            }
+        if overall_score < self.monitoring_config.degradation_threshold && metrics.packet_loss > 5.0
+        {
+            return Some((
+                self.get_downgrade_preset(current_preset),
+                AdjustmentReason::NetworkDegradation,
+            ));
+        }
 
         // Check if we can upgrade (only if stable for required period)
         if let Some(stable_since) = state.stable_since {
@@ -1356,5 +1369,47 @@ impl AudioQualityManager {
             QualityPreset::Maximum => QualityPreset::Maximum, // Can't go higher
             QualityPreset::Custom => QualityPreset::High,     // Safe upgrade
         }
+    }
+
+    /// Generate a comprehensive quality report
+    pub async fn generate_quality_report(&self) -> Result<serde_json::Value> {
+        let metrics = self.quality_metrics.read().await;
+        let history = self.quality_history.read().await;
+
+        let report = serde_json::json!({
+            "guild_id": self.guild_id,
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
+            "current_metrics": {
+                "effective_bitrate": metrics.effective_bitrate,
+                "buffer_health": metrics.buffer_health,
+                "encoding_performance": metrics.encoding_performance,
+                "stream_stability": metrics.stream_stability,
+                "average_quality_score": metrics.average_quality_score,
+                "quality_trend": format!("{:?}", metrics.quality_trend),
+                "degradation_events": metrics.degradation_events
+            },
+            "network_quality": {
+                "score": self.network_quality_score(),
+                "packet_loss": self.network_metrics.packet_loss,
+                "rtt_ms": self.network_metrics.rtt_ms,
+                "jitter_ms": self.network_metrics.jitter_ms,
+                "bandwidth_kbps": self.network_metrics.bandwidth_kbps
+            },
+            "configuration": {
+                "quality_preset": format!("{:?}", self.config.quality_preset),
+                "target_bitrate": self.config.bitrate,
+                "adaptive_quality": self.config.adaptive_quality,
+                "monitoring_enabled": self.monitoring_config.auto_adjustment_enabled
+            },
+            "history": {
+                "data_points": history.len(),
+                "window_size": self.monitoring_config.history_window_size
+            }
+        });
+
+        Ok(report)
     }
 }

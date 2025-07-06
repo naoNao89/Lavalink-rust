@@ -2,7 +2,6 @@
 // Provides robust streaming with monitoring, error recovery, and quality control
 
 use anyhow::{anyhow, Result};
-use songbird::input::{File as FileInput, HttpRequest, Input};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, RwLock};
@@ -11,10 +10,96 @@ use tracing::{debug, error, info, warn};
 
 use crate::audio::quality::{AudioQualityConfig, AudioQualityManager, QualityPreset};
 use crate::protocol::Track;
+
+// Discord-specific imports
+#[cfg(feature = "discord")]
+use songbird::input::{File as FileInput, HttpRequest, Input};
+
+#[cfg(feature = "discord")]
 use crate::voice::logging::{CorrelationId, PerformanceTimer, VoiceEvent, VoiceEventType};
 
+// Non-Discord alternatives
+#[cfg(not(feature = "discord"))]
+pub type CorrelationId = String;
+
+#[cfg(not(feature = "discord"))]
+pub struct PerformanceTimer {
+    start: Instant,
+}
+
+#[cfg(not(feature = "discord"))]
+impl PerformanceTimer {
+    pub fn new() -> Self {
+        Self {
+            start: Instant::now(),
+        }
+    }
+
+    pub fn start(name: &str) -> Self {
+        debug!("Starting performance timer: {}", name);
+        Self::new()
+    }
+
+    pub fn elapsed(&self) -> Duration {
+        self.start.elapsed()
+    }
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone)]
+pub enum VoiceEventType {
+    StreamStart,
+    StreamEnd,
+    QualityChange,
+    Error,
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone)]
+pub struct VoiceEvent {
+    pub event_type: VoiceEventType,
+    pub correlation_id: CorrelationId,
+    pub timestamp: Instant,
+}
+
+#[cfg(not(feature = "discord"))]
+impl VoiceEvent {
+    pub fn new(event_type: VoiceEventType, correlation_id: CorrelationId) -> Self {
+        Self {
+            event_type,
+            correlation_id,
+            timestamp: Instant::now(),
+        }
+    }
+}
+
+// Mock Input type for non-Discord builds
+#[cfg(not(feature = "discord"))]
+pub struct Input;
+
+#[cfg(not(feature = "discord"))]
+pub struct FileInput;
+
+#[cfg(not(feature = "discord"))]
+impl FileInput {
+    pub fn new(_path: std::path::PathBuf) -> Result<Self> {
+        Ok(Self)
+    }
+}
+
+#[cfg(not(feature = "discord"))]
+pub struct HttpRequest;
+
+#[cfg(not(feature = "discord"))]
+impl HttpRequest {
+    pub fn new(_client: reqwest::Client, _url: String) -> Result<Self> {
+        Ok(Self)
+    }
+}
+
 /// Type alias for quality change callback
-type QualityChangeCallback = Arc<RwLock<Option<Box<dyn Fn(QualityPreset, QualityPreset) + Send + Sync>>>>;
+type QualityChangeCallback =
+    Arc<RwLock<Option<Box<dyn Fn(QualityPreset, QualityPreset) + Send + Sync>>>>;
 
 /// Audio streaming manager for Discord voice connections
 #[allow(dead_code)] // Fields used in streaming management and quality control
@@ -122,8 +207,6 @@ pub struct StreamOptions {
     /// Enable stream monitoring
     pub enable_monitoring: bool,
 }
-
-
 
 /// Stream quality monitoring data
 #[derive(Debug, Clone)]

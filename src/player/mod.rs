@@ -31,8 +31,7 @@ pub enum VoiceQuality {
 
 /// Voice connection statistics across all players
 #[derive(Debug, Clone, Default)]
-pub struct VoiceConnectionStats {
-}
+pub struct VoiceConnectionStats {}
 
 pub mod engine;
 pub use engine::AudioPlayerEngine;
@@ -154,10 +153,6 @@ impl PlayerManager {
     pub fn voice_manager(&self) -> Arc<VoiceConnectionManager> {
         self.voice_manager.clone()
     }
-
-
-
-
 
     /// Get or create a player for a guild
     pub async fn get_or_create_player(
@@ -288,6 +283,51 @@ impl PlayerManager {
                 error!("Failed to send player event: {}", e);
             }
         }
+    }
+
+    /// Shutdown the player manager and clean up all resources
+    pub async fn shutdown(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        info!("Shutting down player manager...");
+
+        // Get all players and shut them down
+        let players = {
+            let players_guard = self.players.read().await;
+            players_guard.clone()
+        };
+
+        for (guild_id, player) in players {
+            info!("Shutting down player for guild {}", guild_id);
+            let player_guard = player.write().await;
+
+            // Stop any current playback
+            if let Some(ref audio_engine) = player_guard.audio_engine {
+                if let Err(e) = audio_engine.stop().await {
+                    warn!("Failed to stop audio engine for guild {}: {}", guild_id, e);
+                }
+            }
+
+            // Emit track end event if there's a current track
+            if let Some(ref track) = player_guard.current_track {
+                self.emit_event(PlayerEvent::TrackEnd {
+                    guild_id: guild_id.clone(),
+                    track: track.clone(),
+                    reason: TrackEndReason::Cleanup,
+                })
+                .await;
+            }
+        }
+
+        // Clear all players
+        {
+            let mut players_guard = self.players.write().await;
+            players_guard.clear();
+        }
+
+        // Shutdown voice manager
+        self.voice_manager.shutdown().await;
+
+        info!("Player manager shutdown complete");
+        Ok(())
     }
 
     /// Start the player update service

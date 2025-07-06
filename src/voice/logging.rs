@@ -485,8 +485,6 @@ impl VoiceEventLogger {
         }
     }
 
-
-
     /// Log a connection event
     pub fn log_connection_event(
         &self,
@@ -534,8 +532,6 @@ impl VoiceEventLogger {
 
         self.log_connection_event(event_type, details, None);
     }
-
-
 
     /// Log a recovery event
     pub fn log_recovery_event(
@@ -621,12 +617,4 @@ impl VoiceEventLogger {
 
         error_context.log_error(error);
     }
-
-
 }
-
-
-
-
-
-

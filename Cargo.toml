@@ -29,7 +29,7 @@ full-audio = ["codec-aac", "codec-vorbis", "codec-opus"]
 
 [dependencies]
 # Core async runtime and web framework (optimized features)
-tokio = { version = "1.45", features = ["rt-multi-thread", "net", "time", "sync", "macros", "signal"] }
+tokio = { version = "1.45", features = ["rt-multi-thread", "net", "time", "sync", "macros", "signal", "process"] }
 axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
 tower = { version = "0.5", features = ["util", "timeout", "load-shed", "limit"] }
 tower-http = { version = "0.6", features = ["fs", "trace", "cors", "compression-gzip"] }
