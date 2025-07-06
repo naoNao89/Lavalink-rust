@@ -30,7 +30,9 @@ pub struct PerformanceTimer {
 #[cfg(not(feature = "discord"))]
 impl PerformanceTimer {
     pub fn new() -> Self {
-        Self { start: Instant::now() }
+        Self {
+            start: Instant::now(),
+        }
     }
 
     pub fn start(name: &str) -> Self {

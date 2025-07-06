@@ -87,10 +87,7 @@ async fn main() -> Result<()> {
 
 fn init_tracing(args: &Args) -> Result<()> {
     use tracing_subscriber::{
-        fmt::format::FmtSpan,
-        layer::SubscriberExt,
-        util::SubscriberInitExt,
-        EnvFilter,
+        fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter,
     };
 
     // Determine log level priority: custom > trace > debug > verbose > default
@@ -179,7 +176,10 @@ fn create_filter(level: &str) -> tracing_subscriber::EnvFilter {
         "warn" => "lavalink_rust=warn,error",
         "error" => "lavalink_rust=error",
         _ => {
-            eprintln!("Warning: Unknown log level '{}', defaulting to 'info'", level);
+            eprintln!(
+                "Warning: Unknown log level '{}', defaulting to 'info'",
+                level
+            );
             "lavalink_rust=info,warn"
         }
     };
