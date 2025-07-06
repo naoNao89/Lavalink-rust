@@ -170,9 +170,22 @@ RUST_LOG=debug ./lavalink-rust
 # Common options:
 ./lavalink-rust \
   --config /path/to/application.yml \
-  --port 2333 \
-  --address 0.0.0.0 \
   --verbose
+
+# Debug options:
+./lavalink-rust --debug              # Enable debug logging
+./lavalink-rust --trace              # Enable trace logging (very verbose)
+./lavalink-rust --log-level warn     # Set custom log level
+./lavalink-rust --json-logs          # Output logs in JSON format
+./lavalink-rust --no-color           # Disable colored output
+./lavalink-rust --timestamps         # Show timestamps in logs
+
+# Combined example:
+./lavalink-rust \
+  --config /path/to/application.yml \
+  --debug \
+  --json-logs \
+  --timestamps
 ```
 
 ### Environment Variables

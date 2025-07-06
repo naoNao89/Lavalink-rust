@@ -1,8 +1,67 @@
 // Audio processing and source management module
 // This will handle audio sources, track loading, and audio processing
 
+#[cfg(feature = "discord")]
 pub mod quality;
+#[cfg(feature = "discord")]
 pub mod streaming;
+
+// Minimal stubs for non-Discord builds
+#[cfg(not(feature = "discord"))]
+pub mod quality {
+    //! Minimal audio quality stubs for non-Discord builds
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct AudioQualityConfig {
+        pub bitrate: u32,
+    }
+
+    impl Default for AudioQualityConfig {
+        fn default() -> Self {
+            Self { bitrate: 128 }
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct AudioQualityManager;
+
+    impl AudioQualityManager {
+        pub fn new(_config: AudioQualityConfig) -> Self {
+            Self
+        }
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub enum QualityPreset {
+        Low,
+        Medium,
+        High,
+    }
+}
+
+#[cfg(not(feature = "discord"))]
+pub mod streaming {
+    //! Minimal audio streaming stubs for non-Discord builds
+    use anyhow::Result;
+
+    #[derive(Clone)]
+    pub struct AudioStreamingManager;
+
+    impl AudioStreamingManager {
+        pub fn new(_guild_id: String) -> Self {
+            Self
+        }
+
+        pub async fn start_stream(&self, _track_url: &str) -> Result<()> {
+            Ok(())
+        }
+
+        pub async fn stop_stream(&self) -> Result<()> {
+            Ok(())
+        }
+    }
+}
 
 use anyhow::Result;
 use async_trait::async_trait;

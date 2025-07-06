@@ -3,16 +3,72 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use songbird::{
-    driver::{Channels, MixMode, SampleRate},
-    Config as SongbirdConfig,
-};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
 use tracing::{debug, error, info, warn};
+
+// Discord-specific imports
+#[cfg(feature = "discord")]
+use songbird::{
+    driver::{Channels, MixMode, SampleRate},
+    Config as SongbirdConfig,
+};
+
+// Non-Discord alternatives
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Channels {
+    Mono,
+    Stereo,
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MixMode {
+    Mono,
+    Stereo,
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SampleRate {
+    Hz8000,
+    Hz16000,
+    Hz22050,
+    Hz24000,
+    Hz44100,
+    Hz48000,
+}
+
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone)]
+pub struct SongbirdConfig {
+    pub sample_rate: SampleRate,
+    pub channels: Channels,
+    pub mix_mode: MixMode,
+}
+
+#[cfg(not(feature = "discord"))]
+impl SongbirdConfig {
+    pub fn mix_mode(mut self, mix_mode: MixMode) -> Self {
+        self.mix_mode = mix_mode;
+        self
+    }
+}
+
+#[cfg(not(feature = "discord"))]
+impl Default for SongbirdConfig {
+    fn default() -> Self {
+        Self {
+            sample_rate: SampleRate::Hz48000,
+            channels: Channels::Stereo,
+            mix_mode: MixMode::Stereo,
+        }
+    }
+}
 
 /// Audio quality configuration for Discord voice streaming
 #[derive(Debug, Clone, Serialize, Deserialize)]

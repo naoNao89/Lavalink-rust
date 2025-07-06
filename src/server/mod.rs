@@ -260,7 +260,8 @@ impl LavalinkServer {
 
     /// Build the Axum router
     pub fn build_router(&self) -> Router {
-        Router::new()
+        #[allow(unused_mut)]
+        let mut router = Router::new()
             // WebSocket endpoint
             .route("/v4/websocket", get(websocket_handler))
             // REST API endpoints
@@ -333,14 +334,6 @@ impl LavalinkServer {
                 "/v4/sessions/:session_id/players/:guild_id/filters",
                 patch(rest::update_player_filters_handler),
             )
-            .route(
-                "/v4/sessions/:session_id/players/:guild_id/filters",
-                delete(rest::clear_player_filters_handler),
-            )
-            .route(
-                "/v4/sessions/:session_id/players/:guild_id/filters/preset/:preset_name",
-                post(rest::apply_filter_preset_handler),
-            )
             // Filter presets
             .route("/v4/filters/presets", get(rest::get_filter_presets_handler))
             // Plugin management
@@ -374,7 +367,23 @@ impl LavalinkServer {
             .route(
                 "/v4/routeplanner/free/all",
                 post(rest::routeplanner_unmark_all_handler),
-            )
+            );
+
+        // Add Discord-specific routes conditionally
+        #[cfg(feature = "discord")]
+        {
+            router = router
+                .route(
+                    "/v4/sessions/:session_id/players/:guild_id/filters",
+                    delete(rest::clear_player_filters_handler),
+                )
+                .route(
+                    "/v4/sessions/:session_id/players/:guild_id/filters/preset/:preset_name",
+                    post(rest::apply_filter_preset_handler),
+                );
+        }
+
+        router
             // Middleware - auth first, then other layers
             .layer(middleware::from_fn_with_state(
                 self.app_state.clone(),
