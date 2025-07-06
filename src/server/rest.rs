@@ -28,17 +28,54 @@ fn discord_not_available_response(path: &str) -> Response {
     (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
 }
 
-// Macro to generate fallback handlers for all player-related endpoints
+// Macro to generate fallback handlers for Discord-specific endpoints only
 #[cfg(not(feature = "discord"))]
 macro_rules! generate_discord_fallback_handlers {
     () => {
-        /// Update player handler - /v4/sessions/{session_id}/players/{guild_id}
+        /// Update player handler - /v4/sessions/{session_id}/players/{guild_id} (non-Discord)
         pub async fn update_player_handler(
             Path((session_id, guild_id)): Path<(String, String)>,
-            State(_state): State<Arc<AppState>>,
-            Json(_request): Json<serde_json::Value>,
+            State(state): State<Arc<AppState>>,
+            Json(request): Json<serde_json::Value>,
         ) -> Response {
-            discord_not_available_response(&format!("/v4/sessions/{session_id}/players/{guild_id}"))
+            info!(
+                "Updating player for session: {}, guild: {} (non-Discord mode)",
+                session_id, guild_id
+            );
+
+            // Check if session exists
+            if !state.sessions.contains_key(&session_id) {
+                let error = ErrorResponse::new(
+                    404,
+                    "Session not found".to_string(),
+                    Some(format!("Session {session_id} not found")),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}"),
+                );
+                return (StatusCode::NOT_FOUND, Json(error)).into_response();
+            }
+
+            // For non-Discord builds, return a basic player response
+            // This allows the API to work but without actual audio functionality
+            let player_response = serde_json::json!({
+                "guildId": guild_id,
+                "track": null,
+                "volume": request.get("volume").and_then(|v| v.as_u64()).unwrap_or(100),
+                "paused": request.get("paused").and_then(|v| v.as_bool()).unwrap_or(false),
+                "state": {
+                    "time": 0,
+                    "position": 0,
+                    "connected": false,
+                    "ping": -1
+                },
+                "voice": {
+                    "token": null,
+                    "endpoint": null,
+                    "sessionId": null
+                },
+                "filters": {}
+            });
+
+            Json(player_response).into_response()
         }
 
         /// Get player queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
@@ -76,6 +113,7 @@ macro_rules! generate_discord_fallback_handlers {
         }
 
         /// Update queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+        #[allow(dead_code)]
         pub async fn update_queue_handler(
             Path((session_id, guild_id)): Path<(String, String)>,
             State(_state): State<Arc<AppState>>,
@@ -110,6 +148,7 @@ macro_rules! generate_discord_fallback_handlers {
         }
 
         /// Move track in queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/move
+        #[allow(dead_code)]
         pub async fn move_track_handler(
             Path((session_id, guild_id)): Path<(String, String)>,
             State(_state): State<Arc<AppState>>,
@@ -168,6 +207,7 @@ macro_rules! generate_discord_fallback_handlers {
         }
 
         /// Seek track handler - /v4/sessions/{session_id}/players/{guild_id}/seek
+        #[allow(dead_code)]
         pub async fn seek_track_handler(
             Path((session_id, guild_id)): Path<(String, String)>,
             State(_state): State<Arc<AppState>>,
@@ -520,16 +560,24 @@ pub async fn get_session_players_handler(
 /// Get players for session handler - /v4/sessions/{session_id}/players (fallback)
 #[cfg(not(feature = "discord"))]
 pub async fn get_session_players_handler(
-    Path(_session_id): Path<String>,
-    State(_state): State<Arc<AppState>>,
+    Path(session_id): Path<String>,
+    State(state): State<Arc<AppState>>,
 ) -> Response {
-    let error = ErrorResponse::new(
-        501,
-        "Not Implemented".to_string(),
-        Some("Discord integration feature is disabled".to_string()),
-        "/v4/sessions/*/players".to_string(),
-    );
-    (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
+    info!("Getting players for session: {} (non-Discord mode)", session_id);
+
+    // Check if session exists
+    if !state.sessions.contains_key(&session_id) {
+        let error = ErrorResponse::new(
+            404,
+            "Session not found".to_string(),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players"),
+        );
+        return (StatusCode::NOT_FOUND, Json(error)).into_response();
+    }
+
+    // Return empty array for non-Discord builds (no players can exist)
+    Json(Vec::<serde_json::Value>::new()).into_response()
 }
 
 /// Get player handler - /v4/sessions/{session_id}/players/{guild_id}
@@ -539,9 +587,43 @@ pub async fn get_player_handler(
 ) -> Response {
     #[cfg(not(feature = "discord"))]
     {
-        return discord_not_available_response(&format!(
-            "/v4/sessions/{session_id}/players/{guild_id}"
-        ));
+        info!(
+            "Getting player for session: {}, guild: {} (non-Discord mode)",
+            session_id, guild_id
+        );
+
+        // Check if session exists
+        if !state.sessions.contains_key(&session_id) {
+            let error = ErrorResponse::new(
+                404,
+                "Session not found".to_string(),
+                Some(format!("Session {session_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            return (StatusCode::NOT_FOUND, Json(error)).into_response();
+        }
+
+        // Return a basic player response for non-Discord builds
+        let player_response = serde_json::json!({
+            "guildId": guild_id,
+            "track": null,
+            "volume": 100,
+            "paused": false,
+            "state": {
+                "time": 0,
+                "position": 0,
+                "connected": false,
+                "ping": -1
+            },
+            "voice": {
+                "token": null,
+                "endpoint": null,
+                "sessionId": null
+            },
+            "filters": {}
+        });
+
+        return Json(player_response).into_response();
     }
 
     #[cfg(feature = "discord")]
@@ -602,9 +684,28 @@ pub async fn delete_player_handler(
 ) -> Response {
     #[cfg(not(feature = "discord"))]
     {
-        return discord_not_available_response(&format!(
-            "/v4/sessions/{session_id}/players/{guild_id}"
-        ));
+        info!(
+            "Deleting player for guild {} in session {} (non-Discord mode)",
+            guild_id, session_id
+        );
+
+        // Check if session exists
+        if !state.sessions.contains_key(&session_id) {
+            let error = ErrorResponse::new(
+                404,
+                "Session not found".to_string(),
+                Some(format!("Session {session_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            return (StatusCode::NOT_FOUND, Json(error)).into_response();
+        }
+
+        // For non-Discord builds, always return success (no actual players to delete)
+        info!(
+            "Player {} deleted successfully from session {} (non-Discord mode)",
+            guild_id, session_id
+        );
+        return StatusCode::NO_CONTENT.into_response();
     }
 
     #[cfg(feature = "discord")]
