@@ -97,9 +97,8 @@ fn init_tracing(args: &Args) -> Result<()> {
         "trace".to_string()
     } else if args.debug {
         "debug".to_string()
-    } else if args.verbose {
-        "info".to_string()
     } else {
+        // Both verbose and default case use "info"
         "info".to_string()
     };
 
@@ -176,10 +175,7 @@ fn create_filter(level: &str) -> tracing_subscriber::EnvFilter {
         "warn" => "lavalink_rust=warn,error",
         "error" => "lavalink_rust=error",
         _ => {
-            eprintln!(
-                "Warning: Unknown log level '{}', defaulting to 'info'",
-                level
-            );
+            eprintln!("Warning: Unknown log level '{level}', defaulting to 'info'");
             "lavalink_rust=info,warn"
         }
     };
