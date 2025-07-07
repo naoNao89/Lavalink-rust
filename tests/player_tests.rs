@@ -130,8 +130,6 @@ async fn test_voice_state_management() {
         token: "test_token".to_string(),
         endpoint: "test_endpoint".to_string(),
         session_id: "test_session_id".to_string(),
-        connected: true,
-        ping: 50,
     };
 
     // Set voice state (direct field access since setter was removed)
@@ -253,10 +251,10 @@ async fn test_concurrent_player_operations() {
     // Create multiple players concurrently
     for i in 0..5 {
         let manager = player_manager.clone();
-        let guild_id = format!("guild_{}", i);
+        let guild_id = format!("guild_{i}");
 
         let handle = tokio::spawn(async move {
-            let session_id = format!("session_{}", i);
+            let session_id = format!("session_{i}");
             let player = manager
                 .get_or_create_player(guild_id.clone(), session_id)
                 .await;
@@ -279,9 +277,9 @@ async fn test_concurrent_player_operations() {
 
     // Verify all players were created by checking each one individually
     for i in 0..5 {
-        let guild_id = format!("guild_{}", i);
+        let guild_id = format!("guild_{i}");
         let player = player_manager.get_player(&guild_id).await;
-        assert!(player.is_some(), "Player for guild_{} should exist", i);
+        assert!(player.is_some(), "Player for guild_{i} should exist");
     }
 
     // Verify each player has correct state

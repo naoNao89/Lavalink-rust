@@ -274,7 +274,7 @@ impl Filters {
         // Check plugin filters
         for filter_name in self.plugin_filters.keys() {
             if disabled_filters.contains(filter_name) {
-                errors.push(format!("Plugin filter '{}' is disabled", filter_name));
+                errors.push(format!("Plugin filter '{filter_name}' is disabled"));
             }
         }
 

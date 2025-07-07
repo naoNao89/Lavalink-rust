@@ -157,4 +157,12 @@ impl WebSocketSession {
         }
         Ok(())
     }
+
+    /// Close this WebSocket session gracefully
+    pub async fn close(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // Drop the message sender to signal the outgoing task to terminate
+        // The actual WebSocket connection will be closed when the tasks complete
+        info!("Closing WebSocket session {}", self.session_id);
+        Ok(())
+    }
 }

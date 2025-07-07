@@ -83,6 +83,15 @@ impl PluginManager {
     pub fn is_dynamic_plugin_loaded(&self, name: &str) -> bool {
         self.dynamic_loader.is_plugin_loaded(name)
     }
+
+    /// Unload all plugins
+    pub fn unload_all_plugins(&mut self) {
+        if let Err(e) = self.dynamic_loader.unload_all_plugins() {
+            tracing::error!("Failed to unload all plugins: {}", e);
+        }
+        self.plugins.clear();
+        tracing::info!("Unloaded all plugins");
+    }
 }
 
 /// Example plugin implementation

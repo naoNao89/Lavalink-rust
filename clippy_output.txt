@@ -1,0 +1,3492 @@
+warning: method `get_parameters` is never used
+   --> src/audio/quality.rs:571:8
+    |
+569 | impl AdjustmentPolicy {
+    | --------------------- method in this implementation
+570 |     /// Get adjustment parameters for this policy
+571 |     fn get_parameters(&self) -> (f32, u32, Duration) {
+    |        ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: field `guild_id` is never read
+   --> src/voice/monitoring.rs:147:5
+    |
+145 | struct ConnectionMetricsCollector {
+    |        -------------------------- field in this struct
+146 |     /// Guild ID being monitored
+147 |     guild_id: String,
+    |     ^^^^^^^^
+    |
+    = note: `ConnectionMetricsCollector` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: variables can be used directly in the `format!` string
+    --> src/server/rest.rs:1468:25
+     |
+1468 | /                         format!(
+1469 | |                             "/v4/sessions/{}/players/{}/queue/move",
+1470 | |                             session_id, guild_id
+1471 | |                         ),
+     | |_________________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+     = note: `#[warn(clippy::uninlined_format_args)]` on by default
+
+warning: field assignment outside of initializer for an instance created with Default::default()
+   --> src/audio/quality.rs:698:9
+    |
+698 |         adjustment_state.last_stable_quality = config.quality_preset;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: consider initializing the variable with `audio::quality::QualityAdjustmentState { last_stable_quality: config.quality_preset, ..Default::default() }` and removing relevant reassignments
+   --> src/audio/quality.rs:697:9
+    |
+697 |         let mut adjustment_state = QualityAdjustmentState::default();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#field_reassign_with_default
+    = note: `#[warn(clippy::field_reassign_with_default)]` on by default
+
+warning: the loop variable `i` is only used to index `presets`
+   --> src/audio/quality.rs:977:22
+    |
+977 |             for i in (from_idx + 1)..=to_idx {
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#needless_range_loop
+    = note: `#[warn(clippy::needless_range_loop)]` on by default
+help: consider using an iterator
+    |
+977 -             for i in (from_idx + 1)..=to_idx {
+977 +             for <item> in presets.iter().take(to_idx + 1).skip((from_idx + 1)) {
+    |
+
+warning: using `clone` on type `AdjustmentReason` which implements the `Copy` trait
+    --> src/audio/quality.rs:1357:34
+     |
+1357 |             *reason_counts.entry(adjustment.reason.clone()).or_insert(0) += 1;
+     |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try removing the `clone` call: `adjustment.reason`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#clone_on_copy
+     = note: `#[warn(clippy::clone_on_copy)]` on by default
+
+warning: returning the result of a `let` binding from a block
+    --> src/audio/quality.rs:1511:9
+     |
+1510 |         let stability = (100.0 - (coefficient_of_variation * 100.0).min(100.0)).max(0.0) as u8;
+     |         --------------------------------------------------------------------------------------- unnecessary `let` binding
+1511 |         stability
+     |         ^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return
+     = note: `#[warn(clippy::let_and_return)]` on by default
+help: return the expression directly
+     |
+1510 ~         
+1511 ~         (100.0 - (coefficient_of_variation * 100.0).min(100.0)).max(0.0) as u8
+     |
+
+warning: returning the result of a `let` binding from a block
+    --> src/audio/quality.rs:1533:9
+     |
+1532 |         let stability = self.calculate_stability(&quality_scores);
+     |         ---------------------------------------------------------- unnecessary `let` binding
+1533 |         stability
+     |         ^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return
+help: return the expression directly
+     |
+1532 ~         
+1533 ~         self.calculate_stability(&quality_scores)
+     |
+
+warning: returning the result of a `let` binding from a block
+    --> src/audio/quality.rs:1549:13
+     |
+1545 | /             let interval_score = 100
+1546 | |                 - ((effectiveness.average_interval_seconds as i64 - ideal_interval)
+1547 | |                     .abs()
+1548 | |                     .min(100)) as u8;
+     | |_____________________________________- unnecessary `let` binding
+1549 |               interval_score
+     |               ^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#let_and_return
+help: return the expression directly
+     |
+1545 ~             
+1546 ~             100
+1547 +                 - ((effectiveness.average_interval_seconds as i64 - ideal_interval)
+1548 +                     .abs()
+1549 +                     .min(100)) as u8
+     |
+
+warning: this `if` statement can be collapsed
+    --> src/audio/quality.rs:1967:9
+     |
+1967 | /         if overall_score < self.monitoring_config.degradation_threshold {
+1968 | |             if metrics.packet_loss > 5.0 {
+1969 | |                 return Some((
+1970 | |                     self.get_downgrade_preset(current_preset),
+...    |
+1974 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if
+     = note: `#[warn(clippy::collapsible_if)]` on by default
+help: collapse nested if block
+     |
+1967 ~         if overall_score < self.monitoring_config.degradation_threshold
+1968 ~             && metrics.packet_loss > 5.0 {
+1969 |                 return Some((
+ ...
+1972 |                 ));
+1973 ~             }
+     |
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+  --> src/audio/streaming.rs:32:9
+   |
+32 |         Arc<RwLock<Option<Box<dyn Fn(QualityPreset, QualityPreset) + Send + Sync>>>>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#type_complexity
+   = note: `#[warn(clippy::type_complexity)]` on by default
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/streaming.rs:826:51
+    |
+826 |         details.insert("from_preset".to_string(), format!("{:?}", from));
+    |                                                   ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+826 -         details.insert("from_preset".to_string(), format!("{:?}", from));
+826 +         details.insert("from_preset".to_string(), format!("{from:?}"));
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/streaming.rs:827:49
+    |
+827 |         details.insert("to_preset".to_string(), format!("{:?}", to));
+    |                                                 ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+827 -         details.insert("to_preset".to_string(), format!("{:?}", to));
+827 +         details.insert("to_preset".to_string(), format!("{to:?}"));
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:366:35
+    |
+366 |                     message: Some(format!("Failed to load HTTP resource: {}", e)),
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+366 -                     message: Some(format!("Failed to load HTTP resource: {}", e)),
+366 +                     message: Some(format!("Failed to load HTTP resource: {e}")),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:437:35
+    |
+437 |                     message: Some(format!("YouTube extraction failed: {}", e)),
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+437 -                     message: Some(format!("YouTube extraction failed: {}", e)),
+437 +                     message: Some(format!("YouTube extraction failed: {e}")),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:448:34
+    |
+448 |             .extract_video_info(&format!("ytsearch5:{}", query))
+    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+448 -             .extract_video_info(&format!("ytsearch5:{}", query))
+448 +             .extract_video_info(&format!("ytsearch5:{query}"))
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:467:35
+    |
+467 |                     message: Some(format!("YouTube search failed: {}", e)),
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+467 -                     message: Some(format!("YouTube search failed: {}", e)),
+467 +                     message: Some(format!("YouTube search failed: {e}")),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:672:35
+    |
+672 |                     message: Some(format!("SoundCloud extraction failed: {}", e)),
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+672 -                     message: Some(format!("SoundCloud extraction failed: {}", e)),
+672 +                     message: Some(format!("SoundCloud extraction failed: {e}")),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:682:28
+    |
+682 |         let search_query = format!("scsearch5:{}", query);
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+682 -         let search_query = format!("scsearch5:{}", query);
+682 +         let search_query = format!("scsearch5:{query}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:701:35
+    |
+701 |                     message: Some(format!("SoundCloud search failed: {}", e)),
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+701 -                     message: Some(format!("SoundCloud search failed: {}", e)),
+701 +                     message: Some(format!("SoundCloud search failed: {e}")),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:772:21
+    |
+772 |                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+772 -                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+772 +                     eprintln!("Failed to parse JSON line: {line} - Error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:900:35
+    |
+900 |                     message: Some(format!("Bandcamp extraction failed: {}", e)),
+    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+900 -                     message: Some(format!("Bandcamp extraction failed: {}", e)),
+900 +                     message: Some(format!("Bandcamp extraction failed: {e}")),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:931:39
+    |
+931 |                           message: Some(format!(
+    |  _______________________________________^
+932 | |                             "Bandcamp search failed: {}. Try using direct Bandcamp URLs instead.",
+933 | |                             e
+934 | |                         )),
+    | |_________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/mod.rs:936:32
+    |
+936 |                         cause: format!("Search error: {}", e),
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+936 -                         cause: format!("Search error: {}", e),
+936 +                         cause: format!("Search error: {e}"),
+    |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1099:21
+     |
+1099 |                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1099 -                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+1099 +                     eprintln!("Failed to parse JSON line: {line} - Error: {e}");
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1227:35
+     |
+1227 |                     message: Some(format!("Twitch extraction failed: {}", e)),
+     |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1227 -                     message: Some(format!("Twitch extraction failed: {}", e)),
+1227 +                     message: Some(format!("Twitch extraction failed: {e}")),
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1240:13
+     |
+1240 |             format!("https://www.twitch.tv/{}", query)
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1240 -             format!("https://www.twitch.tv/{}", query)
+1240 +             format!("https://www.twitch.tv/{query}")
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1329:21
+     |
+1329 |                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1329 -                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+1329 +                     eprintln!("Failed to parse JSON line: {line} - Error: {e}");
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1472:35
+     |
+1472 |                     message: Some(format!("Vimeo extraction failed: {}", e)),
+     |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1472 -                     message: Some(format!("Vimeo extraction failed: {}", e)),
+1472 +                     message: Some(format!("Vimeo extraction failed: {e}")),
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1491:31
+     |
+1491 | ...: Some(format!("Vimeo search is not currently supported. Please use direct Vimeo URLs instead. Search query was: '{}'", query)),
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1491 -                 message: Some(format!("Vimeo search is not currently supported. Please use direct Vimeo URLs instead. Search query was: '{}'", query)),
+1491 +                 message: Some(format!("Vimeo search is not currently supported. Please use direct Vimeo URLs instead. Search query was: '{query}'")),
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1561:21
+     |
+1561 |                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1561 -                     eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+1561 +                     eprintln!("Failed to parse JSON line: {line} - Error: {e}");
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1754:23
+     |
+1754 |             uri: Some(format!("file://{}", file_path)),
+     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1754 -             uri: Some(format!("file://{}", file_path)),
+1754 +             uri: Some(format!("file://{file_path}")),
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:1901:20
+     |
+1901 |             return format!("Audio from {}", host);
+     |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1901 -             return format!("Audio from {}", host);
+1901 +             return format!("Audio from {host}");
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> src/audio/mod.rs:2011:18
+     |
+2011 |             Some(format!("spotify track {}", track_id))
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+2011 -             Some(format!("spotify track {}", track_id))
+2011 +             Some(format!("spotify track {track_id}"))
+     |
+
+warning: clamp-like pattern without using clamp function
+   --> src/player/engine.rs:379:30
+    |
+379 |                 let volume = (*volume_value / 5.0).min(1.0).max(0.0);
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with clamp: `(*volume_value / 5.0).clamp(0.0, 1.0)`
+    |
+    = note: clamp will panic if max < min, min.is_nan(), or max.is_nan()
+    = note: clamp returns NaN if the input is NaN
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#manual_clamp
+    = note: `#[warn(clippy::manual_clamp)]` on by default
+
+warning: variables can be used directly in the `format!` string
+   --> src/player/mod.rs:621:32
+    |
+621 |                     return Err(format!("Voice connection failed: {}", e).into());
+    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+621 -                     return Err(format!("Voice connection failed: {}", e).into());
+621 +                     return Err(format!("Voice connection failed: {e}").into());
+    |
+
+warning: variables can be used directly in the `format!` string
+    --> src/player/mod.rs:1050:28
+     |
+1050 |                 return Err(format!("Audio playback failed: {}", e).into());
+     |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1050 -                 return Err(format!("Audio playback failed: {}", e).into());
+1050 +                 return Err(format!("Audio playback failed: {e}").into());
+     |
+
+warning: this `impl` can be derived
+    --> src/voice/connection.rs:1758:1
+     |
+1758 | / impl Default for RecoveryState {
+1759 | |     fn default() -> Self {
+1760 | |         Self {
+1761 | |             consecutive_failures: 0,
+...    |
+1768 | | }
+     | |_^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls
+     = note: `#[warn(clippy::derivable_impls)]` on by default
+help: replace the manual implementation with a derive attribute
+     |
+1745 + #[derive(Default)]
+1746 ~ pub struct RecoveryState {
+     |
+
+warning: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+   --> src/voice/discord.rs:378:9
+    |
+378 | /         match ctx {
+379 | |             EventContext::Track(track_list) => {
+380 | |                 for (track_state, _track_handle) in *track_list {
+381 | |                     debug!("Track event for guild {}: {:?}", self.guild_id, track_state);
+...   |
+388 | |             _ => {}
+389 | |         }
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#single_match
+    = note: `#[warn(clippy::single_match)]` on by default
+help: try
+    |
+378 ~         if let EventContext::Track(track_list) = ctx {
+379 +             for (track_state, _track_handle) in *track_list {
+380 +                 debug!("Track event for guild {}: {:?}", self.guild_id, track_state);
+381 + 
+382 +                 // Handle track events here
+383 +                 // Handle track events based on the track state
+384 +                 info!("Track event in guild {}: {:?}", self.guild_id, track_state);
+385 +             }
+386 +         }
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/logging.rs:618:54
+    |
+618 |             details.insert("latency_ms".to_string(), format!("{:.2}", latency));
+    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+618 -             details.insert("latency_ms".to_string(), format!("{:.2}", latency));
+618 +             details.insert("latency_ms".to_string(), format!("{latency:.2}"));
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/logging.rs:622:63
+    |
+622 |             details.insert("packet_loss_percent".to_string(), format!("{:.2}", loss));
+    |                                                               ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+622 -             details.insert("packet_loss_percent".to_string(), format!("{:.2}", loss));
+622 +             details.insert("packet_loss_percent".to_string(), format!("{loss:.2}"));
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/logging.rs:780:31
+    |
+780 |                 .map(|(k, v)| format!("{}={}", k, v))
+    |                               ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+780 -                 .map(|(k, v)| format!("{}={}", k, v))
+780 +                 .map(|(k, v)| format!("{k}={v}"))
+    |
+
+warning: this `impl` can be derived
+  --> src/voice/monitoring.rs:32:1
+   |
+32 | / impl Default for HealthStatus {
+33 | |     fn default() -> Self {
+34 | |         HealthStatus::Unknown
+35 | |     }
+36 | | }
+   | |_^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls
+help: replace the manual implementation with a derive attribute and mark the default variant
+   |
+19 + #[derive(Default)]
+20 ~ pub enum HealthStatus {
+21 |     /// Connection is healthy and functioning normally
+...
+29 |     /// Connection status is unknown or being checked
+30 ~     #[default]
+31 ~     Unknown,
+   |
+
+warning: `score` is never smaller than `0` and has therefore no effect
+   --> src/voice/monitoring.rs:320:9
+    |
+320 |         score.max(0)
+    |         ^^^^^^^^^^^^ help: try: `score`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_min_or_max
+    = note: `#[warn(clippy::unnecessary_min_or_max)]` on by default
+
+warning: `score` is never smaller than `0` and has therefore no effect
+   --> src/voice/monitoring.rs:745:9
+    |
+745 |         score.max(0)
+    |         ^^^^^^^^^^^^ help: try: `score`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_min_or_max
+
+warning: field assignment outside of initializer for an instance created with Default::default()
+   --> src/voice/monitoring.rs:896:9
+    |
+896 |         summary.total_monitored_guilds = health_results.len() as u32;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: consider initializing the variable with `voice::monitoring::MonitoringSummary { total_monitored_guilds: health_results.len() as u32, ..Default::default() }` and removing relevant reassignments
+   --> src/voice/monitoring.rs:895:9
+    |
+895 |         let mut summary = MonitoringSummary::default();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#field_reassign_with_default
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/monitoring.rs:975:40
+    |
+975 |                     result.issues.push(format!("Connection error: {}", error));
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+975 -                     result.issues.push(format!("Connection error: {}", error));
+975 +                     result.issues.push(format!("Connection error: {error}"));
+    |
+
+warning: `lavalink-rust` (lib) generated 47 warnings (run `cargo clippy --fix --lib -p lavalink-rust` to apply 40 suggestions)
+warning: method `app_state` is never used
+   --> src/server/mod.rs:158:12
+    |
+65  | impl LavalinkServer {
+    | ------------------- method in this implementation
+...
+158 |     pub fn app_state(&self) -> Arc<AppState> {
+    |            ^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` on by default
+
+warning: multiple fields are never read
+   --> src/audio/quality.rs:99:5
+    |
+91  | pub struct AudioQualityManager {
+    |            ------------------- fields in this struct
+...
+99  |     quality_metrics: Arc<RwLock<QualityMetrics>>,
+    |     ^^^^^^^^^^^^^^^
+100 |     /// Quality monitoring configuration
+101 |     monitoring_config: QualityMonitoringConfig,
+    |     ^^^^^^^^^^^^^^^^^
+102 |     /// Bitrate adjustment configuration
+103 |     adjustment_config: BitrateAdjustmentConfig,
+    |     ^^^^^^^^^^^^^^^^^
+104 |     /// Historical quality data for trend analysis
+105 |     quality_history: Arc<RwLock<VecDeque<QualityDataPoint>>>,
+    |     ^^^^^^^^^^^^^^^
+106 |     /// Quality adjustment state tracking
+107 |     adjustment_state: Arc<RwLock<QualityAdjustmentState>>,
+    |     ^^^^^^^^^^^^^^^^
+108 |     /// Last quality adjustment timestamp
+109 |     last_adjustment: Arc<RwLock<Option<Instant>>>,
+    |     ^^^^^^^^^^^^^^^
+110 |     /// Quality alert callback
+111 |     alert_callback: Option<Box<dyn Fn(QualityAlert, String) + Send + Sync>>,
+    |     ^^^^^^^^^^^^^^
+
+warning: multiple fields are never read
+   --> src/audio/quality.rs:131:9
+    |
+129 | pub struct QualityMetrics {
+    |            -------------- fields in this struct
+130 |     /// Current effective bitrate (kbps)
+131 |     pub effective_bitrate: u32,
+    |         ^^^^^^^^^^^^^^^^^
+132 |     /// Buffer health percentage (0-100)
+133 |     pub buffer_health: u8,
+    |         ^^^^^^^^^^^^^
+134 |     /// Encoding performance score (0-100)
+135 |     pub encoding_performance: u8,
+    |         ^^^^^^^^^^^^^^^^^^^^
+136 |     /// Stream stability score (0-100)
+137 |     pub stream_stability: u8,
+    |         ^^^^^^^^^^^^^^^^
+138 |     /// Quality degradation events in last minute
+139 |     pub degradation_events: u32,
+    |         ^^^^^^^^^^^^^^^^^^
+140 |     /// Average quality score over time window
+141 |     pub average_quality_score: u8,
+    |         ^^^^^^^^^^^^^^^^^^^^^
+142 |     /// Timestamp of last update
+143 |     pub last_update: Instant,
+    |         ^^^^^^^^^^^
+144 |     /// Quality trend (Improving, Stable, Degrading)
+145 |     pub quality_trend: QualityTrend,
+    |         ^^^^^^^^^^^^^
+    |
+    = note: `QualityMetrics` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: variants `Improving` and `Degrading` are never constructed
+   --> src/audio/quality.rs:151:5
+    |
+150 | pub enum QualityTrend {
+    |          ------------ variants in this enum
+151 |     Improving,
+    |     ^^^^^^^^^
+152 |     Stable,
+153 |     Degrading,
+    |     ^^^^^^^^^
+    |
+    = note: `QualityTrend` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: variants `Info`, `Warning`, and `Critical` are never constructed
+   --> src/audio/quality.rs:159:5
+    |
+158 | pub enum QualityAlert {
+    |          ------------ variants in this enum
+159 |     Info,
+    |     ^^^^
+160 |     Warning,
+    |     ^^^^^^^
+161 |     Critical,
+    |     ^^^^^^^^
+    |
+    = note: `QualityAlert` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `monitoring_interval`, `history_window_size`, `degradation_threshold`, `critical_threshold`, `auto_adjustment_enabled`, and `adjustment_cooldown` are never read
+   --> src/audio/quality.rs:168:9
+    |
+166 | pub struct QualityMonitoringConfig {
+    |            ----------------------- fields in this struct
+167 |     /// Monitoring interval in seconds
+168 |     pub monitoring_interval: Duration,
+    |         ^^^^^^^^^^^^^^^^^^^
+169 |     /// History window size for trend analysis
+170 |     pub history_window_size: usize,
+    |         ^^^^^^^^^^^^^^^^^^^
+171 |     /// Threshold for quality degradation alert
+172 |     pub degradation_threshold: u8,
+    |         ^^^^^^^^^^^^^^^^^^^^^
+173 |     /// Threshold for critical quality alert
+174 |     pub critical_threshold: u8,
+    |         ^^^^^^^^^^^^^^^^^^
+175 |     /// Enable automatic quality adjustment
+176 |     pub auto_adjustment_enabled: bool,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+177 |     /// Minimum time between quality adjustments
+178 |     pub adjustment_cooldown: Duration,
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `QualityMonitoringConfig` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: multiple fields are never read
+   --> src/audio/quality.rs:185:9
+    |
+183 | pub struct BitrateAdjustmentConfig {
+    |            ----------------------- fields in this struct
+184 |     /// Enable gradual quality transitions
+185 |     pub gradual_transitions: bool,
+    |         ^^^^^^^^^^^^^^^^^^^
+186 |     /// Hysteresis margin to prevent oscillation (percentage)
+187 |     pub hysteresis_margin: f32,
+    |         ^^^^^^^^^^^^^^^^^
+188 |     /// Maximum bitrate change per adjustment (kbps)
+189 |     pub max_bitrate_change: u32,
+    |         ^^^^^^^^^^^^^^^^^^
+190 |     /// Adjustment sensitivity (0.0-1.0, higher = more sensitive)
+191 |     pub adjustment_sensitivity: f32,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+192 |     /// Custom adjustment policy
+193 |     pub adjustment_policy: AdjustmentPolicy,
+    |         ^^^^^^^^^^^^^^^^^
+194 |     /// Minimum stable period before allowing upgrades
+195 |     pub upgrade_stability_period: Duration,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+196 |     /// Emergency downgrade threshold (immediate action)
+197 |     pub emergency_threshold: u8,
+    |         ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `BitrateAdjustmentConfig` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: variants `Conservative`, `Aggressive`, and `Custom` are never constructed
+   --> src/audio/quality.rs:204:5
+    |
+202 | pub enum AdjustmentPolicy {
+    |          ---------------- variants in this enum
+203 |     /// Conservative: Slow adjustments, prioritize stability
+204 |     Conservative,
+    |     ^^^^^^^^^^^^
+...
+208 |     Aggressive,
+    |     ^^^^^^^^^^
+209 |     /// Custom: User-defined parameters
+210 |     Custom,
+    |     ^^^^^^
+    |
+    = note: `AdjustmentPolicy` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `current_phase`, `stable_since`, `adjustment_streak`, and `recent_adjustments` are never read
+   --> src/audio/quality.rs:217:5
+    |
+215 | struct QualityAdjustmentState {
+    |        ---------------------- fields in this struct
+216 |     /// Current adjustment phase
+217 |     current_phase: AdjustmentPhase,
+    |     ^^^^^^^^^^^^^
+...
+221 |     stable_since: Option<Instant>,
+    |     ^^^^^^^^^^^^
+222 |     /// Number of consecutive adjustments in same direction
+223 |     adjustment_streak: u32,
+    |     ^^^^^^^^^^^^^^^^^
+224 |     /// Recent adjustment history for hysteresis
+225 |     recent_adjustments: VecDeque<QualityAdjustment>,
+    |     ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `QualityAdjustmentState` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: variants `Degrading`, `Recovering`, and `Emergency` are never constructed
+   --> src/audio/quality.rs:232:5
+    |
+230 | enum AdjustmentPhase {
+    |      --------------- variants in this enum
+231 |     Stable,
+232 |     Degrading,
+    |     ^^^^^^^^^
+233 |     Recovering,
+    |     ^^^^^^^^^^
+234 |     Emergency,
+    |     ^^^^^^^^^
+    |
+    = note: `AdjustmentPhase` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `timestamp`, `from_preset`, `to_preset`, `reason`, and `success` are never read
+   --> src/audio/quality.rs:240:5
+    |
+239 | struct QualityAdjustment {
+    |        ----------------- fields in this struct
+240 |     timestamp: Instant,
+    |     ^^^^^^^^^
+241 |     from_preset: QualityPreset,
+    |     ^^^^^^^^^^^
+242 |     to_preset: QualityPreset,
+    |     ^^^^^^^^^
+243 |     reason: AdjustmentReason,
+    |     ^^^^^^
+244 |     success: bool,
+    |     ^^^^^^^
+    |
+    = note: `QualityAdjustment` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: variants `NetworkDegradation`, `NetworkImprovement`, `BufferUnderrun`, `EncodingIssues`, `UserRequest`, and `Emergency` are never constructed
+   --> src/audio/quality.rs:250:5
+    |
+249 | pub enum AdjustmentReason {
+    |          ---------------- variants in this enum
+250 |     NetworkDegradation,
+    |     ^^^^^^^^^^^^^^^^^^
+251 |     NetworkImprovement,
+    |     ^^^^^^^^^^^^^^^^^^
+252 |     BufferUnderrun,
+    |     ^^^^^^^^^^^^^^
+253 |     EncodingIssues,
+    |     ^^^^^^^^^^^^^^
+254 |     UserRequest,
+    |     ^^^^^^^^^^^
+255 |     Emergency,
+    |     ^^^^^^^^^
+    |
+    = note: `AdjustmentReason` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `timestamp`, `quality_score`, `bitrate`, and `network_score` are never read
+   --> src/audio/quality.rs:261:5
+    |
+260 | struct QualityDataPoint {
+    |        ---------------- fields in this struct
+261 |     timestamp: Instant,
+    |     ^^^^^^^^^
+262 |     quality_score: u8,
+    |     ^^^^^^^^^^^^^
+263 |     bitrate: u32,
+    |     ^^^^^^^
+264 |     network_score: u8,
+    |     ^^^^^^^^^^^^^
+    |
+    = note: `QualityDataPoint` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `QualityAnalyticsReport` is never constructed
+   --> src/audio/quality.rs:269:12
+    |
+269 | pub struct QualityAnalyticsReport {
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `QualityAnalyticsReport` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `HistoricalSummary` is never constructed
+   --> src/audio/quality.rs:288:12
+    |
+288 | pub struct HistoricalSummary {
+    |            ^^^^^^^^^^^^^^^^^
+    |
+    = note: `HistoricalSummary` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `AdjustmentSummary` is never constructed
+   --> src/audio/quality.rs:313:12
+    |
+313 | pub struct AdjustmentSummary {
+    |            ^^^^^^^^^^^^^^^^^
+    |
+    = note: `AdjustmentSummary` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `PerformanceInsights` is never constructed
+   --> src/audio/quality.rs:332:12
+    |
+332 | pub struct PerformanceInsights {
+    |            ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `PerformanceInsights` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `PerformanceTrend` is never constructed
+   --> src/audio/quality.rs:349:12
+    |
+349 | pub struct PerformanceTrend {
+    |            ^^^^^^^^^^^^^^^^
+    |
+    = note: `PerformanceTrend` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: variants `Improving` and `Degrading` are never constructed
+   --> src/audio/quality.rs:363:5
+    |
+362 | pub enum TrendDirection {
+    |          -------------- variants in this enum
+363 |     Improving,
+    |     ^^^^^^^^^
+364 |     Stable,
+365 |     Degrading,
+    |     ^^^^^^^^^
+    |
+    = note: `TrendDirection` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `QualityRecommendation` is never constructed
+   --> src/audio/quality.rs:370:12
+    |
+370 | pub struct QualityRecommendation {
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `QualityRecommendation` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: enum `RecommendationType` is never used
+   --> src/audio/quality.rs:387:10
+    |
+387 | pub enum RecommendationType {
+    |          ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `RecommendationType` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: enum `RecommendationPriority` is never used
+   --> src/audio/quality.rs:397:10
+    |
+397 | pub enum RecommendationPriority {
+    |          ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `RecommendationPriority` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: enum `RecommendationComplexity` is never used
+   --> src/audio/quality.rs:406:10
+    |
+406 | pub enum RecommendationComplexity {
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `RecommendationComplexity` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: multiple fields are never read
+   --> src/audio/quality.rs:416:9
+    |
+414 | pub struct QualityTrendAnalysis {
+    |            -------------------- fields in this struct
+415 |     /// Analysis period in minutes
+416 |     pub period_minutes: u32,
+    |         ^^^^^^^^^^^^^^
+417 |     /// Number of data points analyzed
+418 |     pub data_points: usize,
+    |         ^^^^^^^^^^^
+419 |     /// Overall quality trend direction
+420 |     pub quality_trend: TrendDirection,
+    |         ^^^^^^^^^^^^^
+421 |     /// Average quality score
+422 |     pub average_quality: f32,
+    |         ^^^^^^^^^^^^^^^
+423 |     /// Quality stability score (0-100)
+424 |     pub quality_stability: u8,
+    |         ^^^^^^^^^^^^^^^^^
+425 |     /// Bitrate trend direction
+426 |     pub bitrate_trend: TrendDirection,
+    |         ^^^^^^^^^^^^^
+427 |     /// Average bitrate
+428 |     pub average_bitrate: f32,
+    |         ^^^^^^^^^^^^^^^
+429 |     /// Network performance trend
+430 |     pub network_trend: TrendDirection,
+    |         ^^^^^^^^^^^^^
+431 |     /// Average network score
+432 |     pub average_network_score: f32,
+    |         ^^^^^^^^^^^^^^^^^^^^^
+433 |     /// Number of degradation events
+434 |     pub degradation_events: u32,
+    |         ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `QualityTrendAnalysis` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: multiple fields are never read
+   --> src/audio/quality.rs:441:9
+    |
+439 | pub struct AdjustmentEffectiveness {
+    |            ----------------------- fields in this struct
+440 |     /// Total number of adjustments
+441 |     pub total_adjustments: u32,
+    |         ^^^^^^^^^^^^^^^^^
+442 |     /// Number of successful adjustments
+443 |     pub successful_adjustments: u32,
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+444 |     /// Success rate percentage
+445 |     pub success_rate: f32,
+    |         ^^^^^^^^^^^^
+446 |     /// Average interval between adjustments (seconds)
+447 |     pub average_interval_seconds: u64,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^
+448 |     /// Number of quality upgrades
+449 |     pub upgrade_count: u32,
+    |         ^^^^^^^^^^^^^
+450 |     /// Number of quality downgrades
+451 |     pub downgrade_count: u32,
+    |         ^^^^^^^^^^^^^^^
+452 |     /// Current adjustment streak
+453 |     pub current_streak: u32,
+    |         ^^^^^^^^^^^^^^
+454 |     /// Stability score (0-100)
+455 |     pub stability_score: u8,
+    |         ^^^^^^^^^^^^^^^
+    |
+    = note: `AdjustmentEffectiveness` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: method `get_parameters` is never used
+   --> src/audio/quality.rs:571:8
+    |
+569 | impl AdjustmentPolicy {
+    | --------------------- method in this implementation
+570 |     /// Get adjustment parameters for this policy
+571 |     fn get_parameters(&self) -> (f32, u32, Duration) {
+    |        ^^^^^^^^^^^^^^
+
+warning: multiple methods are never used
+    --> src/audio/quality.rs:765:14
+     |
+689  | impl AudioQualityManager {
+     | ------------------------ methods in this implementation
+...
+765  |     async fn adjust_quality_for_network(&mut self) -> Result<()> {
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+800  |     async fn determine_quality_adjustment(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+865  |     async fn execute_quality_adjustment(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+930  |     async fn execute_gradual_transition(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+954  |     fn calculate_transition_steps(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1091 |     pub fn set_alert_callback<F>(&mut self, callback: F)
+     |            ^^^^^^^^^^^^^^^^^^
+...
+1099 |     pub fn update_monitoring_config(&mut self, config: QualityMonitoringConfig) {
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1110 |     pub fn update_adjustment_config(&mut self, config: BitrateAdjustmentConfig) {
+     |            ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1119 |     pub async fn trigger_quality_adjustment(&mut self) -> Result<()> {
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1128 |     pub fn get_current_preset(&self) -> QualityPreset {
+     |            ^^^^^^^^^^^^^^^^^^
+...
+1133 |     pub async fn generate_quality_report(&self) -> Result<QualityAnalyticsReport> {
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^
+...
+1156 |     pub async fn get_quality_trend_analysis(&self, period_minutes: u32) -> QualityTrendAnalysis {
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1191 |     pub async fn get_adjustment_effectiveness(&self) -> AdjustmentEffectiveness {
+     |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1243 |     async fn calculate_historical_summary(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1303 |     async fn calculate_adjustment_summary(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1374 |     async fn generate_performance_insights(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1412 |     async fn generate_recommendations(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1472 |     fn calculate_trend_direction<T: Into<f32> + Copy>(&self, data: &[T]) -> TrendDirection {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1496 |     fn calculate_stability<T: Into<f32> + Copy>(&self, data: &[T]) -> u8 {
+     |        ^^^^^^^^^^^^^^^^^^^
+...
+1515 |     fn calculate_standard_deviation(&self, data: &[f32]) -> f32 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1526 |     fn calculate_consistency_score(&self, history: &VecDeque<QualityDataPoint>) -> u8 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1537 |     async fn calculate_adaptation_score(&self) -> u8 {
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1559 |     fn calculate_efficiency_score(&self, metrics: &QualityMetrics) -> u8 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1583 |     fn generate_performance_trends(
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1652 |     fn calculate_trend_strength(&self, data: &[f32]) -> f32 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1670 |     fn calculate_trend_confidence(&self, data: &[f32]) -> f32 {
+     |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1691 |     async fn calculate_adjustment_stability_score(&self, state: &QualityAdjustmentState) -> u8 {
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1711 |     pub async fn get_quality_metrics(&self) -> QualityMetrics {
+     |                  ^^^^^^^^^^^^^^^^^^^
+...
+1716 |     pub async fn update_quality_metrics(
+     |                  ^^^^^^^^^^^^^^^^^^^^^^
+...
+1758 |     async fn calculate_overall_quality_score(&self, metrics: &QualityMetrics) -> u8 {
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1775 |     async fn calculate_quality_trend(&self, current_score: u8) -> QualityTrend {
+     |              ^^^^^^^^^^^^^^^^^^^^^^^
+...
+1817 |     async fn add_quality_data_point(&self, quality_score: u8, bitrate: u32) {
+     |              ^^^^^^^^^^^^^^^^^^^^^^
+...
+1836 |     async fn handle_quality_degradation(&self, quality_score: u8) {
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1871 |     async fn attempt_quality_recovery(&self) -> Result<()> {
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1894 |     pub async fn get_monitoring_stats(&self) -> Result<serde_json::Value> {
+     |                  ^^^^^^^^^^^^^^^^^^^^
+...
+1934 |     async fn should_apply_hysteresis(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^
+...
+1958 |     async fn evaluate_stable_phase_adjustment(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1994 |     async fn evaluate_degrading_phase_adjustment(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+2014 |     async fn evaluate_recovering_phase_adjustment(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+2045 |     async fn evaluate_emergency_phase_adjustment(
+     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+2065 |     async fn update_stable_state(&self) {
+     |              ^^^^^^^^^^^^^^^^^^^
+...
+2076 |     fn is_same_direction(
+     |        ^^^^^^^^^^^^^^^^^
+...
+2092 |     fn is_upgrade(&self, from: QualityPreset, to: QualityPreset) -> bool {
+     |        ^^^^^^^^^^
+...
+2097 |     fn is_downgrade(&self, from: QualityPreset, to: QualityPreset) -> bool {
+     |        ^^^^^^^^^^^^
+...
+2102 |     fn get_preset_rank(&self, preset: QualityPreset) -> u8 {
+     |        ^^^^^^^^^^^^^^^
+...
+2114 |     fn get_downgrade_preset(&self, current: QualityPreset) -> QualityPreset {
+     |        ^^^^^^^^^^^^^^^^^^^^
+...
+2126 |     fn get_upgrade_preset(&self, current: QualityPreset) -> QualityPreset {
+     |        ^^^^^^^^^^^^^^^^^^
+
+warning: fields `quality_manager` and `quality_change_callback` are never read
+  --> src/audio/streaming.rs:29:5
+   |
+17 | pub struct AudioStreamingManager {
+   |            --------------------- fields in this struct
+...
+29 |     quality_manager: Arc<RwLock<Option<AudioQualityManager>>>,
+   |     ^^^^^^^^^^^^^^^
+30 |     /// Quality change notification callback
+31 |     quality_change_callback:
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `quality_config` is never read
+  --> src/audio/streaming.rs:41:9
+   |
+37 | pub struct StreamingSession {
+   |            ---------------- field in this struct
+...
+41 |     pub quality_config: AudioQualityConfig,
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `StreamingSession` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: variants `Buffering` and `Paused` are never constructed
+  --> src/audio/streaming.rs:60:5
+   |
+56 | pub enum StreamState {
+   |          ----------- variants in this enum
+...
+60 |     Buffering,
+   |     ^^^^^^^^^
+...
+64 |     Paused,
+   |     ^^^^^^
+   |
+   = note: `StreamState` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `bytes_streamed`, `buffer_underruns`, `connection_drops`, `average_bitrate`, and `quality_degradations` are never read
+  --> src/audio/streaming.rs:77:9
+   |
+75 | pub struct StreamMetrics {
+   |            ------------- fields in this struct
+76 |     /// Total bytes streamed
+77 |     pub bytes_streamed: u64,
+   |         ^^^^^^^^^^^^^^
+...
+81 |     pub buffer_underruns: u32,
+   |         ^^^^^^^^^^^^^^^^
+82 |     /// Number of connection drops
+83 |     pub connection_drops: u32,
+   |         ^^^^^^^^^^^^^^^^
+84 |     /// Average bitrate achieved (kbps)
+85 |     pub average_bitrate: u32,
+   |         ^^^^^^^^^^^^^^^
+86 |     /// Quality degradation events
+87 |     pub quality_degradations: u32,
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `StreamMetrics` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `stream_timeout` is never read
+   --> src/audio/streaming.rs:118:9
+    |
+108 | pub struct RetryConfig {
+    |            ----------- field in this struct
+...
+118 |     pub stream_timeout: Duration,
+    |         ^^^^^^^^^^^^^^
+    |
+    = note: `RetryConfig` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `adaptive_quality`, `buffer_size`, and `connection_timeout` are never read
+   --> src/audio/streaming.rs:127:9
+    |
+123 | pub struct StreamOptions {
+    |            ------------- fields in this struct
+...
+127 |     pub adaptive_quality: bool,
+    |         ^^^^^^^^^^^^^^^^
+128 |     /// Buffer size in seconds
+129 |     pub buffer_size: f32,
+    |         ^^^^^^^^^^^
+130 |     /// Connection timeout
+131 |     pub connection_timeout: Duration,
+    |         ^^^^^^^^^^^^^^^^^^
+    |
+    = note: `StreamOptions` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `QualityChangeNotification` is never constructed
+   --> src/audio/streaming.rs:138:12
+    |
+138 | pub struct QualityChangeNotification {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `QualityChangeNotification` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `effective_bitrate`, `buffer_health`, `encoding_performance`, `stream_stability`, `connection_quality`, and `last_update` are never read
+   --> src/audio/streaming.rs:157:9
+    |
+155 | pub struct StreamQualityData {
+    |            ----------------- fields in this struct
+156 |     /// Current effective bitrate (kbps)
+157 |     pub effective_bitrate: u32,
+    |         ^^^^^^^^^^^^^^^^^
+158 |     /// Buffer health percentage (0-100)
+159 |     pub buffer_health: u8,
+    |         ^^^^^^^^^^^^^
+160 |     /// Encoding performance score (0-100)
+161 |     pub encoding_performance: u8,
+    |         ^^^^^^^^^^^^^^^^^^^^
+162 |     /// Stream stability score (0-100)
+163 |     pub stream_stability: u8,
+    |         ^^^^^^^^^^^^^^^^
+164 |     /// Connection quality score (0-100)
+165 |     pub connection_quality: u8,
+    |         ^^^^^^^^^^^^^^^^^^
+166 |     /// Last update timestamp
+167 |     pub last_update: Instant,
+    |         ^^^^^^^^^^^
+    |
+    = note: `StreamQualityData` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: multiple associated items are never used
+   --> src/audio/streaming.rs:226:12
+    |
+207 | impl AudioStreamingManager {
+    | -------------------------- associated items in this implementation
+...
+226 |     pub fn with_quality_manager(guild_id: String, quality_manager: AudioQualityManager) -> Self {
+    |            ^^^^^^^^^^^^^^^^^^^^
+...
+668 |     pub async fn set_quality_manager(&self, quality_manager: AudioQualityManager) {
+    |                  ^^^^^^^^^^^^^^^^^^^
+...
+677 |     pub async fn set_quality_change_callback<F>(&self, callback: F)
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+685 |     pub async fn get_stream_quality_data(&self) -> StreamQualityData {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^
+...
+702 |     pub async fn trigger_quality_adjustment(&self) -> Result<()> {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+725 |     pub async fn apply_quality_preset(&self, preset: QualityPreset) -> Result<()> {
+    |                  ^^^^^^^^^^^^^^^^^^^^
+...
+751 |     async fn calculate_connection_quality(&self) -> u8 {
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+776 |     async fn update_quality_manager_metrics(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+814 |     async fn notify_quality_change(&self, from: QualityPreset, to: QualityPreset, reason: &str) {
+    |              ^^^^^^^^^^^^^^^^^^^^^
+
+warning: fields `basic_state`, `voice_connected`, `playback_paused_by_voice`, and `last_voice_event_time` are never read
+  --> src/player/mod.rs:18:9
+   |
+17 | pub struct EnhancedPlayerState {
+   |            ------------------- fields in this struct
+18 |     pub basic_state: PlayerState,
+   |         ^^^^^^^^^^^
+19 |     pub voice_connected: bool,
+   |         ^^^^^^^^^^^^^^^
+20 |     pub voice_quality: VoiceQuality,
+21 |     pub playback_paused_by_voice: bool,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+22 |     pub last_voice_event_time: chrono::DateTime<chrono::Utc>,
+   |         ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `EnhancedPlayerState` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: multiple fields are never read
+  --> src/player/mod.rs:39:9
+   |
+38 | pub struct VoiceConnectionStats {
+   |            -------------------- fields in this struct
+39 |     pub total_players: u32,
+   |         ^^^^^^^^^^^^^
+40 |     pub connected_players: u32,
+   |         ^^^^^^^^^^^^^^^^^
+41 |     pub disconnected_players: u32,
+   |         ^^^^^^^^^^^^^^^^^^^^
+42 |     pub excellent_quality: u32,
+   |         ^^^^^^^^^^^^^^^^^
+43 |     pub good_quality: u32,
+   |         ^^^^^^^^^^^^
+44 |     pub fair_quality: u32,
+   |         ^^^^^^^^^^^^
+45 |     pub poor_quality: u32,
+   |         ^^^^^^^^^^^^
+46 |     pub critical_quality: u32,
+   |         ^^^^^^^^^^^^^^^^
+47 |     pub paused_by_voice: u32,
+   |         ^^^^^^^^^^^^^^^
+48 |     pub average_ping: u64,
+   |         ^^^^^^^^^^^^
+49 |     pub total_ping: u64,
+   |         ^^^^^^^^^^
+50 |     pub ping_samples: u64,
+   |         ^^^^^^^^^^^^
+   |
+   = note: `VoiceConnectionStats` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: methods `start_state_validation_task` and `get_voice_connection_stats` are never used
+   --> src/player/mod.rs:175:18
+    |
+125 | impl PlayerManager {
+    | ------------------ methods in this implementation
+...
+175 |     pub async fn start_state_validation_task(&self) {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+221 |     pub async fn get_voice_connection_stats(&self) -> VoiceConnectionStats {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated functions `all`, `for_guild`, `for_event_types`, `with_min_severity`, `errors_only`, and `no_performance` are never used
+  --> src/voice/connection.rs:54:12
+   |
+52 | impl VoiceEventFilter {
+   | --------------------- associated functions in this implementation
+53 |     /// Create a filter for all events
+54 |     pub fn all() -> Self {
+   |            ^^^
+...
+59 |     pub fn for_guild(guild_id: String) -> Self {
+   |            ^^^^^^^^^
+...
+67 |     pub fn for_event_types(event_types: Vec<VoiceConnectionEventType>) -> Self {
+   |            ^^^^^^^^^^^^^^^
+...
+75 |     pub fn with_min_severity(severity: EventSeverity) -> Self {
+   |            ^^^^^^^^^^^^^^^^^
+...
+83 |     pub fn errors_only() -> Self {
+   |            ^^^^^^^^^^^
+...
+91 |     pub fn no_performance() -> Self {
+   |            ^^^^^^^^^^^^^^
+
+warning: field `id` is never read
+   --> src/voice/connection.rs:126:9
+    |
+124 | pub struct VoiceEventSubscription {
+    |            ---------------------- field in this struct
+125 |     /// Unique subscription ID
+126 |     pub id: String,
+    |         ^^
+
+warning: method `clear_history` is never used
+   --> src/voice/connection.rs:358:18
+    |
+146 | impl VoiceEventSubscriptionManager {
+    | ---------------------------------- method in this implementation
+...
+358 |     pub async fn clear_history(&self) {
+    |                  ^^^^^^^^^^^^^
+
+warning: associated items `with_correlation`, `log_quality_event`, and `correlation_id` are never used
+   --> src/voice/logging.rs:489:12
+    |
+479 | impl VoiceEventLogger {
+    | --------------------- associated items in this implementation
+...
+489 |     pub fn with_correlation(correlation_id: CorrelationId, guild_id: String) -> Self {
+    |            ^^^^^^^^^^^^^^^^
+...
+545 |     pub fn log_quality_event(
+    |            ^^^^^^^^^^^^^^^^^
+...
+656 |     pub fn correlation_id(&self) -> &CorrelationId {
+    |            ^^^^^^^^^^^^^^
+
+warning: struct `VoiceLogAggregator` is never constructed
+   --> src/voice/logging.rs:662:12
+    |
+662 | pub struct VoiceLogAggregator;
+    |            ^^^^^^^^^^^^^^^^^^
+
+warning: associated functions `aggregate_events_by_type`, `aggregate_events_by_guild`, `filter_events_by_time_range`, `filter_events_by_type`, and `generate_event_summary` are never used
+   --> src/voice/logging.rs:666:12
+    |
+664 | impl VoiceLogAggregator {
+    | ----------------------- associated functions in this implementation
+665 |     /// Aggregate voice events by type for analysis
+666 |     pub fn aggregate_events_by_type(events: Vec<VoiceEvent>) -> HashMap<VoiceEventType, u32> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+677 |     pub fn aggregate_events_by_guild(events: Vec<VoiceEvent>) -> HashMap<String, u32> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+688 |     pub fn filter_events_by_time_range(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+700 |     pub fn filter_events_by_type(
+    |            ^^^^^^^^^^^^^^^^^^^^^
+...
+711 |     pub fn generate_event_summary(events: Vec<VoiceEvent>) -> VoiceEventSummary {
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `VoiceEventExporter` is never constructed
+   --> src/voice/logging.rs:759:12
+    |
+759 | pub struct VoiceEventExporter;
+    |            ^^^^^^^^^^^^^^^^^^
+
+warning: associated functions `export_to_json`, `export_summary_to_json`, and `export_to_csv` are never used
+   --> src/voice/logging.rs:763:12
+    |
+761 | impl VoiceEventExporter {
+    | ----------------------- associated functions in this implementation
+762 |     /// Export events to JSON format
+763 |     pub fn export_to_json(events: Vec<VoiceEvent>) -> Result<String, serde_json::Error> {
+    |            ^^^^^^^^^^^^^^
+...
+768 |     pub fn export_summary_to_json(summary: VoiceEventSummary) -> Result<String, serde_json::Error> {
+    |            ^^^^^^^^^^^^^^^^^^^^^^
+...
+773 |     pub fn export_to_csv(events: Vec<VoiceEvent>) -> String {
+    |            ^^^^^^^^^^^^^
+
+warning: methods with the following characteristics: (`to_*` and `self` type is `Copy`) usually take `self` by value
+   --> src/audio/quality.rs:584:24
+    |
+584 |     pub fn to_songbird(&self) -> SampleRate {
+    |                        ^^^^^
+    |
+    = help: consider choosing a less ambiguous name
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wrong_self_convention
+    = note: `#[warn(clippy::wrong_self_convention)]` on by default
+
+warning: methods with the following characteristics: (`to_*` and `self` type is `Copy`) usually take `self` by value
+   --> src/audio/quality.rs:610:24
+    |
+610 |     pub fn to_mix_mode(&self) -> MixMode {
+    |                        ^^^^^
+    |
+    = help: consider choosing a less ambiguous name
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wrong_self_convention
+
+warning: methods with the following characteristics: (`to_*` and `self` type is `Copy`) usually take `self` by value
+   --> src/audio/quality.rs:629:22
+    |
+629 |     pub fn to_config(&self) -> AudioQualityConfig {
+    |                      ^^^^^
+    |
+    = help: consider choosing a less ambiguous name
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wrong_self_convention
+
+warning: `lavalink-rust` (bin "lavalink-rust") generated 96 warnings (46 duplicates)
+warning: fields `guild_id` and `connection_time` are never read
+  --> src/voice/integration_tests.rs:26:13
+   |
+25 |     pub struct MockVoiceConnection {
+   |                ------------------- fields in this struct
+26 |         pub guild_id: String,
+   |             ^^^^^^^^
+...
+30 |         pub connection_time: std::time::Instant,
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: `MockVoiceConnection` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `connection_failure_rate` and `recovery_time_ms` are never read
+  --> src/voice/integration_tests.rs:39:13
+   |
+35 |     pub struct NetworkConditions {
+   |                ----------------- fields in this struct
+...
+39 |         pub connection_failure_rate: f64,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+40 |         pub recovery_time_ms: u64,
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: `NetworkConditions` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `voice_manager` is never read
+   --> src/voice/integration_tests.rs:205:13
+    |
+204 |     pub struct IntegrationTestEnvironment {
+    |                -------------------------- field in this struct
+205 |         pub voice_manager: Arc<VoiceConnectionManager>,
+    |             ^^^^^^^^^^^^^
+
+warning: variants `Intermittent`, `Timeout`, `Configuration`, and `ResourceExhaustion` are never constructed
+  --> src/voice/recovery_tests.rs:33:9
+   |
+25 |     pub enum FailureMode {
+   |              ----------- variants in this enum
+...
+33 |         Intermittent(u32),
+   |         ^^^^^^^^^^^^
+34 |         /// Timeout failures
+35 |         Timeout,
+   |         ^^^^^^^
+...
+39 |         Configuration,
+   |         ^^^^^^^^^^^^^
+40 |         /// Resource exhaustion
+41 |         ResourceExhaustion,
+   |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `FailureMode` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: methods `reset_attempt_counter` and `disconnect` are never used
+   --> src/voice/recovery_tests.rs:59:22
+    |
+44  |     impl MockRecoveryVoiceClient {
+    |     ---------------------------- methods in this implementation
+...
+59  |         pub async fn reset_attempt_counter(&self) {
+    |                      ^^^^^^^^^^^^^^^^^^^^^
+...
+152 |         pub async fn disconnect(&self, guild_id: &str) {
+    |                      ^^^^^^^^^^
+
+warning: field `event_receiver` is never read
+   --> src/voice/recovery_tests.rs:166:13
+    |
+163 |     pub struct RecoveryTestEnvironment {
+    |                ----------------------- field in this struct
+...
+166 |         pub event_receiver: Arc<Mutex<Vec<(String, VoiceConnectionEvent)>>>,
+    |             ^^^^^^^^^^^^^^
+
+warning: methods `get_received_events`, `clear_events`, and `count_events_of_type` are never used
+   --> src/voice/recovery_tests.rs:207:22
+    |
+169 |     impl RecoveryTestEnvironment {
+    |     ---------------------------- methods in this implementation
+...
+207 |         pub async fn get_received_events(&self) -> Vec<(String, VoiceConnectionEvent)> {
+    |                      ^^^^^^^^^^^^^^^^^^^
+...
+212 |         pub async fn clear_events(&self) {
+    |                      ^^^^^^^^^^^^
+...
+217 |         pub async fn count_events_of_type(
+    |                      ^^^^^^^^^^^^^^^^^^^^
+
+warning: variables can be used directly in the `format!` string
+   --> src/protocol/mod.rs:416:17
+    |
+416 |                 println!("Successfully deserialized: {:?}", request);
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+    = note: `#[warn(clippy::uninlined_format_args)]` on by default
+help: change this to
+    |
+416 -                 println!("Successfully deserialized: {:?}", request);
+416 +                 println!("Successfully deserialized: {request:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/protocol/mod.rs:425:17
+    |
+425 |                 panic!("Failed to deserialize: {}", e);
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+425 -                 panic!("Failed to deserialize: {}", e);
+425 +                 panic!("Failed to deserialize: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/protocol/mod.rs:442:9
+    |
+442 |         println!("JSON string: {}", json_str);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+442 -         println!("JSON string: {}", json_str);
+442 +         println!("JSON string: {json_str}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/protocol/mod.rs:447:17
+    |
+447 |                 println!("Successfully deserialized exact test JSON: {:?}", request);
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+447 -                 println!("Successfully deserialized exact test JSON: {:?}", request);
+447 +                 println!("Successfully deserialized exact test JSON: {request:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/protocol/mod.rs:456:17
+    |
+456 |                 panic!("Failed to deserialize exact test JSON: {}", e);
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+456 -                 panic!("Failed to deserialize exact test JSON: {}", e);
+456 +                 panic!("Failed to deserialize exact test JSON: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+    --> src/server/rest.rs:1468:25
+     |
+1468 | /                         format!(
+1469 | |                             "/v4/sessions/{}/players/{}/queue/move",
+1470 | |                             session_id, guild_id
+1471 | |                         ),
+     | |_________________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/tests.rs:528:30
+    |
+528 |             let identifier = format!("http://example.com/test{}.mp3", i);
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+528 -             let identifier = format!("http://example.com/test{}.mp3", i);
+528 +             let identifier = format!("http://example.com/test{i}.mp3");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/audio/integration_tests.rs:207:25
+    |
+207 |             let query = format!("test{}", i);
+    |                         ^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+207 -             let query = format!("test{}", i);
+207 +             let query = format!("test{i}");
+    |
+
+warning: module has the same name as its containing module
+   --> src/voice/voice_connection_tests.rs:2:1
+    |
+2   | / mod voice_connection_tests {
+3   | |     use super::super::connection::*;
+4   | |     use super::super::VoiceConnectionManager;
+5   | |     use std::collections::HashMap;
+...   |
+125 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception
+    = note: `#[warn(clippy::module_inception)]` on by default
+
+warning: `assert!(true)` will be optimized out by the compiler
+  --> src/voice/voice_connection_tests.rs:86:9
+   |
+86 |         assert!(true); // Manager creation succeeded if we get here
+   |         ^^^^^^^^^^^^^
+   |
+   = help: remove it
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#assertions_on_constants
+   = note: `#[warn(clippy::assertions_on_constants)]` on by default
+
+warning: `assert!(true)` will be optimized out by the compiler
+   --> src/voice/voice_connection_tests.rs:123:9
+    |
+123 |         assert!(true); // Filter creation succeeded if we get here
+    |         ^^^^^^^^^^^^^
+    |
+    = help: remove it
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#assertions_on_constants
+
+warning: module has the same name as its containing module
+   --> src/voice/integration_tests.rs:2:1
+    |
+2   | / mod integration_tests {
+3   | |     use crate::protocol::messages::VoiceState;
+4   | |     use crate::voice::connection::{VoiceConnectionEvent, VoiceConnectionManager};
+5   | |     use anyhow::Result;
+...   |
+621 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception
+
+warning: this `map_or` can be simplified
+   --> src/voice/integration_tests.rs:197:13
+    |
+197 | /             connections
+198 | |                 .get(guild_id)
+199 | |                 .map_or(false, |conn| conn.connected)
+    | |_____________________________________________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_map_or
+    = note: `#[warn(clippy::unnecessary_map_or)]` on by default
+help: use is_some_and instead
+    |
+199 -                 .map_or(false, |conn| conn.connected)
+199 +                 .is_some_and(|conn| conn.connected)
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/integration_tests.rs:238:24
+    |
+238 |                 token: format!("mock_token_{}", guild_id),
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+238 -                 token: format!("mock_token_{}", guild_id),
+238 +                 token: format!("mock_token_{guild_id}"),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/integration_tests.rs:240:29
+    |
+240 |                 session_id: format!("mock_session_{}", guild_id),
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+240 -                 session_id: format!("mock_session_{}", guild_id),
+240 +                 session_id: format!("mock_session_{guild_id}"),
+    |
+
+warning: `assert!(true)` will be optimized out by the compiler
+   --> src/voice/integration_tests.rs:259:9
+    |
+259 |         assert!(true);
+    |         ^^^^^^^^^^^^^
+    |
+    = help: remove it
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#assertions_on_constants
+
+warning: module has the same name as its containing module
+   --> src/voice/recovery_tests.rs:2:1
+    |
+2   | / mod recovery_tests {
+3   | |     use crate::protocol::messages::VoiceState;
+4   | |     use crate::voice::connection::*;
+5   | |     use anyhow::{anyhow, Result};
+...   |
+671 | | }
+    | |_^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#module_inception
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/recovery_tests.rs:201:24
+    |
+201 |                 token: format!("test_token_{}", guild_id),
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+201 -                 token: format!("test_token_{}", guild_id),
+201 +                 token: format!("test_token_{guild_id}"),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/recovery_tests.rs:203:29
+    |
+203 |                 session_id: format!("test_session_{}", guild_id),
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+203 -                 session_id: format!("test_session_{}", guild_id),
+203 +                 session_id: format!("test_session_{guild_id}"),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/recovery_tests.rs:516:28
+    |
+516 |             let guild_id = format!("test_guild_intermittent_{}", i);
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+516 -             let guild_id = format!("test_guild_intermittent_{}", i);
+516 +             let guild_id = format!("test_guild_intermittent_{i}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/recovery_tests.rs:518:24
+    |
+518 |                 token: format!("test_token_{}", i),
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+518 -                 token: format!("test_token_{}", i),
+518 +                 token: format!("test_token_{i}"),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/recovery_tests.rs:519:27
+    |
+519 |                 endpoint: format!("test_endpoint_{}", i),
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+519 -                 endpoint: format!("test_endpoint_{}", i),
+519 +                 endpoint: format!("test_endpoint_{i}"),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> src/voice/recovery_tests.rs:520:29
+    |
+520 |                 session_id: format!("test_session_{}", i),
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+520 -                 session_id: format!("test_session_{}", i),
+520 +                 session_id: format!("test_session_{i}"),
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/integration_tests.rs:372:26
+    |
+372 |         let identifier = format!("http://example.com/test{}.mp3", i);
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+    = note: `#[warn(clippy::uninlined_format_args)]` on by default
+help: change this to
+    |
+372 -         let identifier = format!("http://example.com/test{}.mp3", i);
+372 +         let identifier = format!("http://example.com/test{i}.mp3");
+    |
+
+warning: unused variable: `network_quality`
+   --> tests/audio_quality_performance_tests.rs:234:17
+    |
+234 |             let network_quality = if i % 2 == 0 { 95 } else { 60 }; // Alternate between good and poor
+    |                 ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_network_quality`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: function `create_test_track` is never used
+  --> tests/audio_quality_performance_tests.rs:28:8
+   |
+28 |     fn create_test_track() -> Track {
+   |        ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: variables can be used directly in the `format!` string
+  --> tests/audio_quality_performance_tests.rs:67:28
+   |
+67 |             let guild_id = format!("test_guild_{}", i);
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+   = note: `#[warn(clippy::uninlined_format_args)]` on by default
+help: change this to
+   |
+67 -             let guild_id = format!("test_guild_{}", i);
+67 +             let guild_id = format!("test_guild_{i}");
+   |
+
+warning: variables can be used directly in the `format!` string
+  --> tests/audio_quality_performance_tests.rs:76:9
+   |
+76 | /         assert!(
+77 | |             creation_time < Duration::from_secs(2),
+78 | |             "Quality manager creation took too long: {:?}",
+79 | |             creation_time
+80 | |         );
+   | |_________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+  --> tests/audio_quality_performance_tests.rs:82:9
+   |
+82 | /         println!(
+83 | |             "Created {} quality managers in {:?}",
+84 | |             num_managers, creation_time
+85 | |         );
+   | |_________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:120:9
+    |
+120 | /         assert!(
+121 | |             update_time < Duration::from_secs(1),
+122 | |             "Quality metrics updates took too long: {:?}",
+123 | |             update_time
+124 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:126:9
+    |
+126 | /         println!(
+127 | |             "Performed {} metrics updates in {:?}",
+128 | |             num_updates, update_time
+129 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:155:9
+    |
+155 | /         assert!(
+156 | |             adjustment_time < Duration::from_millis(100),
+157 | |             "Quality adjustment took too long: {:?}",
+158 | |             adjustment_time
+159 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:161:9
+    |
+161 |         println!("Quality adjustment completed in {:?}", adjustment_time);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+161 -         println!("Quality adjustment completed in {:?}", adjustment_time);
+161 +         println!("Quality adjustment completed in {adjustment_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:172:28
+    |
+172 |             let guild_id = format!("test_guild_{}", i);
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+172 -             let guild_id = format!("test_guild_{}", i);
+172 +             let guild_id = format!("test_guild_{i}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:180:9
+    |
+180 | /         assert!(
+181 | |             creation_time < Duration::from_secs(1),
+182 | |             "Streaming manager creation took too long: {:?}",
+183 | |             creation_time
+184 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:186:9
+    |
+186 | /         println!(
+187 | |             "Created {} streaming managers in {:?}",
+188 | |             num_managers, creation_time
+189 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:216:9
+    |
+216 | /         assert!(
+217 | |             integration_time < Duration::from_millis(50),
+218 | |             "Quality integration took too long: {:?}",
+219 | |             integration_time
+220 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:222:9
+    |
+222 |         println!("Quality integration completed in {:?}", integration_time);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+222 -         println!("Quality integration completed in {:?}", integration_time);
+222 +         println!("Quality integration completed in {integration_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:251:9
+    |
+251 | /         assert!(
+252 | |             adjustment_time < Duration::from_secs(5),
+253 | |             "Bitrate adjustments took too long: {:?}",
+254 | |             adjustment_time
+255 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:257:9
+    |
+257 | /         println!(
+258 | |             "Performed {} bitrate adjustments in {:?}",
+259 | |             num_adjustments, adjustment_time
+260 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:292:9
+    |
+292 | /         assert!(
+293 | |             updates_per_second >= 50.0,
+294 | |             "Quality monitoring performance too low: {:.2} updates/sec",
+295 | |             updates_per_second
+296 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:298:9
+    |
+298 | /         println!(
+299 | |             "Quality monitoring: {:.2} updates/sec over {:?}",
+300 | |             updates_per_second, total_time
+301 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:329:9
+    |
+329 | /         assert!(
+330 | |             analytics_time < Duration::from_millis(100),
+331 | |             "Quality analytics took too long: {:?}",
+332 | |             analytics_time
+333 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:339:9
+    |
+339 |         println!("Quality analytics generated in {:?}", analytics_time);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+339 -         println!("Quality analytics generated in {:?}", analytics_time);
+339 +         println!("Quality analytics generated in {analytics_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:393:9
+    |
+393 | /         assert!(
+394 | |             concurrent_time < Duration::from_secs(2),
+395 | |             "Concurrent quality operations took too long: {:?}",
+396 | |             concurrent_time
+397 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:399:9
+    |
+399 | /         println!(
+400 | |             "Completed {} concurrent operations in {:?}",
+401 | |             num_concurrent_ops, concurrent_time
+402 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:439:9
+    |
+439 | /         assert!(
+440 | |             switching_time < Duration::from_secs(2),
+441 | |             "Quality preset switching took too long: {:?}",
+442 | |             switching_time
+443 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:445:9
+    |
+445 | /         println!(
+446 | |             "Performed {} preset switches in {:?}",
+447 | |             num_switches, switching_time
+448 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:493:9
+    |
+493 | /         assert!(
+494 | |             adaptations_per_second >= 10.0,
+495 | |             "Quality adaptation under stress too slow: {:.2} adaptations/sec",
+496 | |             adaptations_per_second
+497 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:499:9
+    |
+499 | /         println!(
+500 | |             "Quality adaptation under stress: {:.2} adaptations/sec",
+501 | |             adaptations_per_second
+502 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:597:9
+    |
+597 | /         assert!(
+598 | |             integration_time < Duration::from_secs(2),
+599 | |             "Streaming-quality integration took too long: {:?}",
+600 | |             integration_time
+601 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:603:9
+    |
+603 | /         println!(
+604 | |             "Completed {} integration operations in {:?}",
+605 | |             num_operations, integration_time
+606 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/audio_quality_performance_tests.rs:659:17
+    |
+659 | /                 assert!(
+660 | |                     detection_time < Duration::from_secs(2),
+661 | |                     "Quality degradation detection took too long: {:?}",
+662 | |                     detection_time
+663 | |                 );
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: useless use of `vec!`
+   --> tests/audio_quality_performance_tests.rs:413:23
+    |
+413 |           let presets = vec![
+    |  _______________________^
+414 | |             QualityPreset::Voice,
+415 | |             QualityPreset::Low,
+416 | |             QualityPreset::Medium,
+417 | |             QualityPreset::High,
+418 | |             QualityPreset::Maximum,
+419 | |         ];
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#useless_vec
+    = note: `#[warn(clippy::useless_vec)]` on by default
+help: you can use an array directly
+    |
+413 ~         let presets = [QualityPreset::Voice,
+414 +             QualityPreset::Low,
+415 +             QualityPreset::Medium,
+416 +             QualityPreset::High,
+417 ~             QualityPreset::Maximum];
+    |
+
+    Checking lavalink-rust v4.0.0 (/Users/henri89/Documents/augment-projects/Lavalink-rust)
+warning: variables can be used directly in the `format!` string
+   --> tests/player_tests.rs:254:24
+    |
+254 |         let guild_id = format!("guild_{}", i);
+    |                        ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+    = note: `#[warn(clippy::uninlined_format_args)]` on by default
+help: change this to
+    |
+254 -         let guild_id = format!("guild_{}", i);
+254 +         let guild_id = format!("guild_{i}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/player_tests.rs:257:30
+    |
+257 |             let session_id = format!("session_{}", i);
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+257 -             let session_id = format!("session_{}", i);
+257 +             let session_id = format!("session_{i}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/player_tests.rs:280:24
+    |
+280 |         let guild_id = format!("guild_{}", i);
+    |                        ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+280 -         let guild_id = format!("guild_{}", i);
+280 +         let guild_id = format!("guild_{i}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/player_tests.rs:282:9
+    |
+282 |         assert!(player.is_some(), "Player for guild_{} should exist", i);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+282 -         assert!(player.is_some(), "Player for guild_{} should exist", i);
+282 +         assert!(player.is_some(), "Player for guild_{i} should exist");
+    |
+
+warning: associated functions `errors_only` and `no_performance` are never used
+  --> src/voice/connection.rs:83:12
+   |
+52 | impl VoiceEventFilter {
+   | --------------------- associated functions in this implementation
+...
+83 |     pub fn errors_only() -> Self {
+   |            ^^^^^^^^^^^
+...
+91 |     pub fn no_performance() -> Self {
+   |            ^^^^^^^^^^^^^^
+
+warning: variables can be used directly in the `format!` string
+  --> tests/performance_tests.rs:24:5
+   |
+24 | /     assert!(
+25 | |         startup_time < Duration::from_secs(5),
+26 | |         "Server startup took too long: {:?}",
+27 | |         startup_time
+28 | |     );
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+   = note: `#[warn(clippy::uninlined_format_args)]` on by default
+
+warning: variables can be used directly in the `format!` string
+  --> tests/performance_tests.rs:30:5
+   |
+30 |     println!("Server startup time: {:?}", startup_time);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+30 -     println!("Server startup time: {:?}", startup_time);
+30 +     println!("Server startup time: {startup_time:?}");
+   |
+
+warning: variables can be used directly in the `format!` string
+  --> tests/performance_tests.rs:53:5
+   |
+53 | /     assert!(
+54 | |         total_time < Duration::from_secs(10),
+55 | |         "Sequential requests took too long: {:?}",
+56 | |         total_time
+57 | |     );
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+  --> tests/performance_tests.rs:60:5
+   |
+60 | /     println!(
+61 | |         "Average request time for {} sequential requests: {:?}",
+62 | |         num_requests, avg_time
+63 | |     );
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+  --> tests/performance_tests.rs:64:5
+   |
+64 | /     println!(
+65 | |         "Total time for {} sequential requests: {:?}",
+66 | |         num_requests, total_time
+67 | |     );
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+  --> tests/performance_tests.rs:81:26
+   |
+81 |         let identifier = format!("http://example.com/test{}.mp3", i);
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+81 -         let identifier = format!("http://example.com/test{}.mp3", i);
+81 +         let identifier = format!("http://example.com/test{i}.mp3");
+   |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:106:5
+    |
+106 |     println!("Track loading performance for {} loads:", num_loads);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+106 -     println!("Track loading performance for {} loads:", num_loads);
+106 +     println!("Track loading performance for {num_loads} loads:");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:107:5
+    |
+107 |     println!("  Total time: {:?}", total_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+107 -     println!("  Total time: {:?}", total_time);
+107 +     println!("  Total time: {total_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:108:5
+    |
+108 |     println!("  Average time: {:?}", avg_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+108 -     println!("  Average time: {:?}", avg_time);
+108 +     println!("  Average time: {avg_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:109:5
+    |
+109 |     println!("  Median time: {:?}", median_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+109 -     println!("  Median time: {:?}", median_time);
+109 +     println!("  Median time: {median_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:110:5
+    |
+110 |     println!("  Min time: {:?}", min_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+110 -     println!("  Min time: {:?}", min_time);
+110 +     println!("  Min time: {min_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:111:5
+    |
+111 |     println!("  Max time: {:?}", max_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+111 -     println!("  Max time: {:?}", max_time);
+111 +     println!("  Max time: {max_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:114:5
+    |
+114 | /     assert!(
+115 | |         max_time < &Duration::from_secs(5),
+116 | |         "Track loading took too long: {:?}",
+117 | |         max_time
+118 | |     );
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:132:24
+    |
+132 |         let guild_id = format!("guild_{}", i);
+    |                        ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+132 -         let guild_id = format!("guild_{}", i);
+132 +         let guild_id = format!("guild_{i}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:133:26
+    |
+133 |         let session_id = format!("session_{}", i);
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+133 -         let session_id = format!("session_{}", i);
+133 +         let session_id = format!("session_{i}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:159:5
+    |
+159 |     println!("Player management performance for {} players:", num_players);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+159 -     println!("Player management performance for {} players:", num_players);
+159 +     println!("Player management performance for {num_players} players:");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:160:5
+    |
+160 |     println!("  Total time: {:?}", total_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+160 -     println!("  Total time: {:?}", total_time);
+160 +     println!("  Total time: {total_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:161:5
+    |
+161 |     println!("  Average time: {:?}", avg_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+161 -     println!("  Average time: {:?}", avg_time);
+161 +     println!("  Average time: {avg_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:162:5
+    |
+162 |     println!("  Min time: {:?}", min_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+162 -     println!("  Min time: {:?}", min_time);
+162 +     println!("  Min time: {min_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:163:5
+    |
+163 |     println!("  Max time: {:?}", max_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+163 -     println!("  Max time: {:?}", max_time);
+163 +     println!("  Max time: {max_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:166:5
+    |
+166 | /     assert!(
+167 | |         max_time < &Duration::from_millis(500),
+168 | |         "Player creation took too long: {:?}",
+169 | |         max_time
+170 | |     );
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:173:5
+    |
+173 | /     assert!(
+174 | |         total_time < Duration::from_secs(10),
+175 | |         "Total player creation took too long: {:?}",
+176 | |         total_time
+177 | |     );
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:200:30
+    |
+200 |             let identifier = format!("http://example.com/test{}_{}.mp3", i, j);
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+200 -             let identifier = format!("http://example.com/test{}_{}.mp3", i, j);
+200 +             let identifier = format!("http://example.com/test{i}_{j}.mp3");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:222:5
+    |
+222 |     println!("  Initial memory: {} bytes", initial_memory);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+222 -     println!("  Initial memory: {} bytes", initial_memory);
+222 +     println!("  Initial memory: {initial_memory} bytes");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:223:5
+    |
+223 |     println!("  Final memory: {} bytes", final_memory);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+223 -     println!("  Final memory: {} bytes", final_memory);
+223 +     println!("  Final memory: {final_memory} bytes");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:224:5
+    |
+224 |     println!("  Memory increase: {} bytes", memory_increase);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+224 -     println!("  Memory increase: {} bytes", memory_increase);
+224 +     println!("  Memory increase: {memory_increase} bytes");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:227:5
+    |
+227 | /     assert!(
+228 | |         memory_increase < 100_000_000,
+229 | |         "Memory usage increased too much: {} bytes",
+230 | |         memory_increase
+231 | |     );
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:268:5
+    |
+268 |     println!("Response time consistency for {} requests:", num_requests);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+268 -     println!("Response time consistency for {} requests:", num_requests);
+268 +     println!("Response time consistency for {num_requests} requests:");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:269:5
+    |
+269 |     println!("  Average: {:?}", avg_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+269 -     println!("  Average: {:?}", avg_time);
+269 +     println!("  Average: {avg_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:270:5
+    |
+270 |     println!("  Median: {:?}", median_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+270 -     println!("  Median: {:?}", median_time);
+270 +     println!("  Median: {median_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:271:5
+    |
+271 |     println!("  Min: {:?}", min_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+271 -     println!("  Min: {:?}", min_time);
+271 +     println!("  Min: {min_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:272:5
+    |
+272 |     println!("  Max: {:?}", max_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+272 -     println!("  Max: {:?}", max_time);
+272 +     println!("  Max: {max_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:273:5
+    |
+273 |     println!("  95th percentile: {:?}", p95_time);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+273 -     println!("  95th percentile: {:?}", p95_time);
+273 +     println!("  95th percentile: {p95_time:?}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:276:5
+    |
+276 | /     assert!(
+277 | |         p95_time < Duration::from_millis(500),
+278 | |         "95th percentile response time too high: {:?}",
+279 | |         p95_time
+280 | |     );
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/performance_tests.rs:284:5
+    |
+284 | /     assert!(
+285 | |         max_avg_ratio < 20.0,
+286 | |         "Response time variance too high: max/avg ratio = {:.2}",
+287 | |         max_avg_ratio
+288 | |     );
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: `lavalink-rust` (lib test) generated 76 warnings (46 duplicates) (run `cargo clippy --fix --lib -p lavalink-rust --tests` to apply 17 suggestions)
+warning: `lavalink-rust` (test "integration_tests") generated 1 warning (run `cargo clippy --fix --test "integration_tests"` to apply 1 suggestion)
+warning: `lavalink-rust` (test "audio_quality_performance_tests") generated 30 warnings (run `cargo clippy --fix --test "audio_quality_performance_tests"` to apply 28 suggestions)
+warning: `lavalink-rust` (test "player_tests") generated 4 warnings (run `cargo clippy --fix --test "player_tests"` to apply 4 suggestions)
+warning: `lavalink-rust` (bin "lavalink-rust" test) generated 125 warnings (124 duplicates)
+warning: `lavalink-rust` (test "performance_tests") generated 35 warnings (run `cargo clippy --fix --test "performance_tests"` to apply 35 suggestions)
+warning: unused macro definition: `discord_e2e_test`
+   --> tests/discord_e2e_tests.rs:274:14
+    |
+274 | macro_rules! discord_e2e_test {
+    |              ^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_macros)]` on by default
+
+warning: variable does not need to be mutable
+   --> tests/discord_e2e_tests.rs:484:17
+    |
+484 |             let mut quality_manager = env.quality_manager.lock().await;
+    |                 ----^^^^^^^^^^^^^^^
+    |                 |
+    |                 help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` on by default
+
+warning: unused variable: `voice_state`
+   --> tests/discord_e2e_tests.rs:689:13
+    |
+689 |         let voice_state = env.create_voice_state();
+    |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_voice_state`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: variable does not need to be mutable
+   --> tests/discord_e2e_tests.rs:741:13
+    |
+741 |         let mut quality_manager = env.quality_manager.lock().await;
+    |             ----^^^^^^^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/discord_e2e_tests.rs:831:21
+    |
+831 |                 let mut manager = qm.lock().await;
+    |                     ----^^^^^^^
+    |                     |
+    |                     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/discord_e2e_tests.rs:895:17
+    |
+895 |             let mut quality_manager = env.quality_manager.lock().await;
+    |                 ----^^^^^^^^^^^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> tests/discord_e2e_tests.rs:965:17
+    |
+965 |             let mut quality_manager = env.quality_manager.lock().await;
+    |                 ----^^^^^^^^^^^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:326:13
+    |
+326 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+    = note: `#[warn(clippy::uninlined_format_args)]` on by default
+help: change this to
+    |
+326 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+326 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:350:9
+    |
+350 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+350 -         eprintln!("Cleanup error: {}", e);
+350 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:355:9
+    |
+355 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+355 -         panic!("Discord E2E test failed: {}", e);
+355 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:370:13
+    |
+370 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+370 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+370 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:401:9
+    |
+401 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+401 -         eprintln!("Cleanup error: {}", e);
+401 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:406:9
+    |
+406 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+406 -         panic!("Discord E2E test failed: {}", e);
+406 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:421:13
+    |
+421 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+421 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+421 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:454:9
+    |
+454 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+454 -         eprintln!("Cleanup error: {}", e);
+454 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:459:9
+    |
+459 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+459 -         panic!("Discord E2E test failed: {}", e);
+459 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:474:13
+    |
+474 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+474 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+474 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:536:9
+    |
+536 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+536 -         eprintln!("Cleanup error: {}", e);
+536 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:541:9
+    |
+541 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+541 -         panic!("Discord E2E test failed: {}", e);
+541 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:556:13
+    |
+556 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+556 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+556 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
+   --> tests/discord_e2e_tests.rs:568:17
+    |
+568 |         assert!(quality_data.effective_bitrate >= 0);
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: because `0` is the minimum value for this type, this comparison is always true
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#absurd_extreme_comparisons
+    = note: `#[deny(clippy::absurd_extreme_comparisons)]` on by default
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:601:9
+    |
+601 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+601 -         eprintln!("Cleanup error: {}", e);
+601 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:606:9
+    |
+606 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+606 -         panic!("Discord E2E test failed: {}", e);
+606 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:621:13
+    |
+621 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+621 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+621 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:634:13
+    |
+634 | /             assert!(
+635 | |                 !voice_state.token.is_empty(),
+636 | |                 "Voice token should not be empty on attempt {}",
+637 | |                 attempt
+638 | |             );
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:639:13
+    |
+639 | /             assert!(
+640 | |                 !voice_state.endpoint.is_empty(),
+641 | |                 "Voice endpoint should not be empty on attempt {}",
+642 | |                 attempt
+643 | |             );
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:657:9
+    |
+657 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+657 -         eprintln!("Cleanup error: {}", e);
+657 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:662:9
+    |
+662 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+662 -         panic!("Discord E2E test failed: {}", e);
+662 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:677:13
+    |
+677 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+677 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+677 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+error: this comparison involving the minimum or maximum element for this type contains a case that is always true or always false
+   --> tests/discord_e2e_tests.rs:704:17
+    |
+704 |         assert!(events.len() >= 0); // At minimum, no panic should occur
+    |                 ^^^^^^^^^^^^^^^^^
+    |
+    = help: because `0` is the minimum value for this type, this comparison is always true
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#absurd_extreme_comparisons
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:713:9
+    |
+713 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+713 -         eprintln!("Cleanup error: {}", e);
+713 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:718:9
+    |
+718 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+718 -         panic!("Discord E2E test failed: {}", e);
+718 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:733:13
+    |
+733 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+733 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+733 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:796:9
+    |
+796 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+796 -         eprintln!("Cleanup error: {}", e);
+796 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:801:9
+    |
+801 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+801 -         panic!("Discord E2E test failed: {}", e);
+801 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:816:13
+    |
+816 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+816 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+816 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:862:9
+    |
+862 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+862 -         eprintln!("Cleanup error: {}", e);
+862 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:867:9
+    |
+867 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+867 -         panic!("Discord E2E test failed: {}", e);
+867 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:882:13
+    |
+882 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+882 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+882 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:922:9
+    |
+922 | /         assert!(
+923 | |             ops_per_second > 10.0,
+924 | |             "Performance too low: {:.2} ops/sec",
+925 | |             ops_per_second
+926 | |         );
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:935:9
+    |
+935 |         eprintln!("Cleanup error: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+935 -         eprintln!("Cleanup error: {}", e);
+935 +         eprintln!("Cleanup error: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:940:9
+    |
+940 |         panic!("Discord E2E test failed: {}", e);
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+940 -         panic!("Discord E2E test failed: {}", e);
+940 +         panic!("Discord E2E test failed: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+   --> tests/discord_e2e_tests.rs:955:13
+    |
+955 |             eprintln!("Failed to create Discord E2E test environment: {}", e);
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+955 -             eprintln!("Failed to create Discord E2E test environment: {}", e);
+955 +             eprintln!("Failed to create Discord E2E test environment: {e}");
+    |
+
+warning: variables can be used directly in the `format!` string
+    --> tests/discord_e2e_tests.rs:1019:9
+     |
+1019 |         eprintln!("Cleanup error: {}", e);
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1019 -         eprintln!("Cleanup error: {}", e);
+1019 +         eprintln!("Cleanup error: {e}");
+     |
+
+warning: variables can be used directly in the `format!` string
+    --> tests/discord_e2e_tests.rs:1024:9
+     |
+1024 |         panic!("Discord E2E test failed: {}", e);
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+     |
+1024 -         panic!("Discord E2E test failed: {}", e);
+1024 +         panic!("Discord E2E test failed: {e}");
+     |
+
+warning: useless use of `vec!`
+   --> tests/discord_e2e_tests.rs:744:33
+    |
+744 |           let degradation_steps = vec![
+    |  _________________________________^
+745 | |             (128u32, 95u8, 95u8, 95u8), // Good quality
+746 | |             (120u32, 90u8, 90u8, 90u8), // Slight degradation
+747 | |             (100u32, 80u8, 85u8, 80u8), // Moderate degradation
+748 | |             (80u32, 70u8, 75u8, 70u8),  // Significant degradation
+749 | |             (64u32, 60u8, 65u8, 60u8),  // Poor quality
+750 | |         ];
+    | |_________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#useless_vec
+    = note: `#[warn(clippy::useless_vec)]` on by default
+help: you can use an array directly
+    |
+744 ~         let degradation_steps = [(128u32, 95u8, 95u8, 95u8), // Good quality
+745 +             (120u32, 90u8, 90u8, 90u8), // Slight degradation
+746 +             (100u32, 80u8, 85u8, 80u8), // Moderate degradation
+747 +             (80u32, 70u8, 75u8, 70u8),  // Significant degradation
+748 ~             (64u32, 60u8, 65u8, 60u8)];
+    |
+
+warning: unused `std::result::Result` that must be used
+   --> tests/discord_e2e_tests.rs:487:13
+    |
+487 | /             quality_manager
+488 | |                 .update_quality_metrics(
+489 | |                     128, // bitrate
+490 | |                     85,  // buffer_health
+...   |
+494 | |                 .await;
+    | |______________________^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+    = note: `#[warn(unused_must_use)]` on by default
+help: use `let _ = ...` to ignore the resulting value
+    |
+487 |             let _ = quality_manager
+    |             +++++++
+
+warning: comparison is useless due to type limits
+   --> tests/discord_e2e_tests.rs:568:17
+    |
+568 |         assert!(quality_data.effective_bitrate >= 0);
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_comparisons)]` on by default
+
+warning: comparison is useless due to type limits
+   --> tests/discord_e2e_tests.rs:704:17
+    |
+704 |         assert!(events.len() >= 0); // At minimum, no panic should occur
+    |                 ^^^^^^^^^^^^^^^^^
+
+warning: unused `std::result::Result` that must be used
+   --> tests/discord_e2e_tests.rs:764:13
+    |
+764 | /             quality_manager
+765 | |                 .update_quality_metrics(*bitrate, *buffer_health, *encoding_perf, *stream_stability)
+766 | |                 .await;
+    | |______________________^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+764 |             let _ = quality_manager
+    |             +++++++
+
+warning: unused `std::result::Result` that must be used
+   --> tests/discord_e2e_tests.rs:832:17
+    |
+832 | /                 manager
+833 | |                     .update_quality_metrics(
+834 | |                         128 + i * 10,       // varying bitrate
+835 | |                         (80 + i * 2) as u8, // varying buffer health
+...   |
+839 | |                     .await;
+    | |__________________________^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+832 |                 let _ = manager
+    |                 +++++++
+
+warning: unused `std::result::Result` that must be used
+   --> tests/discord_e2e_tests.rs:898:13
+    |
+898 | /             quality_manager
+899 | |                 .update_quality_metrics(128, 85 + (i % 10) as u8, 90, 88)
+900 | |                 .await;
+    | |______________________^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+898 |             let _ = quality_manager
+    |             +++++++
+
+warning: unused `std::result::Result` that must be used
+   --> tests/discord_e2e_tests.rs:966:13
+    |
+966 | /             quality_manager
+967 | |                 .update_quality_metrics(128, 95, 95, 95)
+968 | |                 .await;
+    | |______________________^
+    |
+    = note: this `Result` may be an `Err` variant, which should be handled
+help: use `let _ = ...` to ignore the resulting value
+    |
+966 |             let _ = quality_manager
+    |             +++++++
+
+warning: `lavalink-rust` (test "discord_e2e_tests") generated 51 warnings
+error: could not compile `lavalink-rust` (test "discord_e2e_tests") due to 2 previous errors; 51 warnings emitted

@@ -525,7 +525,7 @@ mod audio_source_tests {
         // Start multiple concurrent load operations
         for i in 0..5 {
             let manager = audio_manager.clone();
-            let identifier = format!("http://example.com/test{}.mp3", i);
+            let identifier = format!("http://example.com/test{i}.mp3");
 
             let handle = tokio::spawn(async move {
                 timeout(Duration::from_secs(3), manager.load_track(&identifier)).await

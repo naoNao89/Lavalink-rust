@@ -1,11 +1,73 @@
 // Audio processing and source management module
 // This will handle audio sources, track loading, and audio processing
 
+#[cfg(feature = "discord")]
+pub mod quality;
+#[cfg(feature = "discord")]
+pub mod streaming;
+
+// Minimal stubs for non-Discord builds
+#[cfg(not(feature = "discord"))]
+pub mod quality {
+    //! Minimal audio quality stubs for non-Discord builds
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct AudioQualityConfig {
+        pub bitrate: u32,
+    }
+
+    impl Default for AudioQualityConfig {
+        fn default() -> Self {
+            Self { bitrate: 128 }
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct AudioQualityManager;
+
+    impl AudioQualityManager {
+        pub fn new(_config: AudioQualityConfig) -> Self {
+            Self
+        }
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    pub enum QualityPreset {
+        Low,
+        Medium,
+        High,
+    }
+}
+
+#[cfg(not(feature = "discord"))]
+pub mod streaming {
+    //! Minimal audio streaming stubs for non-Discord builds
+    use anyhow::Result;
+
+    #[derive(Clone)]
+    pub struct AudioStreamingManager;
+
+    impl AudioStreamingManager {
+        pub fn new(_guild_id: String) -> Self {
+            Self
+        }
+
+        pub async fn start_stream(&self, _track_url: &str) -> Result<()> {
+            Ok(())
+        }
+
+        pub async fn stop_stream(&self) -> Result<()> {
+            Ok(())
+        }
+    }
+}
+
 use anyhow::Result;
 use async_trait::async_trait;
 use base64::Engine;
 use regex::Regex;
-use tracing::debug;
+use tracing::{debug, info, warn};
 
 use tokio::process::Command as AsyncCommand;
 
@@ -13,6 +75,7 @@ use crate::config::SourcesConfig;
 use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity};
 
 /// Audio source manager for loading tracks from various sources
+#[derive(Clone)]
 pub struct AudioSourceManager {
     sources: Vec<AudioSourceType>,
 }
@@ -59,13 +122,52 @@ pub struct YouTubeAudioSource;
 #[derive(Clone)]
 pub struct SoundCloudAudioSource;
 
+impl SoundCloudAudioSource {
+    #[allow(dead_code)] // Used in tests
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for SoundCloudAudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Bandcamp audio source (placeholder)
 #[derive(Clone)]
 pub struct BandcampAudioSource;
 
+impl BandcampAudioSource {
+    #[allow(dead_code)] // Used in tests
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for BandcampAudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Twitch audio source (placeholder)
 #[derive(Clone)]
 pub struct TwitchAudioSource;
+
+impl TwitchAudioSource {
+    #[allow(dead_code)] // Used in tests
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for TwitchAudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Vimeo audio source (placeholder)
 #[derive(Clone)]
@@ -320,7 +422,7 @@ impl AudioSource for HttpAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Failed to load HTTP resource: {}", e)),
+                    message: Some(format!("Failed to load HTTP resource: {e}")),
                     severity: Severity::Common,
                     cause: "Network error".to_string(),
                 })),
@@ -391,7 +493,7 @@ impl AudioSource for YouTubeAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("YouTube extraction failed: {}", e)),
+                    message: Some(format!("YouTube extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -401,10 +503,7 @@ impl AudioSource for YouTubeAudioSource {
 
     async fn search(&self, query: &str) -> Result<LoadResult> {
         // Use yt-dlp command-line to search YouTube
-        match self
-            .extract_video_info(&format!("ytsearch5:{}", query))
-            .await
-        {
+        match self.extract_video_info(&format!("ytsearch5:{query}")).await {
             Ok(tracks) => {
                 if tracks.is_empty() {
                     Ok(LoadResult {
@@ -421,7 +520,7 @@ impl AudioSource for YouTubeAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("YouTube search failed: {}", e)),
+                    message: Some(format!("YouTube search failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp search error".to_string(),
                 })),
@@ -626,7 +725,7 @@ impl AudioSource for SoundCloudAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("SoundCloud extraction failed: {}", e)),
+                    message: Some(format!("SoundCloud extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -636,7 +735,7 @@ impl AudioSource for SoundCloudAudioSource {
 
     async fn search(&self, query: &str) -> Result<LoadResult> {
         // Use yt-dlp to search SoundCloud
-        let search_query = format!("scsearch5:{}", query);
+        let search_query = format!("scsearch5:{query}");
 
         match self.extract_track_info(&search_query).await {
             Ok(tracks) => {
@@ -655,7 +754,7 @@ impl AudioSource for SoundCloudAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("SoundCloud search failed: {}", e)),
+                    message: Some(format!("SoundCloud search failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp search error".to_string(),
                 })),
@@ -726,7 +825,7 @@ impl SoundCloudAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -854,7 +953,7 @@ impl AudioSource for BandcampAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Bandcamp extraction failed: {}", e)),
+                    message: Some(format!("Bandcamp extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -863,25 +962,135 @@ impl AudioSource for BandcampAudioSource {
     }
 
     async fn search(&self, query: &str) -> Result<LoadResult> {
-        // Note: Bandcamp doesn't have a direct search API like YouTube
-        // For now, return empty results for search queries
-        // In a real implementation, you might want to:
-        // 1. Use Bandcamp's API if available
-        // 2. Implement web scraping (with proper rate limiting)
-        // 3. Return a helpful error message suggesting direct URLs
+        info!("Searching Bandcamp for: {}", query);
 
-        Ok(LoadResult {
-            load_type: LoadType::Error,
-            data: Some(LoadResultData::Exception(Exception {
-                message: Some(format!("Bandcamp search is not currently supported. Please use direct Bandcamp URLs instead. Search query was: '{}'", query)),
-                severity: Severity::Common,
-                cause: "Bandcamp search not implemented".to_string(),
-            }))
-        })
+        // Implement basic Bandcamp search using web scraping
+        match self.search_bandcamp_web(query).await {
+            Ok(tracks) => {
+                if tracks.is_empty() {
+                    Ok(LoadResult {
+                        load_type: LoadType::Empty,
+                        data: None,
+                    })
+                } else {
+                    Ok(LoadResult {
+                        load_type: LoadType::Search,
+                        data: Some(LoadResultData::Search(tracks)),
+                    })
+                }
+            }
+            Err(e) => {
+                warn!("Bandcamp search failed: {}", e);
+                Ok(LoadResult {
+                    load_type: LoadType::Error,
+                    data: Some(LoadResultData::Exception(Exception {
+                        message: Some(format!(
+                            "Bandcamp search failed: {e}. Try using direct Bandcamp URLs instead."
+                        )),
+                        severity: Severity::Common,
+                        cause: format!("Search error: {e}"),
+                    })),
+                })
+            }
+        }
     }
 }
 
 impl BandcampAudioSource {
+    /// Search Bandcamp using web scraping
+    async fn search_bandcamp_web(&self, query: &str) -> Result<Vec<crate::protocol::Track>> {
+        let search_url = format!(
+            "https://bandcamp.com/search?q={}",
+            urlencoding::encode(query)
+        );
+
+        // Add rate limiting to be respectful
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+        let response = reqwest::Client::new()
+            .get(&search_url)
+            .header("User-Agent", "Mozilla/5.0 (compatible; Lavalink-Rust/4.0)")
+            .timeout(std::time::Duration::from_secs(10))
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!("HTTP error: {}", response.status()));
+        }
+
+        let html = response.text().await?;
+        self.parse_bandcamp_search_results(&html, query).await
+    }
+
+    /// Parse Bandcamp search results from HTML
+    async fn parse_bandcamp_search_results(
+        &self,
+        html: &str,
+        query: &str,
+    ) -> Result<Vec<crate::protocol::Track>> {
+        let mut tracks = Vec::new();
+
+        // Simple regex-based parsing for Bandcamp search results
+        let track_pattern = regex::Regex::new(
+            r#"<div class="searchresult track">.*?<div class="heading">.*?<a href="([^"]+)"[^>]*>([^<]+)</a>.*?<div class="subhead">.*?by\s*<a[^>]*>([^<]+)</a>"#
+        ).unwrap();
+
+        for (count, captures) in track_pattern.captures_iter(html).enumerate() {
+            if count >= 10 {
+                break; // Limit to 10 results
+            }
+
+            let url = captures.get(1).map(|m| m.as_str()).unwrap_or("");
+            let title = captures
+                .get(2)
+                .map(|m| m.as_str())
+                .unwrap_or("Unknown Title");
+            let artist = captures
+                .get(3)
+                .map(|m| m.as_str())
+                .unwrap_or("Unknown Artist");
+
+            // Clean up HTML entities
+            let title = html_escape::decode_html_entities(title).to_string();
+            let artist = html_escape::decode_html_entities(artist).to_string();
+
+            // Create a track info
+            let track_info = crate::protocol::TrackInfo {
+                identifier: url.to_string(),
+                is_seekable: true,
+                author: artist.clone(),
+                length: 0, // Unknown length from search results
+                is_stream: false,
+                position: 0,
+                title: title.clone(),
+                uri: Some(url.to_string()),
+                artwork_url: None,
+                isrc: None,
+                source_name: "bandcamp".to_string(),
+            };
+
+            // Create encoded track data
+            let track_data = serde_json::to_vec(&track_info)?;
+            let encoded = base64::engine::general_purpose::STANDARD.encode(&track_data);
+
+            let track = crate::protocol::Track {
+                encoded,
+                info: track_info,
+                plugin_info: std::collections::HashMap::new(),
+                user_data: std::collections::HashMap::new(),
+            };
+
+            tracks.push(track);
+        }
+
+        info!(
+            "Found {} Bandcamp tracks for query: {}",
+            tracks.len(),
+            query
+        );
+        Ok(tracks)
+    }
+
     /// Validate if the identifier is a valid Bandcamp URL
     fn is_valid_bandcamp_url(&self, identifier: &str) -> bool {
         // Bandcamp URL patterns
@@ -942,7 +1151,7 @@ impl BandcampAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -1070,7 +1279,7 @@ impl AudioSource for TwitchAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Twitch extraction failed: {}", e)),
+                    message: Some(format!("Twitch extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error or stream offline".to_string(),
                 })),
@@ -1083,7 +1292,7 @@ impl AudioSource for TwitchAudioSource {
         let channel_url = if query.starts_with("https://") {
             query.to_string()
         } else {
-            format!("https://www.twitch.tv/{}", query)
+            format!("https://www.twitch.tv/{query}")
         };
 
         match self.extract_stream_info(&channel_url).await {
@@ -1172,7 +1381,7 @@ impl TwitchAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -1315,7 +1524,7 @@ impl AudioSource for VimeoAudioSource {
             Err(e) => Ok(LoadResult {
                 load_type: LoadType::Error,
                 data: Some(LoadResultData::Exception(Exception {
-                    message: Some(format!("Vimeo extraction failed: {}", e)),
+                    message: Some(format!("Vimeo extraction failed: {e}")),
                     severity: Severity::Common,
                     cause: "yt-dlp error".to_string(),
                 })),
@@ -1334,7 +1543,7 @@ impl AudioSource for VimeoAudioSource {
         Ok(LoadResult {
             load_type: LoadType::Error,
             data: Some(LoadResultData::Exception(Exception {
-                message: Some(format!("Vimeo search is not currently supported. Please use direct Vimeo URLs instead. Search query was: '{}'", query)),
+                message: Some(format!("Vimeo search is not currently supported. Please use direct Vimeo URLs instead. Search query was: '{query}'")),
                 severity: Severity::Common,
                 cause: "Vimeo search not implemented".to_string(),
             }))
@@ -1404,7 +1613,7 @@ impl VimeoAudioSource {
                     }
                 }
                 Err(e) => {
-                    eprintln!("Failed to parse JSON line: {} - Error: {}", line, e);
+                    eprintln!("Failed to parse JSON line: {line} - Error: {e}");
                 }
             }
         }
@@ -1597,7 +1806,7 @@ impl AudioSource for LocalAudioSource {
             is_stream: false,
             position: 0,
             title: title.to_string(),
-            uri: Some(format!("file://{}", file_path)),
+            uri: Some(format!("file://{file_path}")),
             artwork_url: None,
             isrc: None,
             source_name: "local".to_string(),
@@ -1744,7 +1953,7 @@ fn extract_title_from_url(url: &str) -> String {
     // Fallback to domain name
     if let Ok(parsed) = url::Url::parse(url) {
         if let Some(host) = parsed.host_str() {
-            return format!("Audio from {}", host);
+            return format!("Audio from {host}");
         }
     }
 
@@ -1854,7 +2063,7 @@ impl FallbackAudioSource {
             // For demo purposes, we'll create a generic search query
             // In production, you'd call Spotify API to get track details
             tracing::info!("Converting Spotify track {} to YouTube search", track_id);
-            Some(format!("spotify track {}", track_id))
+            Some(format!("spotify track {track_id}"))
         } else {
             None
         }
@@ -1905,3 +2114,6 @@ impl FallbackAudioSource {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod integration_tests;

@@ -65,9 +65,12 @@ pub struct LavalinkInnerConfig {
     #[serde(rename = "httpConfig")]
     pub http_config: Option<HttpConfig>,
     pub timeouts: Option<TimeoutsConfig>,
+    /// Discord bot token for voice connections (optional)
+    #[serde(rename = "discordBotToken")]
+    pub discord_bot_token: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct SourcesConfig {
     pub youtube: Option<bool>,
     pub bandcamp: Option<bool>,
@@ -305,6 +308,7 @@ impl Default for LavalinkConfig {
                         connection_request_timeout_ms: Some(3000),
                         socket_timeout_ms: Some(3000),
                     }),
+                    discord_bot_token: None,
                 },
                 plugins: None,
             },

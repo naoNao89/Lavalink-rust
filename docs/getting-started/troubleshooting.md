@@ -490,6 +490,12 @@ logging:
 
 # Or via environment
 RUST_LOG=debug ./lavalink-rust
+
+# Or via CLI flags
+./lavalink-rust --debug              # Debug level
+./lavalink-rust --trace              # Trace level (very verbose)
+./lavalink-rust --log-level trace    # Custom level
+./lavalink-rust --debug --json-logs  # Debug with JSON output
 ```
 
 ### Capture Network Traffic

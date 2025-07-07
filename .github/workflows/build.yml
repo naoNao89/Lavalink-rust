@@ -109,8 +109,11 @@ jobs:
       - name: Install musl tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: |
-          sudo apt-get install -y musl-tools
+          sudo apt-get install -y musl-tools musl-dev
           sudo ln -s /usr/bin/musl-gcc /usr/local/bin/x86_64-linux-musl-gcc
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> $GITHUB_ENV
+          echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> $GITHUB_ENV
+          echo "CXX_x86_64_unknown_linux_musl=musl-g++" >> $GITHUB_ENV
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -123,7 +126,14 @@ jobs:
           # Use vendored OpenSSL for cross-compilation targets to avoid linking issues
           OPENSSL_STATIC: ${{ (matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-gnu') && '1' || '' }}
           OPENSSL_VENDORED: ${{ (matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-gnu') && '1' || '' }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          if [ "${{ matrix.target }}" = "x86_64-unknown-linux-musl" ]; then
+            # Build musl without discord features to avoid opus dependency issues
+            cargo build --release --target ${{ matrix.target }} --no-default-features --features "audio-processing,metrics"
+          else
+            # Build with all default features for other targets
+            cargo build --release --target ${{ matrix.target }}
+          fi
 
       - name: Create artifact name
         id: artifact
