@@ -4,13 +4,17 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "plugins")]
 use libloading::{Library, Symbol};
+#[cfg(feature = "plugins")]
+use std::sync::Arc;
 
-use super::interface::{PluginInterface, PluginInterfaceWrapper, PLUGIN_INTERFACE_SYMBOL};
+use super::interface::PluginInterfaceWrapper;
+#[cfg(feature = "plugins")]
+use super::interface::{PluginInterface, PLUGIN_INTERFACE_SYMBOL};
 use crate::config::PluginsConfig;
 
 /// Dynamic plugin loader
@@ -23,6 +27,7 @@ pub struct DynamicPluginLoader {
 
 /// Plugin loading result
 #[derive(Debug)]
+#[allow(dead_code)] // Fields used by plugin system when plugins feature is enabled
 pub struct LoadedPlugin {
     pub name: String,
     pub version: String,

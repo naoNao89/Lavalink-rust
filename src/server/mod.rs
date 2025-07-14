@@ -1,12 +1,14 @@
 use anyhow::Result;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
+#[cfg(feature = "websocket")]
+use std::collections::HashMap;
 use tracing::{info, warn};
 
 #[cfg(feature = "server")]
 use axum::{
     body::Body,
-    extract::{ConnectInfo, Query, State},
-    http::{HeaderMap, Request, StatusCode},
+    extract::State,
+    http::{Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{delete, get, patch, post},
@@ -14,7 +16,10 @@ use axum::{
 };
 
 #[cfg(feature = "websocket")]
-use axum::extract::ws::WebSocketUpgrade;
+use axum::{
+    extract::{ws::WebSocketUpgrade, ConnectInfo, Query},
+    http::HeaderMap,
+};
 
 #[cfg(feature = "server")]
 use std::net::SocketAddr;
@@ -34,8 +39,11 @@ use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLay
 use crate::{
     config::LavalinkConfig,
     plugin::PluginManager,
-    protocol::{ErrorResponse, Info},
+    protocol::Info,
 };
+
+#[cfg(feature = "server")]
+use crate::protocol::ErrorResponse;
 
 #[cfg(feature = "discord")]
 use crate::player::{PlayerEvent, PlayerEventHandler, PlayerManager};
@@ -69,6 +77,7 @@ pub use websocket::*;
 // Fallback WebSocketSession type for when websocket feature is disabled
 #[cfg(not(feature = "websocket"))]
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Used as fallback when websocket feature is disabled
 pub struct WebSocketSession {
     pub session_id: String,
     pub resuming: bool,
@@ -78,6 +87,7 @@ pub struct WebSocketSession {
 
 #[cfg(not(feature = "websocket"))]
 impl WebSocketSession {
+    #[allow(dead_code)] // Used as fallback when websocket feature is disabled
     pub async fn close(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Ok(())
     }
@@ -85,6 +95,7 @@ impl WebSocketSession {
 
 /// Main Lavalink server
 pub struct LavalinkServer {
+    #[allow(dead_code)] // Used by server functionality
     config: LavalinkConfig,
     app_state: Arc<AppState>,
 }
@@ -267,6 +278,7 @@ impl LavalinkServer {
     }
 
     /// Perform cleanup operations during shutdown
+    #[allow(dead_code)] // Used by server shutdown logic
     async fn cleanup(&self) {
         info!("Shutting down Lavalink server...");
 

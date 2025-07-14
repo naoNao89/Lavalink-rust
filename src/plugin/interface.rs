@@ -61,6 +61,7 @@ pub struct PluginInterfaceWrapper {
 
 impl PluginInterfaceWrapper {
     /// Create a new plugin interface wrapper
+    #[allow(dead_code)] // Used by plugin system when plugins feature is enabled
     pub fn new(interface: PluginInterface) -> Result<Self> {
         // Extract metadata from the plugin
         let name = unsafe {
@@ -105,7 +106,7 @@ impl PluginInterfaceWrapper {
         };
 
         #[cfg(not(feature = "plugins"))]
-        let config_schema: Option<()> = None;
+        let _config_schema: Option<()> = None;
 
         let metadata = PluginMetadata {
             name,
@@ -127,6 +128,7 @@ impl PluginInterfaceWrapper {
     }
 
     /// Initialize the plugin
+    #[allow(dead_code)] // Used by plugin system when plugins feature is enabled
     pub fn initialize(&self) -> Result<()> {
         let result = (self.interface.initialize)();
         if result == 0 {
@@ -154,6 +156,7 @@ impl PluginInterfaceWrapper {
 }
 
 /// Plugin interface constants
+#[allow(dead_code)] // Used by plugin system when plugins feature is enabled
 pub const PLUGIN_INTERFACE_SYMBOL: &[u8] = b"lavalink_plugin_interface\0";
 
 /// Helper function to free C string (should be called by plugin)

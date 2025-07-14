@@ -35,6 +35,7 @@ macro_rules! generate_discord_fallback_handlers {
         /// Update player handler - /v4/sessions/{session_id}/players/{guild_id} (non-Discord)
         pub async fn update_player_handler(
             Path((session_id, guild_id)): Path<(String, String)>,
+            #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
             State(state): State<Arc<AppState>>,
             Json(request): Json<serde_json::Value>,
         ) -> Response {
@@ -413,12 +414,13 @@ pub async fn get_sessions_handler(State(state): State<Arc<AppState>>) -> Respons
 
     let mut sessions = Vec::new();
     for entry in state.sessions.iter() {
-        let _session_id = entry.key();
+        let session_id = entry.key();
         let session = entry.value();
-        sessions.push(crate::protocol::messages::SessionResponse {
-            resuming: session.resuming,
-            timeout: session.timeout,
-        });
+        sessions.push(serde_json::json!({
+            "sessionId": session_id,
+            "resuming": session.resuming,
+            "timeout": session.timeout,
+        }));
     }
 
     (StatusCode::OK, Json(sessions)).into_response()
@@ -570,6 +572,7 @@ pub async fn get_session_players_handler(
 #[cfg(not(feature = "discord"))]
 pub async fn get_session_players_handler(
     Path(session_id): Path<String>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
     State(state): State<Arc<AppState>>,
 ) -> Response {
     info!(
@@ -600,6 +603,7 @@ pub async fn get_session_players_handler(
 /// Get player handler - /v4/sessions/{session_id}/players/{guild_id}
 pub async fn get_player_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
     State(state): State<Arc<AppState>>,
 ) -> Response {
     #[cfg(not(feature = "discord"))]
@@ -702,6 +706,7 @@ pub async fn get_player_handler(
 /// Delete player handler - /v4/sessions/{session_id}/players/{guild_id}
 pub async fn delete_player_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
     State(state): State<Arc<AppState>>,
 ) -> Response {
     #[cfg(not(feature = "discord"))]
@@ -1118,7 +1123,7 @@ pub async fn get_plugin_config_handler(
 pub async fn update_plugin_config_handler(
     State(state): State<Arc<AppState>>,
     Path(name): Path<String>,
-    Json(_config): Json<serde_json::Value>,
+    Json(config): Json<serde_json::Value>,
 ) -> impl IntoResponse {
     let is_loaded = if let Ok(plugin_manager) = state.plugin_manager.read() {
         plugin_manager.is_dynamic_plugin_loaded(&name)
@@ -1144,7 +1149,7 @@ pub async fn update_plugin_config_handler(
     let response = serde_json::json!({
         "plugin": name,
         "updated": true,
-        "config": _config,
+        "config": config,
         "timestamp": chrono::Utc::now().timestamp_millis() as u64,
         "message": "Plugin configuration updated successfully"
     });

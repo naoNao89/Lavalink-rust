@@ -2,6 +2,7 @@
 use base64::{engine::general_purpose, Engine};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+#[cfg(any(feature = "plugins", feature = "rest-api"))]
 use std::collections::HashMap;
 
 pub mod filters;
@@ -15,6 +16,7 @@ mod tests;
 
 pub use filters::*;
 pub use info::*;
+#[cfg(any(feature = "websocket", feature = "discord"))]
 pub use messages::*;
 pub use player::*;
 
@@ -30,6 +32,7 @@ pub enum Omissible<T> {
 }
 
 impl<T> Omissible<T> {
+    #[allow(dead_code)] // Used by protocol system
     pub fn is_present(&self) -> bool {
         matches!(self, Omissible::Present(_))
     }
@@ -38,6 +41,7 @@ impl<T> Omissible<T> {
         matches!(self, Omissible::Omitted)
     }
 
+    #[allow(dead_code)] // Used by protocol system
     pub fn as_option(&self) -> Option<&T> {
         match self {
             Omissible::Present(value) => Some(value),

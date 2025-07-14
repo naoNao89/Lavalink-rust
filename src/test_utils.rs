@@ -89,6 +89,7 @@ where
 
 /// Mock track data for testing
 pub fn create_mock_track() -> crate::protocol::Track {
+    #[cfg(any(feature = "plugins", feature = "rest-api"))]
     use std::collections::HashMap;
 
     crate::protocol::Track {

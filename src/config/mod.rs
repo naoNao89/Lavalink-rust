@@ -1,4 +1,6 @@
-use anyhow::{Context, Result};
+#[cfg(feature = "server")]
+use anyhow::Context;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -247,7 +249,10 @@ pub struct RollingPolicyConfig {
 }
 
 impl LavalinkConfig {
-    pub async fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
+    pub async fn load<P: AsRef<Path>>(
+        #[cfg_attr(not(feature = "server"), allow(unused_variables))]
+        path: P
+    ) -> Result<Self> {
         #[cfg(feature = "server")]
         {
             let content = fs::read_to_string(path.as_ref()).await.with_context(|| {

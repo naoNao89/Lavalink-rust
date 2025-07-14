@@ -1,5 +1,6 @@
 use super::Omissible;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "plugins")]
 use std::collections::HashMap;
 
 /// Audio filters that can be applied to a player
@@ -131,6 +132,7 @@ impl Filters {
     }
 
     /// Check if any filters are enabled
+    #[allow(dead_code)] // Used by filter system
     pub fn is_enabled(&self) -> bool {
         self.volume.is_present()
             || self.equalizer.is_present()
@@ -238,6 +240,7 @@ impl Filters {
     }
 
     /// Validate filters against disabled filter list
+    #[allow(dead_code)] // Used by filter validation system
     pub fn validate(&self, disabled_filters: &[String]) -> Vec<String> {
         let mut errors = Vec::new();
 
