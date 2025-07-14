@@ -72,7 +72,19 @@ use tracing::{debug, info, warn};
 use tokio::process::Command as AsyncCommand;
 
 use crate::config::SourcesConfig;
-use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity};
+use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity, Track, TrackInfo};
+
+/// Helper function to create a Track with conditional compilation for optional fields
+fn create_track(encoded: String, info: TrackInfo) -> Track {
+    Track {
+        encoded,
+        info,
+        #[cfg(feature = "plugins")]
+        plugin_info: std::collections::HashMap::new(),
+        #[cfg(feature = "rest-api")]
+        user_data: std::collections::HashMap::new(),
+    }
+}
 
 /// Audio source manager for loading tracks from various sources
 #[derive(Clone)]
@@ -397,12 +409,7 @@ impl AudioSource for HttpAudioSource {
                     let encoded =
                         base64::engine::general_purpose::STANDARD.encode(track_data.to_string());
 
-                    let track = crate::protocol::Track {
-                        encoded,
-                        info: track_info,
-                        plugin_info: std::collections::HashMap::new(),
-                        user_data: std::collections::HashMap::new(),
-                    };
+                    let track = create_track(encoded, track_info);
 
                     Ok(LoadResult {
                         load_type: LoadType::Track,
@@ -657,12 +664,7 @@ impl YouTubeAudioSource {
 
         let encoded = base64::engine::general_purpose::STANDARD.encode(track_data.to_string());
 
-        Some(crate::protocol::Track {
-            encoded,
-            info: track_info,
-            plugin_info: std::collections::HashMap::new(),
-            user_data: std::collections::HashMap::new(),
-        })
+        Some(create_track(encoded, track_info))
     }
 }
 
@@ -892,12 +894,7 @@ impl SoundCloudAudioSource {
             track_data.to_string(),
         );
 
-        Some(crate::protocol::Track {
-            encoded,
-            info: track_info,
-            plugin_info: std::collections::HashMap::new(),
-            user_data: std::collections::HashMap::new(),
-        })
+        Some(create_track(encoded, track_info))
     }
 }
 
@@ -1073,12 +1070,7 @@ impl BandcampAudioSource {
             let track_data = serde_json::to_vec(&track_info)?;
             let encoded = base64::engine::general_purpose::STANDARD.encode(&track_data);
 
-            let track = crate::protocol::Track {
-                encoded,
-                info: track_info,
-                plugin_info: std::collections::HashMap::new(),
-                user_data: std::collections::HashMap::new(),
-            };
+            let track = create_track(encoded, track_info);
 
             tracks.push(track);
         }
@@ -1218,12 +1210,7 @@ impl BandcampAudioSource {
             track_data.to_string(),
         );
 
-        Some(crate::protocol::Track {
-            encoded,
-            info: track_info,
-            plugin_info: std::collections::HashMap::new(),
-            user_data: std::collections::HashMap::new(),
-        })
+        Some(create_track(encoded, track_info))
     }
 }
 
@@ -1463,12 +1450,7 @@ impl TwitchAudioSource {
             track_data.to_string(),
         );
 
-        Some(crate::protocol::Track {
-            encoded,
-            info: track_info,
-            plugin_info: std::collections::HashMap::new(),
-            user_data: std::collections::HashMap::new(),
-        })
+        Some(create_track(encoded, track_info))
     }
 }
 
@@ -1681,12 +1663,7 @@ impl VimeoAudioSource {
             track_data.to_string(),
         );
 
-        Some(crate::protocol::Track {
-            encoded,
-            info: track_info,
-            plugin_info: std::collections::HashMap::new(),
-            user_data: std::collections::HashMap::new(),
-        })
+        Some(create_track(encoded, track_info))
     }
 }
 
@@ -1827,12 +1804,7 @@ impl AudioSource for LocalAudioSource {
             track_data.to_string(),
         );
 
-        let track = crate::protocol::Track {
-            encoded,
-            info: track_info,
-            plugin_info: std::collections::HashMap::new(),
-            user_data: std::collections::HashMap::new(),
-        };
+        let track = create_track(encoded, track_info);
 
         Ok(LoadResult {
             load_type: LoadType::Track,

@@ -25,7 +25,7 @@ voice-encryption = ["discord", "songbird/builtin-queue"]
 
 # Audio processing features
 audio-processing = ["dep:symphonia", "dep:rubato", "dep:num_cpus"]
-audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:html-escape", "dep:serde_json", "dep:base64"]
+audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:html-escape", "dep:serde_json", "dep:base64", "tokio/process"]
 
 # Optional audio codecs (granular control)
 codec-mp3 = ["symphonia/mp3"]
