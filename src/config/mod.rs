@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
+
+#[cfg(feature = "server")]
 use tokio::fs;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -11,6 +13,7 @@ pub struct LavalinkConfig {
     pub metrics: Option<MetricsConfig>,
     pub sentry: Option<SentryConfig>,
     pub logging: Option<LoggingConfig>,
+    #[cfg(feature = "plugins")]
     pub plugins: Option<HashMap<String, serde_json::Value>>,
 }
 
@@ -245,14 +248,27 @@ pub struct RollingPolicyConfig {
 
 impl LavalinkConfig {
     pub async fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let content = fs::read_to_string(path.as_ref())
-            .await
-            .with_context(|| format!("Failed to read config file: {}", path.as_ref().display()))?;
+        #[cfg(feature = "server")]
+        {
+            let content = fs::read_to_string(path.as_ref())
+                .await
+                .with_context(|| format!("Failed to read config file: {}", path.as_ref().display()))?;
 
-        let config: LavalinkConfig =
-            serde_yaml::from_str(&content).with_context(|| "Failed to parse YAML configuration")?;
-
-        Ok(config)
+            #[cfg(feature = "rest-api")]
+            {
+                let config: LavalinkConfig =
+                    serde_yaml::from_str(&content).with_context(|| "Failed to parse YAML configuration")?;
+                Ok(config)
+            }
+            #[cfg(not(feature = "rest-api"))]
+            {
+                anyhow::bail!("YAML parsing requires 'rest-api' feature")
+            }
+        }
+        #[cfg(not(feature = "server"))]
+        {
+            anyhow::bail!("Config loading requires 'server' feature")
+        }
     }
 }
 
@@ -320,6 +336,7 @@ impl Default for LavalinkConfig {
             }),
             sentry: None,
             logging: None,
+            #[cfg(feature = "plugins")]
             plugins: None,
         }
     }

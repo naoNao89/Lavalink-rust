@@ -80,7 +80,19 @@ async fn main() -> Result<()> {
 
     // Create and start the server
     let server = LavalinkServer::new(config).await?;
-    server.run().await?;
+
+    #[cfg(feature = "server")]
+    {
+        server.run().await?;
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        info!("Server feature is disabled. Only library functionality is available.");
+        info!("Enable the 'server' feature to run the HTTP server.");
+        // Keep the process alive for library usage
+        tokio::signal::ctrl_c().await?;
+    }
 
     Ok(())
 }
@@ -134,11 +146,19 @@ fn init_tracing(args: &Args) -> Result<()> {
 
     if args.json_logs {
         // JSON format
-        let fmt_layer = fmt_layer.json();
-        if args.timestamps {
-            registry.with(fmt_layer).init();
-        } else {
-            registry.with(fmt_layer.without_time()).init();
+        #[cfg(feature = "tracing-json")]
+        {
+            let fmt_layer = fmt_layer.json();
+            if args.timestamps {
+                registry.with(fmt_layer).init();
+            } else {
+                registry.with(fmt_layer.without_time()).init();
+            }
+        }
+        #[cfg(not(feature = "tracing-json"))]
+        {
+            eprintln!("JSON logging requires 'tracing-json' feature");
+            std::process::exit(1);
         }
     } else {
         // Pretty format

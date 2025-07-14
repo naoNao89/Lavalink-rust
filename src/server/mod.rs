@@ -1,19 +1,35 @@
 use anyhow::Result;
+use std::{collections::HashMap, sync::Arc};
+use tracing::{info, warn};
+
+#[cfg(feature = "server")]
 use axum::{
     body::Body,
-    extract::{ws::WebSocketUpgrade, ConnectInfo, Query, State},
+    extract::{ConnectInfo, Query, State},
     http::{HeaderMap, Request, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{delete, get, patch, post},
     Json, Router,
 };
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+
+#[cfg(feature = "websocket")]
+use axum::extract::ws::WebSocketUpgrade;
+
+#[cfg(feature = "server")]
+use std::net::SocketAddr;
+
+#[cfg(feature = "server")]
 use tokio::net::TcpListener;
+
+#[cfg(feature = "server")]
 use tokio::signal;
+
+#[cfg(feature = "server")]
 use tower::ServiceBuilder;
+
+#[cfg(feature = "server")]
 use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
-use tracing::{info, warn};
 
 use crate::{
     config::LavalinkConfig,
@@ -26,10 +42,14 @@ use crate::player::{PlayerEvent, PlayerEventHandler, PlayerManager};
 
 use self::routeplanner::RoutePlanner;
 
+#[cfg(feature = "server")]
 mod auth;
+#[cfg(feature = "rest-api")]
 mod rest;
 mod routeplanner;
+#[cfg(feature = "server")]
 mod stats;
+#[cfg(feature = "websocket")]
 mod websocket;
 
 #[cfg(test)]
@@ -38,10 +58,30 @@ mod tests;
 #[cfg(test)]
 mod rest_tests;
 
+#[cfg(feature = "server")]
 pub use auth::*;
 
+#[cfg(feature = "server")]
 pub use stats::*;
+#[cfg(feature = "websocket")]
 pub use websocket::*;
+
+// Fallback WebSocketSession type for when websocket feature is disabled
+#[cfg(not(feature = "websocket"))]
+#[derive(Debug, Clone)]
+pub struct WebSocketSession {
+    pub session_id: String,
+    pub resuming: bool,
+    pub timeout: u64,
+    pub message_sender: Option<()>, // Placeholder type
+}
+
+#[cfg(not(feature = "websocket"))]
+impl WebSocketSession {
+    pub async fn close(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        Ok(())
+    }
+}
 
 /// Main Lavalink server
 pub struct LavalinkServer {
@@ -53,7 +93,9 @@ pub struct LavalinkServer {
 #[derive(Clone)]
 pub struct AppState {
     pub config: LavalinkConfig,
+    #[cfg(feature = "websocket")]
     pub sessions: Arc<dashmap::DashMap<String, WebSocketSession>>,
+    #[cfg(feature = "server")]
     pub stats_collector: Arc<StatsCollector>,
     pub info: Info,
 
@@ -67,7 +109,9 @@ impl LavalinkServer {
     /// Create a new Lavalink server
     pub async fn new(config: LavalinkConfig) -> Result<Self> {
         let info = Info::new();
+        #[cfg(feature = "websocket")]
         let sessions = Arc::new(dashmap::DashMap::new());
+        #[cfg(feature = "server")]
         let stats_collector = Arc::new(StatsCollector::new());
 
         // Initialize player manager if Discord feature is enabled
@@ -142,7 +186,9 @@ impl LavalinkServer {
 
         let app_state = Arc::new(AppState {
             config: config.clone(),
+            #[cfg(feature = "websocket")]
             sessions,
+            #[cfg(feature = "server")]
             stats_collector,
             info,
 
@@ -162,6 +208,7 @@ impl LavalinkServer {
     }
 
     /// Run the server
+    #[cfg(feature = "server")]
     pub async fn run(self) -> Result<()> {
         let addr = format!("{}:{}", self.config.server.address, self.config.server.port);
 
@@ -224,20 +271,23 @@ impl LavalinkServer {
         info!("Shutting down Lavalink server...");
 
         // Cleanup sessions and players
-        let session_count = self.app_state.sessions.len();
-        if session_count > 0 {
-            info!("Cleaning up {} active sessions", session_count);
+        #[cfg(feature = "websocket")]
+        {
+            let session_count = self.app_state.sessions.len();
+            if session_count > 0 {
+                info!("Cleaning up {} active sessions", session_count);
 
-            // Close all WebSocket sessions gracefully
-            for session_ref in self.app_state.sessions.iter() {
-                let session = session_ref.value();
-                if let Err(e) = session.close().await {
-                    warn!("Failed to close session {}: {}", session_ref.key(), e);
+                // Close all WebSocket sessions gracefully
+                for session_ref in self.app_state.sessions.iter() {
+                    let session = session_ref.value();
+                    if let Err(e) = session.close().await {
+                        warn!("Failed to close session {}: {}", session_ref.key(), e);
+                    }
                 }
-            }
 
-            // Clear sessions
-            self.app_state.sessions.clear();
+                // Clear sessions
+                self.app_state.sessions.clear();
+            }
         }
 
         #[cfg(feature = "discord")]
@@ -259,26 +309,40 @@ impl LavalinkServer {
     }
 
     /// Build the Axum router
+    #[cfg(feature = "server")]
     pub fn build_router(&self) -> Router {
         #[allow(unused_mut)]
-        let mut router = Router::new()
-            // WebSocket endpoint
-            .route("/v4/websocket", get(websocket_handler))
-            // REST API endpoints
+        let mut router = Router::new();
+
+        // WebSocket endpoint (conditional)
+        #[cfg(feature = "websocket")]
+        {
+            router = router.route("/v4/websocket", get(websocket_handler));
+        }
+
+        // REST API endpoints
+        router = router
             .route("/v4/info", get(rest::info_handler))
             .route("/version", get(rest::version_handler))
-            .route("/v4/stats", get(rest::stats_handler))
-            // Session management
-            .route("/v4/sessions", get(rest::get_sessions_handler))
-            .route("/v4/sessions/:session_id", get(rest::get_session_handler))
-            .route(
-                "/v4/sessions/:session_id",
-                patch(rest::update_session_handler),
-            )
-            .route(
-                "/v4/sessions/:session_id",
-                delete(rest::delete_session_handler),
-            )
+            .route("/v4/stats", get(rest::stats_handler));
+
+        // Session management (conditional)
+        #[cfg(feature = "websocket")]
+        {
+            router = router
+                .route("/v4/sessions", get(rest::get_sessions_handler))
+                .route("/v4/sessions/:session_id", get(rest::get_session_handler))
+                .route(
+                    "/v4/sessions/:session_id",
+                    patch(rest::update_session_handler),
+                )
+                .route(
+                    "/v4/sessions/:session_id",
+                    delete(rest::delete_session_handler),
+                );
+        }
+
+        router = router
             // Player management
             .route(
                 "/v4/sessions/:session_id/players",
@@ -397,9 +461,22 @@ impl LavalinkServer {
             )
             .with_state(self.app_state.clone())
     }
+
+    /// Run the server (fallback for non-server builds)
+    #[cfg(not(feature = "server"))]
+    pub async fn run(self) -> Result<()> {
+        anyhow::bail!("Server functionality is disabled. Enable the 'server' feature to run the HTTP server.");
+    }
+
+    /// Build router (fallback for non-server builds)
+    #[cfg(not(feature = "server"))]
+    pub fn build_router(&self) -> () {
+        // No-op for non-server builds
+    }
 }
 
 /// WebSocket handler
+#[cfg(feature = "websocket")]
 async fn websocket_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
@@ -439,6 +516,7 @@ async fn websocket_handler(
 }
 
 /// Authentication middleware for REST endpoints
+#[cfg(feature = "server")]
 pub async fn auth_middleware(
     State(state): State<Arc<AppState>>,
     request: Request<Body>,

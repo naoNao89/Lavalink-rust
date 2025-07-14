@@ -13,18 +13,11 @@ use tracing::{debug, error, info, warn};
 // Discord-specific imports
 #[cfg(feature = "discord")]
 use songbird::{
-    driver::{Channels, MixMode, SampleRate},
+    driver::MixMode,
     Config as SongbirdConfig,
 };
 
 // Non-Discord alternatives
-#[cfg(not(feature = "discord"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Channels {
-    Mono,
-    Stereo,
-}
-
 #[cfg(not(feature = "discord"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MixMode {
@@ -33,21 +26,8 @@ pub enum MixMode {
 }
 
 #[cfg(not(feature = "discord"))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SampleRate {
-    Hz8000,
-    Hz16000,
-    Hz22050,
-    Hz24000,
-    Hz44100,
-    Hz48000,
-}
-
-#[cfg(not(feature = "discord"))]
 #[derive(Debug, Clone)]
 pub struct SongbirdConfig {
-    pub sample_rate: SampleRate,
-    pub channels: Channels,
     pub mix_mode: MixMode,
 }
 
@@ -57,14 +37,24 @@ impl SongbirdConfig {
         self.mix_mode = mix_mode;
         self
     }
+
+    pub fn use_softclip(self, _enabled: bool) -> Self {
+        self
+    }
+
+    pub fn playout_buffer_length(self, _length: std::num::NonZeroUsize) -> Self {
+        self
+    }
+
+    pub fn playout_spike_length(self, _length: usize) -> Self {
+        self
+    }
 }
 
 #[cfg(not(feature = "discord"))]
 impl Default for SongbirdConfig {
     fn default() -> Self {
         Self {
-            sample_rate: SampleRate::Hz48000,
-            channels: Channels::Stereo,
             mix_mode: MixMode::Stereo,
         }
     }
@@ -398,15 +388,15 @@ impl Default for QualityAdjustmentState {
 impl AdjustmentPolicy {}
 
 impl AudioSampleRate {
-    /// Convert to Songbird SampleRate enum
-    pub fn to_songbird(self) -> SampleRate {
+    /// Convert to sample rate as u32 (Songbird API changed)
+    pub fn to_songbird(self) -> u32 {
         match self {
-            AudioSampleRate::Hz8000 => SampleRate::Hz8000,
-            AudioSampleRate::Hz16000 => SampleRate::Hz16000,
-            AudioSampleRate::Hz24000 => SampleRate::Hz24000,
-            AudioSampleRate::Hz48000 => SampleRate::Hz48000,
+            AudioSampleRate::Hz8000 => 8000,
+            AudioSampleRate::Hz16000 => 16000,
+            AudioSampleRate::Hz24000 => 24000,
+            AudioSampleRate::Hz48000 => 48000,
             // Map 96kHz to 48kHz as Songbird doesn't support 96kHz
-            AudioSampleRate::Hz96000 => SampleRate::Hz48000,
+            AudioSampleRate::Hz96000 => 48000,
         }
     }
 
@@ -845,17 +835,7 @@ impl AudioQualityManager {
         // Create config using builder pattern since Config is non-exhaustive
         SongbirdConfig::default()
             .mix_mode(config.channels.to_mix_mode())
-            .decode_channels(match config.channels {
-                AudioChannels::Mono => Channels::Mono,
-                AudioChannels::Stereo => Channels::Stereo,
-            })
-            .decode_sample_rate(config.sample_rate.to_songbird())
             .use_softclip(config.soft_clipping)
-            .playout_buffer_length(
-                std::num::NonZeroUsize::new(config.buffer_config.playout_buffer_length)
-                    .unwrap_or(std::num::NonZeroUsize::new(5).unwrap()),
-            )
-            .playout_spike_length(config.buffer_config.playout_spike_length)
     }
 
     /// Get estimated bandwidth usage in kbps

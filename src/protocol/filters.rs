@@ -34,6 +34,7 @@ pub struct Filters {
     )]
     pub low_pass: Omissible<Option<LowPass>>,
     #[serde(rename = "pluginFilters", flatten)]
+    #[cfg(feature = "plugins")]
     pub plugin_filters: HashMap<String, serde_json::Value>,
 }
 
@@ -141,7 +142,16 @@ impl Filters {
             || self.rotation.is_present()
             || self.channel_mix.is_present()
             || self.low_pass.is_present()
-            || !self.plugin_filters.is_empty()
+            || {
+                #[cfg(feature = "plugins")]
+                {
+                    !self.plugin_filters.is_empty()
+                }
+                #[cfg(not(feature = "plugins"))]
+                {
+                    false
+                }
+            }
     }
 
     /// Create a bass boost preset
@@ -272,9 +282,12 @@ impl Filters {
         }
 
         // Check plugin filters
-        for filter_name in self.plugin_filters.keys() {
-            if disabled_filters.contains(filter_name) {
-                errors.push(format!("Plugin filter '{filter_name}' is disabled"));
+        #[cfg(feature = "plugins")]
+        {
+            for filter_name in self.plugin_filters.keys() {
+                if disabled_filters.contains(filter_name) {
+                    errors.push(format!("Plugin filter '{filter_name}' is disabled"));
+                }
             }
         }
 

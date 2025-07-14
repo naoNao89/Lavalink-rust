@@ -11,89 +11,122 @@ categories = ["multimedia::audio", "network-programming", "web-programming"]
 
 # Feature flags for optional functionality
 [features]
-default = ["discord", "audio-processing", "metrics"]
+default = ["server", "discord", "audio-processing", "audio-sources", "rest-api", "websocket", "plugins", "metrics"]
 
-# Core features
-discord = ["songbird", "serenity"]
-audio-processing = ["symphonia", "rubato"]
-metrics = ["dep:metrics", "dep:metrics-exporter-prometheus"]
+# Core server features
+server = ["dep:axum", "dep:tower", "dep:tower-http", "dep:hyper", "tokio/signal", "tokio/fs"]
+rest-api = ["server", "dep:serde_json", "dep:serde_yaml", "dep:url", "dep:base64", "dep:num_cpus", "axum/json", "axum/query", "tower-http/compression-gzip"]
+websocket = ["server", "axum/ws", "axum/macros"]
 
-# Optional audio codecs
+# Discord integration features
+discord = ["dep:songbird", "dep:serenity", "dep:rand"]
+voice-receive = ["discord", "songbird/receive"]
+voice-encryption = ["discord", "songbird/builtin-queue"]
+
+# Audio processing features
+audio-processing = ["dep:symphonia", "dep:rubato", "dep:num_cpus"]
+audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:html-escape", "dep:serde_json", "dep:base64"]
+
+# Optional audio codecs (granular control)
+codec-mp3 = ["symphonia/mp3"]
+codec-flac = ["symphonia/flac"]
+codec-wav = ["symphonia/wav"]
 codec-aac = ["symphonia/aac"]
 codec-vorbis = ["symphonia/vorbis"]
-codec-opus = ["songbird/builtin-queue"]
+codec-opus = ["voice-encryption"]
 
-# Development and testing features
-dev-tools = ["mockall", "wiremock", "criterion"]
-full-audio = ["codec-aac", "codec-vorbis", "codec-opus"]
-
-[dependencies]
-# Core async runtime and web framework (optimized features)
-tokio = { version = "1.45", features = ["rt-multi-thread", "net", "time", "sync", "macros", "signal", "process"] }
-axum = { version = "0.7", features = ["ws", "macros", "multipart"] }
-tower = { version = "0.5", features = ["util", "timeout", "load-shed", "limit"] }
-tower-http = { version = "0.6", features = ["fs", "trace", "cors", "compression-gzip"] }
-hyper = { version = "1.6", features = ["http1", "http2", "client", "server"] }
-
-# Serialization and data handling
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_yaml = "0.9"
-
-# Logging and tracing
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tracing-appender = "0.2"
-
-# Configuration management
-config = "0.14"
-clap = { version = "4.0", features = ["derive"] }
-
-# Audio processing and Discord integration (optimized features)
-songbird = { version = "0.5", features = ["driver", "gateway", "serenity", "rustls", "tungstenite", "receive"], default-features = false, optional = true }
-serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model"], optional = true }
-
-# Audio decoding and processing (essential codecs only)
-symphonia = { version = "0.5", features = ["mp3", "flac", "wav"], default-features = false, optional = true }
-rubato = { version = "0.14", default-features = false, optional = true }
-
-# HTTP client for audio sources
-reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
-
-# Async utilities
-futures = "0.3"
-futures-util = "0.3"
-async-trait = "0.1"
-
-# Error handling
-anyhow = "1.0"
-thiserror = "1.0"
-
-# Cryptography (replacing ring)
-aws-lc-rs = "1.13"
-curve25519-dalek = "4.1"
-rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
+# Monitoring and observability
+metrics = ["dep:metrics", "dep:metrics-exporter-prometheus", "server"]
+tracing-json = ["tracing-subscriber/json"]
+tracing-appender = ["dep:tracing-appender"]
 
 # Plugin system
-libloading = "0.8"
-libc = "0.2"
+plugins = ["dep:libloading", "dep:libc", "dep:urlencoding", "dep:serde_json"]
+
+# Security and cryptography
+crypto = ["dep:aws-lc-rs", "dep:curve25519-dalek", "dep:rand"]
+tls = ["dep:rustls", "crypto"]
+
+# Development and testing features
+dev-tools = ["dep:mockall", "dep:wiremock", "dep:criterion"]
+
+# Convenience feature bundles
+minimal = ["server", "rest-api"]
+standard = ["default", "metrics", "plugins", "dep:serde_json", "dep:base64", "dep:rand"]
+full = ["standard", "codec-aac", "codec-vorbis", "codec-opus", "voice-receive", "tracing-json", "tracing-appender"]
+full-audio = ["audio-processing", "audio-sources", "codec-mp3", "codec-flac", "codec-wav", "codec-aac", "codec-vorbis", "codec-opus"]
+
+[dependencies]
+# Core async runtime (minimal features)
+tokio = { version = "1.45", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
+
+# Web framework (optional, feature-gated)
+axum = { version = "0.7", default-features = false, features = ["tokio", "http1"], optional = true }
+tower = { version = "0.5", default-features = false, features = ["util"], optional = true }
+tower-http = { version = "0.6", default-features = false, features = ["trace", "cors"], optional = true }
+hyper = { version = "1.6", default-features = false, features = ["http1", "server"], optional = true }
+
+# Serialization and data handling (core always included)
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"], optional = true }
+serde_yaml = { version = "0.9", default-features = false, optional = true }
+
+# Logging and tracing (minimal core)
+tracing = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "ansi"] }
+tracing-appender = { version = "0.2", default-features = false, optional = true }
+
+# Configuration management (minimal features)
+config = { version = "0.14", default-features = false, features = ["yaml"] }
+clap = { version = "4.0", default-features = false, features = ["derive", "std"] }
+
+# Audio processing and Discord integration (minimal features)
+songbird = { version = "0.5", default-features = false, features = ["driver", "gateway", "serenity", "rustls", "tungstenite"], optional = true }
+serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model"], optional = true }
+
+# Audio decoding and processing (no default codecs)
+symphonia = { version = "0.5", default-features = false, optional = true }
+rubato = { version = "0.14", default-features = false, optional = true }
+
+# HTTP client for audio sources (optional)
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"], optional = true }
+
+# Async utilities (minimal features)
+futures = { version = "0.3", default-features = false, features = ["std"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+async-trait = { version = "0.1", default-features = false }
+
+# Error handling (always included)
+anyhow = { version = "1.0", default-features = false, features = ["std"] }
+thiserror = { version = "1.0", default-features = false }
+
+# Cryptography (optional)
+aws-lc-rs = { version = "1.13", default-features = false, optional = true }
+curve25519-dalek = { version = "4.1", default-features = false, optional = true }
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"], optional = true }
+
+# Plugin system (optional)
+libloading = { version = "0.8", default-features = false, optional = true }
+libc = { version = "0.2", default-features = false, optional = true }
 
 # Metrics and monitoring (optional)
-metrics = { version = "0.24", optional = true }
-metrics-exporter-prometheus = { version = "0.17", default-features = false, features = ["http-listener", "hyper-rustls"], optional = true }
+metrics = { version = "0.24", default-features = false, optional = true }
+metrics-exporter-prometheus = { version = "0.17", default-features = false, features = ["http-listener"], optional = true }
 
-# Utilities
-uuid = { version = "1.11", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-dashmap = "6.1"
-once_cell = "1.21"
-num_cpus = "1.16"
-base64 = "0.22"
-url = "2.5"
-regex = "1.11"
-rand = "0.9"
-urlencoding = "2.1"
-html-escape = "0.2"
+# Core utilities (always included)
+uuid = { version = "1.11", default-features = false, features = ["v4", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["serde", "std", "clock"] }
+dashmap = { version = "6.1", default-features = false }
+once_cell = { version = "1.21", default-features = false, features = ["std"] }
+
+# Optional utilities (feature-gated)
+num_cpus = { version = "1.16", default-features = false, optional = true }
+base64 = { version = "0.22", default-features = false, features = ["alloc", "std"], optional = true }
+url = { version = "2.5", default-features = false, optional = true }
+regex = { version = "1.11", default-features = false, features = ["std"], optional = true }
+rand = { version = "0.9", default-features = false, features = ["std", "std_rng"], optional = true }
+urlencoding = { version = "2.1", default-features = false, optional = true }
+html-escape = { version = "0.2", default-features = false, optional = true }
 
 # Optional development and testing dependencies
 mockall = { version = "0.13", optional = true }
@@ -117,8 +150,16 @@ overflow-checks = true
 lto = false
 panic = "unwind"
 incremental = true
-codegen-units = 512  # Increased for faster parallel compilation
+codegen-units = 256  # Balanced for compilation speed and parallelism
 rpath = false
+
+# Ultra-fast development profile
+[profile.dev-fast]
+inherits = "dev"
+opt-level = 0
+debug = 0  # No debug info for maximum speed
+codegen-units = 512
+incremental = true
 
 # Fast development profile with some optimizations
 [profile.dev-opt]
@@ -140,6 +181,14 @@ incremental = false
 codegen-units = 1
 rpath = false
 strip = true  # Strip symbols for smaller binary
+
+# Size-optimized release profile
+[profile.release-small]
+inherits = "release"
+opt-level = "s"  # Optimize for size
+lto = "fat"      # Full LTO for maximum size reduction
+codegen-units = 1
+panic = "abort"
 
 # Fast release profile for CI/testing
 [profile.release-fast]
@@ -178,11 +227,30 @@ resolver = "2"
 [profile.dev.package."*"]
 opt-level = 1  # Optimize dependencies even in dev mode
 
+# Audio processing dependencies need optimization
 [profile.dev.package.symphonia]
-opt-level = 2  # Audio processing needs optimization
+opt-level = 2
+[profile.dev.package.symphonia-core]
+opt-level = 2
+[profile.dev.package.rubato]
+opt-level = 2
 
+# Discord/voice dependencies
 [profile.dev.package.songbird]
-opt-level = 2  # Voice processing needs optimization
-
+opt-level = 2
 [profile.dev.package.serenity]
-opt-level = 1  # Discord client optimization
+opt-level = 1
+[profile.dev.package.audiopus]
+opt-level = 2
+
+# Crypto dependencies
+[profile.dev.package.aws-lc-rs]
+opt-level = 2
+[profile.dev.package.rustls]
+opt-level = 1
+
+# Heavy compilation dependencies
+[profile.dev.package.regex]
+opt-level = 1
+[profile.dev.package.reqwest]
+opt-level = 1

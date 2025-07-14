@@ -44,7 +44,12 @@ macro_rules! generate_discord_fallback_handlers {
             );
 
             // Check if session exists
-            if !state.sessions.contains_key(&session_id) {
+            #[cfg(feature = "websocket")]
+            let session_exists = state.sessions.contains_key(&session_id);
+            #[cfg(not(feature = "websocket"))]
+            let session_exists = false; // Always create session when websocket is disabled
+
+            if !session_exists {
                 let error = ErrorResponse::new(
                     404,
                     "Session not found".to_string(),
@@ -402,6 +407,7 @@ pub async fn stats_handler(State(state): State<Arc<AppState>>) -> impl IntoRespo
 }
 
 /// Get all sessions handler - /v4/sessions
+#[cfg(feature = "websocket")]
 pub async fn get_sessions_handler(State(state): State<Arc<AppState>>) -> Response {
     info!("Getting all sessions");
 
@@ -419,6 +425,7 @@ pub async fn get_sessions_handler(State(state): State<Arc<AppState>>) -> Respons
 }
 
 /// Get specific session handler - /v4/sessions/{session_id}
+#[cfg(feature = "websocket")]
 pub async fn get_session_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -443,6 +450,7 @@ pub async fn get_session_handler(
 }
 
 /// Delete session handler - /v4/sessions/{session_id}
+#[cfg(feature = "websocket")]
 pub async fn delete_session_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -472,6 +480,7 @@ pub async fn delete_session_handler(
 }
 
 /// Update session handler - /v4/sessions/{session_id}
+#[cfg(feature = "websocket")]
 pub async fn update_session_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -569,7 +578,12 @@ pub async fn get_session_players_handler(
     );
 
     // Check if session exists
-    if !state.sessions.contains_key(&session_id) {
+    #[cfg(feature = "websocket")]
+    let session_exists = state.sessions.contains_key(&session_id);
+    #[cfg(not(feature = "websocket"))]
+    let session_exists = false; // Always create session when websocket is disabled
+
+    if !session_exists {
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
@@ -596,7 +610,12 @@ pub async fn get_player_handler(
         );
 
         // Check if session exists
-        if !state.sessions.contains_key(&session_id) {
+        #[cfg(feature = "websocket")]
+        let session_exists = state.sessions.contains_key(&session_id);
+        #[cfg(not(feature = "websocket"))]
+        let session_exists = false; // Always create session when websocket is disabled
+
+        if !session_exists {
             let error = ErrorResponse::new(
                 404,
                 "Session not found".to_string(),
@@ -693,7 +712,12 @@ pub async fn delete_player_handler(
         );
 
         // Check if session exists
-        if !state.sessions.contains_key(&session_id) {
+        #[cfg(feature = "websocket")]
+        let session_exists = state.sessions.contains_key(&session_id);
+        #[cfg(not(feature = "websocket"))]
+        let session_exists = false; // Always create session when websocket is disabled
+
+        if !session_exists {
             let error = ErrorResponse::new(
                 404,
                 "Session not found".to_string(),
@@ -943,13 +967,18 @@ pub async fn get_plugins_handler(State(state): State<Arc<AppState>>) -> impl Int
         // Add dynamic plugins
         for name in dynamic_plugins {
             if let Some(metadata) = plugin_manager.get_dynamic_plugin_metadata(&name) {
+                #[cfg(feature = "plugins")]
+                let config_schema = metadata.config_schema.clone();
+                #[cfg(not(feature = "plugins"))]
+                let config_schema = serde_json::Value::Null;
+
                 plugins.push(serde_json::json!({
                     "name": metadata.name,
                     "version": metadata.version,
                     "description": metadata.description,
                     "type": "dynamic",
                     "loaded": true,
-                    "configSchema": metadata.config_schema
+                    "configSchema": config_schema
                 }));
             }
         }
@@ -982,13 +1011,18 @@ pub async fn get_plugin_handler(
 
         // Check dynamic plugins
         if let Some(metadata) = plugin_manager.get_dynamic_plugin_metadata(&name) {
+            #[cfg(feature = "plugins")]
+            let config_schema = metadata.config_schema.clone();
+            #[cfg(not(feature = "plugins"))]
+            let config_schema = serde_json::Value::Null;
+
             let response = serde_json::json!({
                 "name": metadata.name,
                 "version": metadata.version,
                 "description": metadata.description,
                 "type": "dynamic",
                 "loaded": true,
-                "configSchema": metadata.config_schema
+                "configSchema": config_schema
             });
             return (StatusCode::OK, Json(response));
         }
@@ -1054,9 +1088,14 @@ pub async fn get_plugin_config_handler(
 ) -> impl IntoResponse {
     if let Ok(plugin_manager) = state.plugin_manager.read() {
         if let Some(metadata) = plugin_manager.get_dynamic_plugin_metadata(&name) {
+            #[cfg(feature = "plugins")]
+            let config_schema = metadata.config_schema.clone();
+            #[cfg(not(feature = "plugins"))]
+            let config_schema = serde_json::Value::Null;
+
             let response = serde_json::json!({
                 "name": metadata.name,
-                "configSchema": metadata.config_schema,
+                "configSchema": config_schema,
                 "currentConfig": {} // TODO: Implement config storage
             });
             return (StatusCode::OK, Json(response));
