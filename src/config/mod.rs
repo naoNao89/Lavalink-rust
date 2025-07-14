@@ -250,14 +250,14 @@ impl LavalinkConfig {
     pub async fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         #[cfg(feature = "server")]
         {
-            let content = fs::read_to_string(path.as_ref())
-                .await
-                .with_context(|| format!("Failed to read config file: {}", path.as_ref().display()))?;
+            let content = fs::read_to_string(path.as_ref()).await.with_context(|| {
+                format!("Failed to read config file: {}", path.as_ref().display())
+            })?;
 
             #[cfg(feature = "rest-api")]
             {
-                let config: LavalinkConfig =
-                    serde_yaml::from_str(&content).with_context(|| "Failed to parse YAML configuration")?;
+                let config: LavalinkConfig = serde_yaml::from_str(&content)
+                    .with_context(|| "Failed to parse YAML configuration")?;
                 Ok(config)
             }
             #[cfg(not(feature = "rest-api"))]

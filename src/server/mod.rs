@@ -465,7 +465,9 @@ impl LavalinkServer {
     /// Run the server (fallback for non-server builds)
     #[cfg(not(feature = "server"))]
     pub async fn run(self) -> Result<()> {
-        anyhow::bail!("Server functionality is disabled. Enable the 'server' feature to run the HTTP server.");
+        anyhow::bail!(
+            "Server functionality is disabled. Enable the 'server' feature to run the HTTP server."
+        );
     }
 
     /// Build router (fallback for non-server builds)

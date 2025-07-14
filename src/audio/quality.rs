@@ -12,10 +12,7 @@ use tracing::{debug, error, info, warn};
 
 // Discord-specific imports
 #[cfg(feature = "discord")]
-use songbird::{
-    driver::MixMode,
-    Config as SongbirdConfig,
-};
+use songbird::{driver::MixMode, Config as SongbirdConfig};
 
 // Non-Discord alternatives
 #[cfg(not(feature = "discord"))]

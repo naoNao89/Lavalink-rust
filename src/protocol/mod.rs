@@ -1,5 +1,5 @@
 #[cfg(feature = "rest-api")]
-use base64::{engine::general_purpose, Engine, DecodeError};
+use base64::{engine::general_purpose, DecodeError, Engine};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
