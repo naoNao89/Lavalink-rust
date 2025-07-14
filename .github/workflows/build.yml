@@ -29,6 +29,7 @@ jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,7 +55,9 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
+          shared-key: "shared-deps"
           cache-on-failure: true
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -71,6 +74,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     needs: test
     strategy:
       matrix:
@@ -118,10 +122,13 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}
+          key: ${{ matrix.target }}-fast
+          shared-key: "shared-deps"
           cache-on-failure: true
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Build binary
+        timeout-minutes: 45
         env:
           # Use vendored OpenSSL for cross-compilation targets to avoid linking issues
           OPENSSL_STATIC: ${{ (matrix.target == 'x86_64-unknown-linux-musl' || matrix.target == 'aarch64-unknown-linux-gnu') && '1' || '' }}
@@ -129,10 +136,10 @@ jobs:
         run: |
           if [ "${{ matrix.target }}" = "x86_64-unknown-linux-musl" ]; then
             # Build musl without discord features to avoid opus dependency issues
-            cargo build --release --target ${{ matrix.target }} --no-default-features --features "audio-processing,metrics"
+            cargo build --profile release-fast --target ${{ matrix.target }} --no-default-features --features "server,rest-api,audio-processing,audio-sources,websocket,plugins,metrics"
           else
-            # Build with all default features for other targets
-            cargo build --release --target ${{ matrix.target }}
+            # Build with all features except Discord for faster CI builds
+            cargo build --profile release-fast --target ${{ matrix.target }} --no-default-features --features "server,rest-api,audio-processing,audio-sources,websocket,plugins,metrics"
           fi
 
       - name: Create artifact name
@@ -155,7 +162,8 @@ jobs:
 
       - name: Prepare binary
         run: |
-          cp target/${{ matrix.target }}/release/lavalink-rust ${{ steps.artifact.outputs.binary }}
+          # Use release-fast profile directory
+          cp target/${{ matrix.target }}/release-fast/lavalink-rust ${{ steps.artifact.outputs.binary }}
           chmod +x ${{ steps.artifact.outputs.binary }}
 
       - name: Upload binary artifact
@@ -201,6 +209,7 @@ jobs:
     name: Build Docker Images
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
