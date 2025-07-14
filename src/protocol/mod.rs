@@ -1,5 +1,5 @@
 #[cfg(feature = "rest-api")]
-use base64::{engine::general_purpose, DecodeError, Engine};
+use base64::{engine::general_purpose, Engine};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -104,7 +104,8 @@ impl Track {
     #[cfg(feature = "rest-api")]
     pub fn decode(encoded: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // First try to decode as base64
-        let decoded_bytes = base64::decode_engine(encoded, &general_purpose::STANDARD)
+        let decoded_bytes = general_purpose::STANDARD
+            .decode(encoded)
             .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Try to decode as JSON first (our format)

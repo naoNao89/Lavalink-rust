@@ -386,6 +386,7 @@ impl AdjustmentPolicy {}
 
 impl AudioSampleRate {
     /// Convert to sample rate as u32 (Songbird API changed)
+    #[allow(dead_code)]
     pub fn to_songbird(self) -> u32 {
         match self {
             AudioSampleRate::Hz8000 => 8000,

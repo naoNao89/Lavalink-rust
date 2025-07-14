@@ -9,10 +9,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CARGO_CFG_TARGET_ENV");
 
     // Debug output for build detection
-    println!(
-        "cargo:warning=Building for target: {}-{}-{}",
-        target_arch, target_os, target_env
-    );
+    println!("cargo:warning=Building for target: {target_arch}-{target_os}-{target_env}");
 
     // Set up cross-compilation environment variables early
     setup_cross_compilation_env(&target_arch, &target_os, &target_env);
@@ -40,10 +37,7 @@ fn main() {
             configure_x86(&target_os, &target_env);
         }
         arch => {
-            println!(
-                "cargo:warning=Unknown architecture: {}, using default configuration",
-                arch
-            );
+            println!("cargo:warning=Unknown architecture: {arch}, using default configuration");
         }
     }
 
@@ -53,10 +47,7 @@ fn main() {
         "linux" => configure_linux(&target_arch, &target_env),
         "windows" => configure_windows(&target_arch),
         os => {
-            println!(
-                "cargo:warning=Unknown target OS: {}, using default configuration",
-                os
-            );
+            println!("cargo:warning=Unknown target OS: {os}, using default configuration");
         }
     }
 }
@@ -255,7 +246,7 @@ fn setup_cross_compilation_env(target_arch: &str, target_os: &str, target_env: &
         let pkg_config_var = format!("PKG_CONFIG_ALLOW_CROSS_{}", target_arch.replace('-', "_"));
         if std::env::var(&pkg_config_var).is_err() {
             std::env::set_var(&pkg_config_var, "1");
-            println!("cargo:rustc-env={}=1", pkg_config_var);
+            println!("cargo:rustc-env={pkg_config_var}=1");
         }
     }
 }
