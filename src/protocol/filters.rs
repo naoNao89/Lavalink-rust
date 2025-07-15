@@ -1,5 +1,6 @@
 use super::Omissible;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "plugins")]
 use std::collections::HashMap;
 
 /// Audio filters that can be applied to a player
@@ -34,6 +35,7 @@ pub struct Filters {
     )]
     pub low_pass: Omissible<Option<LowPass>>,
     #[serde(rename = "pluginFilters", flatten)]
+    #[cfg(feature = "plugins")]
     pub plugin_filters: HashMap<String, serde_json::Value>,
 }
 
@@ -130,6 +132,7 @@ impl Filters {
     }
 
     /// Check if any filters are enabled
+    #[allow(dead_code)] // Used by filter system
     pub fn is_enabled(&self) -> bool {
         self.volume.is_present()
             || self.equalizer.is_present()
@@ -141,7 +144,16 @@ impl Filters {
             || self.rotation.is_present()
             || self.channel_mix.is_present()
             || self.low_pass.is_present()
-            || !self.plugin_filters.is_empty()
+            || {
+                #[cfg(feature = "plugins")]
+                {
+                    !self.plugin_filters.is_empty()
+                }
+                #[cfg(not(feature = "plugins"))]
+                {
+                    false
+                }
+            }
     }
 
     /// Create a bass boost preset
@@ -228,6 +240,7 @@ impl Filters {
     }
 
     /// Validate filters against disabled filter list
+    #[allow(dead_code)] // Used by filter validation system
     pub fn validate(&self, disabled_filters: &[String]) -> Vec<String> {
         let mut errors = Vec::new();
 
@@ -272,9 +285,12 @@ impl Filters {
         }
 
         // Check plugin filters
-        for filter_name in self.plugin_filters.keys() {
-            if disabled_filters.contains(filter_name) {
-                errors.push(format!("Plugin filter '{}' is disabled", filter_name));
+        #[cfg(feature = "plugins")]
+        {
+            for filter_name in self.plugin_filters.keys() {
+                if disabled_filters.contains(filter_name) {
+                    errors.push(format!("Plugin filter '{filter_name}' is disabled"));
+                }
             }
         }
 

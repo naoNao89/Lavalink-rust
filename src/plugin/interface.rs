@@ -2,9 +2,11 @@
 // This defines the interface that plugins must implement
 
 use anyhow::Result;
-use serde_json::Value;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+
+#[cfg(feature = "plugins")]
+use serde_json::Value;
 
 /// C-compatible plugin interface structure
 /// This is the main interface that dynamic plugins must export
@@ -47,6 +49,7 @@ pub struct PluginMetadata {
     pub name: String,
     pub version: String,
     pub description: String,
+    #[cfg(feature = "plugins")]
     pub config_schema: Option<Value>,
 }
 
@@ -58,6 +61,7 @@ pub struct PluginInterfaceWrapper {
 
 impl PluginInterfaceWrapper {
     /// Create a new plugin interface wrapper
+    #[allow(dead_code)] // Used by plugin system when plugins feature is enabled
     pub fn new(interface: PluginInterface) -> Result<Self> {
         // Extract metadata from the plugin
         let name = unsafe {
@@ -86,7 +90,8 @@ impl PluginInterfaceWrapper {
         };
 
         // Get configuration schema if available
-        let config_schema = if let Some(get_schema) = interface.get_config_schema {
+        #[cfg(feature = "plugins")]
+        let config_schema: Option<Value> = if let Some(get_schema) = interface.get_config_schema {
             unsafe {
                 let schema_ptr = get_schema();
                 if !schema_ptr.is_null() {
@@ -100,10 +105,14 @@ impl PluginInterfaceWrapper {
             None
         };
 
+        #[cfg(not(feature = "plugins"))]
+        let _config_schema: Option<()> = None;
+
         let metadata = PluginMetadata {
             name,
             version,
             description,
+            #[cfg(feature = "plugins")]
             config_schema,
         };
 
@@ -119,6 +128,7 @@ impl PluginInterfaceWrapper {
     }
 
     /// Initialize the plugin
+    #[allow(dead_code)] // Used by plugin system when plugins feature is enabled
     pub fn initialize(&self) -> Result<()> {
         let result = (self.interface.initialize)();
         if result == 0 {
@@ -146,6 +156,7 @@ impl PluginInterfaceWrapper {
 }
 
 /// Plugin interface constants
+#[allow(dead_code)] // Used by plugin system when plugins feature is enabled
 pub const PLUGIN_INTERFACE_SYMBOL: &[u8] = b"lavalink_plugin_interface\0";
 
 /// Helper function to free C string (should be called by plugin)

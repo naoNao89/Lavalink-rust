@@ -1,0 +1,160 @@
+# Discord End-to-End Test Configuration
+# This configuration is specifically designed for running Discord E2E tests
+# Copy this file and customize it for your test environment
+
+server:
+  port: 2334  # Different port from main server to avoid conflicts
+  address: "127.0.0.1"  # Localhost for testing
+
+lavalink:
+  server:
+    password: "test_e2e_password"  # Test-specific password
+    
+    # Audio sources configuration
+    sources:
+      youtube: true
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false  # Disable local files for E2E tests
+    
+    # Audio filters (all enabled for comprehensive testing)
+    filters:
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    
+    # Audio processing settings optimized for testing
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: "LOW"  # Lower quality for faster processing in tests
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
+    youtubePlaylistLoadLimit: 6
+    playerUpdateInterval: 5
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+    
+    # Discord bot token - SET THIS VIA ENVIRONMENT VARIABLE
+    # DO NOT COMMIT ACTUAL TOKENS TO VERSION CONTROL
+    discordBotToken: "${DISCORD_BOT_TOKEN}"
+    
+    # HTTP configuration for testing
+    httpConfig:
+      proxyHost: null
+      proxyPort: null
+      proxyUser: null
+      proxyPassword: null
+    
+    # Timeout settings for testing environment
+    timeouts:
+      connectTimeoutMs: 5000      # 5 second connection timeout
+      connectionRequestTimeoutMs: 5000
+      socketTimeoutMs: 10000      # 10 second socket timeout
+
+# Metrics disabled for testing to reduce overhead
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: "/metrics"
+
+# Sentry disabled for testing
+sentry:
+  dsn: ""
+  environment: "test"
+
+# Logging configuration for E2E tests
+logging:
+  level:
+    root: INFO
+    lavalink: INFO
+    # Enable debug logging for voice components during testing
+    "lavalink.voice": DEBUG
+    "lavalink.audio": DEBUG
+    "lavalink.player": DEBUG
+  
+  # Log to console for test visibility
+  logback:
+    rollingpolicy:
+      max-file-size: "10MB"
+      max-history: 3
+  
+  # Request logging for debugging
+  request:
+    enabled: true
+    includeClientInfo: true
+    includeHeaders: false  # Disable for security in tests
+    includeQueryString: true
+    includePayload: false  # Disable to avoid logging sensitive data
+    maxPayloadLength: 1000
+
+# Plugin configuration (minimal for testing)
+plugins:
+  # No plugins loaded by default in E2E tests
+  # Add specific plugins here if needed for testing
+
+# Rust-specific configuration for testing
+rust:
+  # Audio engine settings for testing
+  audio:
+    sample_rate: 48000
+    channels: 2
+    bit_depth: 16
+    
+  # Memory management for testing
+  memory:
+    max_track_cache: 100        # Smaller cache for testing
+    cleanup_interval: 60        # More frequent cleanup
+    
+  # Performance settings optimized for testing
+  performance:
+    worker_threads: 2           # Fewer threads for testing
+    max_blocking_threads: 32    # Reduced for testing environment
+    thread_stack_size: 1048576  # 1MB stack size
+    
+  # Plugin system disabled for basic E2E tests
+  plugins:
+    enabled: false
+    directory: "./plugins"
+    hot_reload: false
+
+# Environment-specific overrides
+# These can be set via environment variables:
+#
+# Server settings:
+# - SERVER_PORT=2334
+# - SERVER_ADDRESS=127.0.0.1
+#
+# Lavalink settings:
+# - LAVALINK_SERVER_PASSWORD=test_e2e_password
+# - LAVALINK_SERVER_DISCORD_BOT_TOKEN=your_bot_token_here
+#
+# Discord test settings:
+# - DISCORD_GUILD_ID=your_test_guild_id
+# - DISCORD_VOICE_CHANNEL_ID=your_test_voice_channel_id
+#
+# Logging:
+# - RUST_LOG=debug
+# - LAVALINK_LOG_LEVEL=debug
+
+# Example usage:
+# 1. Copy this file to your local config directory
+# 2. Set environment variables:
+#    export DISCORD_BOT_TOKEN="your_bot_token"
+#    export DISCORD_GUILD_ID="your_guild_id"
+#    export DISCORD_VOICE_CHANNEL_ID="your_channel_id"
+# 3. Run E2E tests:
+#    cargo test --test discord_e2e_tests -- --ignored
+#
+# For CI/CD, store these as encrypted secrets and set them in the environment

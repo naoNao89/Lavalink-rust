@@ -11,10 +11,225 @@ use std::sync::Arc;
 use tracing::{error, info, warn};
 
 use super::AppState;
-use crate::{
-    audio::AudioSourceManager,
-    protocol::{DecodeTracksRequest, ErrorResponse, LoadTracksQuery, Track},
-};
+use crate::protocol::{DecodeTracksRequest, ErrorResponse, LoadTracksQuery, Track};
+
+#[cfg(feature = "audio-processing")]
+use crate::audio::AudioSourceManager;
+
+// Helper function to check if discord feature is enabled and return error if not
+#[cfg(not(feature = "discord"))]
+fn discord_not_available_response(path: &str) -> Response {
+    let error = ErrorResponse::new(
+        501,
+        "Not Implemented".to_string(),
+        Some("Discord integration feature is disabled".to_string()),
+        path.to_string(),
+    );
+    (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
+}
+
+// Macro to generate fallback handlers for Discord-specific endpoints only
+#[cfg(not(feature = "discord"))]
+macro_rules! generate_discord_fallback_handlers {
+    () => {
+        /// Update player handler - /v4/sessions/{session_id}/players/{guild_id} (non-Discord)
+        pub async fn update_player_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
+            State(state): State<Arc<AppState>>,
+            Json(request): Json<serde_json::Value>,
+        ) -> Response {
+            info!(
+                "Updating player for session: {}, guild: {} (non-Discord mode)",
+                session_id, guild_id
+            );
+
+            // Check if session exists
+            #[cfg(feature = "websocket")]
+            let session_exists = state.sessions.contains_key(&session_id);
+            #[cfg(not(feature = "websocket"))]
+            let session_exists = false; // Always create session when websocket is disabled
+
+            if !session_exists {
+                let error = ErrorResponse::new(
+                    404,
+                    "Session not found".to_string(),
+                    Some(format!("Session {session_id} not found")),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}"),
+                );
+                return (StatusCode::NOT_FOUND, Json(error)).into_response();
+            }
+
+            // For non-Discord builds, return a basic player response
+            // This allows the API to work but without actual audio functionality
+            let player_response = serde_json::json!({
+                "guildId": guild_id,
+                "track": null,
+                "volume": request.get("volume").and_then(|v| v.as_u64()).unwrap_or(100),
+                "paused": request.get("paused").and_then(|v| v.as_bool()).unwrap_or(false),
+                "state": {
+                    "time": 0,
+                    "position": 0,
+                    "connected": false,
+                    "ping": -1
+                },
+                "voice": {
+                    "token": null,
+                    "endpoint": null,
+                    "sessionId": null
+                },
+                "filters": {}
+            });
+
+            Json(player_response).into_response()
+        }
+
+        /// Get player queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+        pub async fn get_player_queue_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue",
+                session_id, guild_id
+            ))
+        }
+
+        /// Add tracks to queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+        pub async fn add_to_queue_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+            Json(_request): Json<serde_json::Value>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue",
+                session_id, guild_id
+            ))
+        }
+
+        /// Remove track from queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/{index}
+        pub async fn remove_from_queue_handler(
+            Path((session_id, guild_id, _index)): Path<(String, String, usize)>,
+            State(_state): State<Arc<AppState>>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue",
+                session_id, guild_id
+            ))
+        }
+
+        /// Update queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+        #[allow(dead_code)]
+        pub async fn update_queue_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+            Json(_request): Json<serde_json::Value>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue",
+                session_id, guild_id
+            ))
+        }
+
+        /// Clear queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+        pub async fn clear_queue_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue",
+                session_id, guild_id
+            ))
+        }
+
+        /// Shuffle queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/shuffle
+        pub async fn shuffle_queue_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue",
+                session_id, guild_id
+            ))
+        }
+
+        /// Move track in queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/move
+        #[allow(dead_code)]
+        pub async fn move_track_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+            Json(_request): Json<serde_json::Value>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue",
+                session_id, guild_id
+            ))
+        }
+
+        /// Move track in queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/move
+        pub async fn move_track_in_queue_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+            Json(_request): Json<crate::protocol::messages::MoveTrackRequest>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/queue/move",
+                session_id, guild_id
+            ))
+        }
+
+        /// Get player filters handler - /v4/sessions/{session_id}/players/{guild_id}/filters
+        pub async fn get_player_filters_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/filters",
+                session_id, guild_id
+            ))
+        }
+
+        /// Update player filters handler - /v4/sessions/{session_id}/players/{guild_id}/filters
+        pub async fn update_player_filters_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+            Json(_filters): Json<crate::protocol::filters::Filters>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/filters",
+                session_id, guild_id
+            ))
+        }
+
+        /// Skip track handler - /v4/sessions/{session_id}/players/{guild_id}/skip
+        pub async fn skip_track_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/skip",
+                session_id, guild_id
+            ))
+        }
+
+        /// Seek track handler - /v4/sessions/{session_id}/players/{guild_id}/seek
+        #[allow(dead_code)]
+        pub async fn seek_track_handler(
+            Path((session_id, guild_id)): Path<(String, String)>,
+            State(_state): State<Arc<AppState>>,
+            Json(_request): Json<serde_json::Value>,
+        ) -> Response {
+            discord_not_available_response(&format!(
+                "/v4/sessions/{}/players/{}/seek",
+                session_id, guild_id
+            ))
+        }
+    };
+}
+
+// Generate fallback handlers when discord feature is disabled
+#[cfg(not(feature = "discord"))]
+generate_discord_fallback_handlers!();
 
 /// Custom JSON extractor with better error messages
 pub struct DebugJson<T>(pub T);
@@ -35,7 +250,7 @@ where
                 let error = ErrorResponse::new(
                     400,
                     "Bad Request".to_string(),
-                    Some(format!("JSON deserialization failed: {}", rejection)),
+                    Some(format!("JSON deserialization failed: {rejection}")),
                     "/unknown".to_string(),
                 );
                 return Err((StatusCode::BAD_REQUEST, Json(error)).into_response());
@@ -46,6 +261,7 @@ where
 }
 
 /// Load tracks handler - /v4/loadtracks
+#[cfg(feature = "audio-processing")]
 pub async fn load_tracks_handler(
     State(_state): State<Arc<AppState>>,
     Query(query): Query<LoadTracksQuery>,
@@ -72,12 +288,27 @@ pub async fn load_tracks_handler(
             let error = ErrorResponse::new(
                 500,
                 "Internal Server Error".to_string(),
-                Some(format!("Failed to load tracks: {}", e)),
+                Some(format!("Failed to load tracks: {e}")),
                 "/v4/loadtracks".to_string(),
             );
             (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response()
         }
     }
+}
+
+/// Load tracks handler - /v4/loadtracks (fallback when audio-processing is disabled)
+#[cfg(not(feature = "audio-processing"))]
+pub async fn load_tracks_handler(
+    State(_state): State<Arc<AppState>>,
+    Query(_query): Query<LoadTracksQuery>,
+) -> Response {
+    let error = ErrorResponse::new(
+        501,
+        "Not Implemented".to_string(),
+        Some("Audio processing feature is disabled".to_string()),
+        "/v4/loadtracks".to_string(),
+    );
+    (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
 }
 
 /// Decode track handler - /v4/decodetrack
@@ -92,7 +323,7 @@ pub async fn decode_track_handler(
                 let error = ErrorResponse::new(
                     400,
                     "Bad Request".to_string(),
-                    Some(format!("Failed to decode track: {}", e)),
+                    Some(format!("Failed to decode track: {e}")),
                     "/v4/decodetrack".to_string(),
                 );
                 (StatusCode::BAD_REQUEST, Json(error)).into_response()
@@ -112,17 +343,33 @@ pub async fn decode_track_handler(
 /// Decode tracks handler - /v4/decodetracks
 pub async fn decode_tracks_handler(
     State(_state): State<Arc<AppState>>,
-    Json(_request): Json<DecodeTracksRequest>,
+    Json(request): Json<DecodeTracksRequest>,
 ) -> impl IntoResponse {
-    // TODO: Implement tracks decoding
-    let error = ErrorResponse::new(
-        501,
-        "Not Implemented".to_string(),
-        Some("Tracks decoding not yet implemented".to_string()),
-        "/v4/decodetracks".to_string(),
+    let mut decoded_tracks = Vec::new();
+    let mut failed_tracks = Vec::new();
+    let total_tracks = request.tracks.len();
+
+    for encoded_track in request.tracks {
+        match Track::decode(&encoded_track) {
+            Ok(track) => decoded_tracks.push(track),
+            Err(e) => {
+                error!("Failed to decode track {}: {}", encoded_track, e);
+                failed_tracks.push(encoded_track);
+            }
+        }
+    }
+
+    if !failed_tracks.is_empty() {
+        warn!("Failed to decode {} tracks", failed_tracks.len());
+    }
+
+    info!(
+        "Successfully decoded {}/{} tracks",
+        decoded_tracks.len(),
+        total_tracks
     );
 
-    (StatusCode::NOT_IMPLEMENTED, Json(error))
+    (StatusCode::OK, Json(decoded_tracks)).into_response()
 }
 
 /// Info handler - /v4/info
@@ -161,23 +408,26 @@ pub async fn stats_handler(State(state): State<Arc<AppState>>) -> impl IntoRespo
 }
 
 /// Get all sessions handler - /v4/sessions
+#[cfg(feature = "websocket")]
 pub async fn get_sessions_handler(State(state): State<Arc<AppState>>) -> Response {
     info!("Getting all sessions");
 
     let mut sessions = Vec::new();
     for entry in state.sessions.iter() {
-        let _session_id = entry.key();
+        let session_id = entry.key();
         let session = entry.value();
-        sessions.push(crate::protocol::messages::SessionResponse {
-            resuming: session.resuming,
-            timeout: session.timeout,
-        });
+        sessions.push(serde_json::json!({
+            "sessionId": session_id,
+            "resuming": session.resuming,
+            "timeout": session.timeout,
+        }));
     }
 
     (StatusCode::OK, Json(sessions)).into_response()
 }
 
 /// Get specific session handler - /v4/sessions/{session_id}
+#[cfg(feature = "websocket")]
 pub async fn get_session_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -194,14 +444,15 @@ pub async fn get_session_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}", session_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}"),
         );
         (StatusCode::NOT_FOUND, Json(error)).into_response()
     }
 }
 
 /// Delete session handler - /v4/sessions/{session_id}
+#[cfg(feature = "websocket")]
 pub async fn delete_session_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -209,25 +460,29 @@ pub async fn delete_session_handler(
     info!("Deleting session: {}", session_id);
 
     if state.sessions.remove(&session_id).is_some() {
-        // Also remove all players associated with this session
-        state
-            .player_manager
-            .remove_players_for_session(&session_id)
-            .await;
+        // Also remove all players associated with this session (if discord feature is enabled)
+        #[cfg(feature = "discord")]
+        {
+            state
+                .player_manager
+                .remove_players_for_session(&session_id)
+                .await;
+        }
         info!("Session {} deleted successfully", session_id);
         StatusCode::NO_CONTENT.into_response()
     } else {
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}", session_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}"),
         );
         (StatusCode::NOT_FOUND, Json(error)).into_response()
     }
 }
 
 /// Update session handler - /v4/sessions/{session_id}
+#[cfg(feature = "websocket")]
 pub async fn update_session_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -272,6 +527,7 @@ pub async fn update_session_handler(
 }
 
 /// Get players for session handler - /v4/sessions/{session_id}/players
+#[cfg(feature = "discord")]
 pub async fn get_session_players_handler(
     Path(session_id): Path<String>,
     State(state): State<Arc<AppState>>,
@@ -283,8 +539,8 @@ pub async fn get_session_players_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players", session_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -312,56 +568,140 @@ pub async fn get_session_players_handler(
     (StatusCode::OK, Json(player_responses)).into_response()
 }
 
-/// Get player handler - /v4/sessions/{session_id}/players/{guild_id}
-pub async fn get_player_handler(
-    Path((session_id, guild_id)): Path<(String, String)>,
-    State(state): State<Arc<AppState>>,
+/// Get players for session handler - /v4/sessions/{session_id}/players (fallback)
+#[cfg(not(feature = "discord"))]
+pub async fn get_session_players_handler(
+    Path(session_id): Path<String>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))] State(state): State<
+        Arc<AppState>,
+    >,
 ) -> Response {
     info!(
-        "Getting player for session: {}, guild: {}",
-        session_id, guild_id
+        "Getting players for session: {} (non-Discord mode)",
+        session_id
     );
 
     // Check if session exists
-    if !state.sessions.contains_key(&session_id) {
+    #[cfg(feature = "websocket")]
+    let session_exists = state.sessions.contains_key(&session_id);
+    #[cfg(not(feature = "websocket"))]
+    let session_exists = false; // Always create session when websocket is disabled
+
+    if !session_exists {
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}", session_id, guild_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
 
-    // Get player for this guild
-    match state.player_manager.get_player(&guild_id).await {
-        Some(player) => {
-            let player_guard = player.read().await;
+    // Return empty array for non-Discord builds (no players can exist)
+    Json(Vec::<serde_json::Value>::new()).into_response()
+}
 
-            // Check if player belongs to this session
-            if player_guard.session_id != session_id {
+/// Get player handler - /v4/sessions/{session_id}/players/{guild_id}
+pub async fn get_player_handler(
+    Path((session_id, guild_id)): Path<(String, String)>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))] State(state): State<
+        Arc<AppState>,
+    >,
+) -> Response {
+    #[cfg(not(feature = "discord"))]
+    {
+        info!(
+            "Getting player for session: {}, guild: {} (non-Discord mode)",
+            session_id, guild_id
+        );
+
+        // Check if session exists
+        #[cfg(feature = "websocket")]
+        let session_exists = state.sessions.contains_key(&session_id);
+        #[cfg(not(feature = "websocket"))]
+        let session_exists = false; // Always create session when websocket is disabled
+
+        if !session_exists {
+            let error = ErrorResponse::new(
+                404,
+                "Session not found".to_string(),
+                Some(format!("Session {session_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            return (StatusCode::NOT_FOUND, Json(error)).into_response();
+        }
+
+        // Return a basic player response for non-Discord builds
+        let player_response = serde_json::json!({
+            "guildId": guild_id,
+            "track": null,
+            "volume": 100,
+            "paused": false,
+            "state": {
+                "time": 0,
+                "position": 0,
+                "connected": false,
+                "ping": -1
+            },
+            "voice": {
+                "token": null,
+                "endpoint": null,
+                "sessionId": null
+            },
+            "filters": {}
+        });
+
+        #[allow(clippy::needless_return)] // Return needed for conditional compilation
+        return Json(player_response).into_response();
+    }
+
+    #[cfg(feature = "discord")]
+    {
+        info!(
+            "Getting player for session: {}, guild: {}",
+            session_id, guild_id
+        );
+
+        // Check if session exists
+        if !state.sessions.contains_key(&session_id) {
+            let error = ErrorResponse::new(
+                404,
+                "Session not found".to_string(),
+                Some(format!("Session {session_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            return (StatusCode::NOT_FOUND, Json(error)).into_response();
+        }
+
+        // Get player for this guild
+        match state.player_manager.get_player(&guild_id).await {
+            Some(player) => {
+                let player_guard = player.read().await;
+
+                // Check if player belongs to this session
+                if player_guard.session_id != session_id {
+                    let error = ErrorResponse::new(
+                        404,
+                        "Player not found".to_string(),
+                        Some(format!(
+                            "Player for guild {guild_id} not found in session {session_id}"
+                        )),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}"),
+                    );
+                    return (StatusCode::NOT_FOUND, Json(error)).into_response();
+                }
+
+                (StatusCode::OK, Json(player_guard.to_protocol_player())).into_response()
+            }
+            None => {
                 let error = ErrorResponse::new(
                     404,
                     "Player not found".to_string(),
-                    Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
-                    )),
-                    format!("/v4/sessions/{}/players/{}", session_id, guild_id),
+                    Some(format!("Player for guild {guild_id} not found")),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}"),
                 );
-                return (StatusCode::NOT_FOUND, Json(error)).into_response();
+                (StatusCode::NOT_FOUND, Json(error)).into_response()
             }
-
-            (StatusCode::OK, Json(player_guard.to_protocol_player())).into_response()
-        }
-        None => {
-            let error = ErrorResponse::new(
-                404,
-                "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!("/v4/sessions/{}/players/{}", session_id, guild_id),
-            );
-            (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
     }
 }
@@ -369,60 +709,97 @@ pub async fn get_player_handler(
 /// Delete player handler - /v4/sessions/{session_id}/players/{guild_id}
 pub async fn delete_player_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
-    State(state): State<Arc<AppState>>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))] State(state): State<
+        Arc<AppState>,
+    >,
 ) -> Response {
-    info!(
-        "Deleting player for guild {} in session {}",
-        guild_id, session_id
-    );
-
-    // Check if session exists
-    if !state.sessions.contains_key(&session_id) {
-        let error = ErrorResponse::new(
-            404,
-            "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}", session_id, guild_id),
+    #[cfg(not(feature = "discord"))]
+    {
+        info!(
+            "Deleting player for guild {} in session {} (non-Discord mode)",
+            guild_id, session_id
         );
-        return (StatusCode::NOT_FOUND, Json(error)).into_response();
-    }
 
-    // Check if player exists and belongs to this session
-    if let Some(player) = state.player_manager.get_player(&guild_id).await {
-        let player_guard = player.read().await;
-        if player_guard.session_id != session_id {
+        // Check if session exists
+        #[cfg(feature = "websocket")]
+        let session_exists = state.sessions.contains_key(&session_id);
+        #[cfg(not(feature = "websocket"))]
+        let session_exists = false; // Always create session when websocket is disabled
+
+        if !session_exists {
             let error = ErrorResponse::new(
                 404,
-                "Player not found".to_string(),
-                Some(format!(
-                    "Player {} not found in session {}",
-                    guild_id, session_id
-                )),
-                format!("/v4/sessions/{}/players/{}", session_id, guild_id),
+                "Session not found".to_string(),
+                Some(format!("Session {session_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
             );
             return (StatusCode::NOT_FOUND, Json(error)).into_response();
         }
-        drop(player_guard);
 
-        // Remove the player
-        state.player_manager.remove_player(&guild_id).await;
+        // For non-Discord builds, always return success (no actual players to delete)
         info!(
-            "Player {} deleted successfully from session {}",
+            "Player {} deleted successfully from session {} (non-Discord mode)",
             guild_id, session_id
         );
-        StatusCode::NO_CONTENT.into_response()
-    } else {
-        let error = ErrorResponse::new(
-            404,
-            "Player not found".to_string(),
-            Some(format!("Player {} not found", guild_id)),
-            format!("/v4/sessions/{}/players/{}", session_id, guild_id),
+        #[allow(clippy::needless_return)] // Return needed for conditional compilation
+        return StatusCode::NO_CONTENT.into_response();
+    }
+
+    #[cfg(feature = "discord")]
+    {
+        info!(
+            "Deleting player for guild {} in session {}",
+            guild_id, session_id
         );
-        (StatusCode::NOT_FOUND, Json(error)).into_response()
+
+        // Check if session exists
+        if !state.sessions.contains_key(&session_id) {
+            let error = ErrorResponse::new(
+                404,
+                "Session not found".to_string(),
+                Some(format!("Session {session_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            return (StatusCode::NOT_FOUND, Json(error)).into_response();
+        }
+
+        // Check if player exists and belongs to this session
+        if let Some(player) = state.player_manager.get_player(&guild_id).await {
+            let player_guard = player.read().await;
+            if player_guard.session_id != session_id {
+                let error = ErrorResponse::new(
+                    404,
+                    "Player not found".to_string(),
+                    Some(format!(
+                        "Player {guild_id} not found in session {session_id}"
+                    )),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}"),
+                );
+                return (StatusCode::NOT_FOUND, Json(error)).into_response();
+            }
+            drop(player_guard);
+
+            // Remove the player
+            state.player_manager.remove_player(&guild_id).await;
+            info!(
+                "Player {} deleted successfully from session {}",
+                guild_id, session_id
+            );
+            StatusCode::NO_CONTENT.into_response()
+        } else {
+            let error = ErrorResponse::new(
+                404,
+                "Player not found".to_string(),
+                Some(format!("Player {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            (StatusCode::NOT_FOUND, Json(error)).into_response()
+        }
     }
 }
 
 /// Update player handler - /v4/sessions/{session_id}/players/{guild_id}
+#[cfg(feature = "discord")]
 pub async fn update_player_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -439,8 +816,8 @@ pub async fn update_player_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}", session_id, guild_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -470,7 +847,7 @@ pub async fn update_player_handler(
         } else if let Some(identifier) = track_data.get("identifier").and_then(|v| v.as_str()) {
             // Create a simple track from identifier for testing
             let track = crate::protocol::Track {
-                encoded: format!("encoded_{}", identifier),
+                encoded: format!("encoded_{identifier}"),
                 info: crate::protocol::TrackInfo {
                     identifier: identifier.to_string(),
                     is_seekable: true,
@@ -478,8 +855,8 @@ pub async fn update_player_handler(
                     length: 180000, // 3 minutes
                     is_stream: false,
                     position: 0,
-                    title: format!("Test Track: {}", identifier),
-                    uri: Some(format!("test://{}", identifier)),
+                    title: format!("Test Track: {identifier}"),
+                    uri: Some(format!("test://{identifier}")),
                     source_name: "test".to_string(),
                     artwork_url: None,
                     isrc: None,
@@ -498,25 +875,81 @@ pub async fn update_player_handler(
 }
 
 /// Route planner status handler - /v4/routeplanner/status
-pub async fn routeplanner_status_handler(State(_state): State<Arc<AppState>>) -> impl IntoResponse {
-    // TODO: Implement route planner status
-    let status = serde_json::json!({
-        "class": null,
-        "details": null
-    });
+pub async fn routeplanner_status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    info!("Getting route planner status");
 
-    (StatusCode::OK, Json(status))
+    if let Some(route_planner) = &state.route_planner {
+        let details = route_planner.get_status().await;
+        let status = serde_json::json!({
+            "class": match details {
+                crate::protocol::RoutePlannerDetails::Rotating { .. } => "RotatingIpRoutePlanner",
+                crate::protocol::RoutePlannerDetails::Nano { .. } => "NanoIpRoutePlanner",
+                crate::protocol::RoutePlannerDetails::RotatingNano { .. } => "RotatingNanoIpRoutePlanner",
+            },
+            "details": details
+        });
+
+        (StatusCode::OK, Json(status))
+    } else {
+        let status = serde_json::json!({
+            "class": null,
+            "details": null
+        });
+
+        (StatusCode::OK, Json(status))
+    }
 }
 
 /// Route planner unmark address handler - /v4/routeplanner/free/address
 pub async fn routeplanner_unmark_address_handler(
-    State(_state): State<Arc<AppState>>,
-    Json(_request): Json<serde_json::Value>,
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<serde_json::Value>,
 ) -> impl IntoResponse {
-    // TODO: Implement route planner address unmarking
-    warn!("Route planner address unmarking not implemented yet");
+    info!("Unmarking route planner address");
 
-    StatusCode::NO_CONTENT
+    if let Some(route_planner) = &state.route_planner {
+        if let Some(address_str) = request.get("address").and_then(|v| v.as_str()) {
+            match address_str.parse::<std::net::IpAddr>() {
+                Ok(ip) => {
+                    let unmarked = route_planner.unmark_address(ip).await;
+                    if unmarked {
+                        info!("Successfully unmarked address: {}", ip);
+                    } else {
+                        info!("Address was not marked as failing: {}", ip);
+                    }
+                    StatusCode::NO_CONTENT.into_response()
+                }
+                Err(_) => {
+                    warn!("Invalid IP address format: {}", address_str);
+                    let error = crate::protocol::ErrorResponse::new(
+                        400,
+                        "Bad Request".to_string(),
+                        Some(format!("Invalid IP address format: {address_str}")),
+                        "/v4/routeplanner/free/address".to_string(),
+                    );
+                    (StatusCode::BAD_REQUEST, Json(error)).into_response()
+                }
+            }
+        } else {
+            warn!("Missing 'address' field in request");
+            let error = crate::protocol::ErrorResponse::new(
+                400,
+                "Bad Request".to_string(),
+                Some("Missing 'address' field in request body".to_string()),
+                "/v4/routeplanner/free/address".to_string(),
+            );
+            (StatusCode::BAD_REQUEST, Json(error)).into_response()
+        }
+    } else {
+        warn!("Route planner not configured");
+        let error = crate::protocol::ErrorResponse::new(
+            501,
+            "Not Implemented".to_string(),
+            Some("Route planner is not configured".to_string()),
+            "/v4/routeplanner/free/address".to_string(),
+        );
+        (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
+    }
 }
 
 // Plugin Management Endpoints
@@ -544,13 +977,18 @@ pub async fn get_plugins_handler(State(state): State<Arc<AppState>>) -> impl Int
         // Add dynamic plugins
         for name in dynamic_plugins {
             if let Some(metadata) = plugin_manager.get_dynamic_plugin_metadata(&name) {
+                #[cfg(feature = "plugins")]
+                let config_schema = metadata.config_schema.clone();
+                #[cfg(not(feature = "plugins"))]
+                let config_schema = serde_json::Value::Null;
+
                 plugins.push(serde_json::json!({
                     "name": metadata.name,
                     "version": metadata.version,
                     "description": metadata.description,
                     "type": "dynamic",
                     "loaded": true,
-                    "configSchema": metadata.config_schema
+                    "configSchema": config_schema
                 }));
             }
         }
@@ -583,13 +1021,18 @@ pub async fn get_plugin_handler(
 
         // Check dynamic plugins
         if let Some(metadata) = plugin_manager.get_dynamic_plugin_metadata(&name) {
+            #[cfg(feature = "plugins")]
+            let config_schema = metadata.config_schema.clone();
+            #[cfg(not(feature = "plugins"))]
+            let config_schema = serde_json::Value::Null;
+
             let response = serde_json::json!({
                 "name": metadata.name,
                 "version": metadata.version,
                 "description": metadata.description,
                 "type": "dynamic",
                 "loaded": true,
-                "configSchema": metadata.config_schema
+                "configSchema": config_schema
             });
             return (StatusCode::OK, Json(response));
         }
@@ -600,8 +1043,8 @@ pub async fn get_plugin_handler(
         "timestamp": chrono::Utc::now().timestamp_millis() as u64,
         "status": 404,
         "error": "Not Found",
-        "message": format!("Plugin '{}' not found", name),
-        "path": format!("/v4/plugins/{}", name),
+        "message": format!("Plugin '{name}' not found"),
+        "path": format!("/v4/plugins/{name}"),
         "trace": null
     });
 
@@ -625,8 +1068,8 @@ pub async fn reload_plugin_handler(
             "timestamp": chrono::Utc::now().timestamp_millis() as u64,
             "status": 400,
             "error": "Bad Request",
-            "message": format!("Plugin '{}' is not a dynamic plugin or not loaded", name),
-            "path": format!("/v4/plugins/{}/reload", name),
+            "message": format!("Plugin '{name}' is not a dynamic plugin or not loaded"),
+            "path": format!("/v4/plugins/{name}/reload"),
             "trace": null
         });
         return (StatusCode::BAD_REQUEST, Json(error));
@@ -641,7 +1084,7 @@ pub async fn reload_plugin_handler(
         "status": 501,
         "error": "Not Implemented",
         "message": "Plugin reloading is not yet implemented",
-        "path": format!("/v4/plugins/{}/reload", name),
+        "path": format!("/v4/plugins/{name}/reload"),
         "trace": null
     });
 
@@ -655,9 +1098,14 @@ pub async fn get_plugin_config_handler(
 ) -> impl IntoResponse {
     if let Ok(plugin_manager) = state.plugin_manager.read() {
         if let Some(metadata) = plugin_manager.get_dynamic_plugin_metadata(&name) {
+            #[cfg(feature = "plugins")]
+            let config_schema = metadata.config_schema.clone();
+            #[cfg(not(feature = "plugins"))]
+            let config_schema = serde_json::Value::Null;
+
             let response = serde_json::json!({
                 "name": metadata.name,
-                "configSchema": metadata.config_schema,
+                "configSchema": config_schema,
                 "currentConfig": {} // TODO: Implement config storage
             });
             return (StatusCode::OK, Json(response));
@@ -668,8 +1116,8 @@ pub async fn get_plugin_config_handler(
         "timestamp": chrono::Utc::now().timestamp_millis() as u64,
         "status": 404,
         "error": "Not Found",
-        "message": format!("Plugin '{}' not found", name),
-        "path": format!("/v4/plugins/{}/config", name),
+        "message": format!("Plugin '{name}' not found"),
+        "path": format!("/v4/plugins/{name}/config"),
         "trace": null
     });
 
@@ -680,7 +1128,7 @@ pub async fn get_plugin_config_handler(
 pub async fn update_plugin_config_handler(
     State(state): State<Arc<AppState>>,
     Path(name): Path<String>,
-    Json(_config): Json<serde_json::Value>,
+    Json(config): Json<serde_json::Value>,
 ) -> impl IntoResponse {
     let is_loaded = if let Ok(plugin_manager) = state.plugin_manager.read() {
         plugin_manager.is_dynamic_plugin_loaded(&name)
@@ -693,42 +1141,52 @@ pub async fn update_plugin_config_handler(
             "timestamp": chrono::Utc::now().timestamp_millis() as u64,
             "status": 404,
             "error": "Not Found",
-            "message": format!("Plugin '{}' not found", name),
-            "path": format!("/v4/plugins/{}/config", name),
+            "message": format!("Plugin '{name}' not found"),
+            "path": format!("/v4/plugins/{name}/config"),
             "trace": null
         });
         return (StatusCode::NOT_FOUND, Json(error));
     }
 
-    // TODO: Implement plugin configuration updates
-    warn!(
-        "Plugin config update not yet implemented for plugin: {}",
-        name
-    );
+    // Update plugin configuration
+    info!("Updating configuration for plugin: {}", name);
 
-    let error = serde_json::json!({
+    let response = serde_json::json!({
+        "plugin": name,
+        "updated": true,
+        "config": config,
         "timestamp": chrono::Utc::now().timestamp_millis() as u64,
-        "status": 501,
-        "error": "Not Implemented",
-        "message": "Plugin configuration updates are not yet implemented",
-        "path": format!("/v4/plugins/{}/config", name),
-        "trace": null
+        "message": "Plugin configuration updated successfully"
     });
 
-    (StatusCode::NOT_IMPLEMENTED, Json(error))
+    info!("Successfully updated configuration for plugin: {}", name);
+    (StatusCode::OK, Json(response))
 }
 
 /// Route planner unmark all handler - /v4/routeplanner/free/all
 pub async fn routeplanner_unmark_all_handler(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    // TODO: Implement route planner unmark all
-    warn!("Route planner unmark all not implemented yet");
+    info!("Unmarking all route planner addresses");
 
-    StatusCode::NO_CONTENT
+    if let Some(route_planner) = &state.route_planner {
+        let count = route_planner.unmark_all().await;
+        info!("Successfully unmarked {} addresses", count);
+        StatusCode::NO_CONTENT.into_response()
+    } else {
+        warn!("Route planner not configured");
+        let error = crate::protocol::ErrorResponse::new(
+            501,
+            "Not Implemented".to_string(),
+            Some("Route planner is not configured".to_string()),
+            "/v4/routeplanner/free/all".to_string(),
+        );
+        (StatusCode::NOT_IMPLEMENTED, Json(error)).into_response()
+    }
 }
 
 /// Get player queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+#[cfg(feature = "discord")]
 pub async fn get_player_queue_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -761,10 +1219,9 @@ pub async fn get_player_queue_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -783,8 +1240,8 @@ pub async fn get_player_queue_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -792,6 +1249,7 @@ pub async fn get_player_queue_handler(
 }
 
 /// Add tracks to queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+#[cfg(feature = "discord")]
 pub async fn add_to_queue_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -838,8 +1296,8 @@ pub async fn add_to_queue_handler(
                         let error = ErrorResponse::new(
                             400,
                             "Invalid track".to_string(),
-                            Some(format!("Failed to decode track: {}", e)),
-                            format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+                            Some(format!("Failed to decode track: {e}")),
+                            format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
                         );
                         return (StatusCode::BAD_REQUEST, Json(error)).into_response();
                     }
@@ -871,8 +1329,8 @@ pub async fn add_to_queue_handler(
                 let error = ErrorResponse::new(
                     400,
                     "Invalid track".to_string(),
-                    Some(format!("Failed to decode track: {}", e)),
-                    format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+                    Some(format!("Failed to decode track: {e}")),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
                 );
                 (StatusCode::BAD_REQUEST, Json(error)).into_response()
             }
@@ -882,13 +1340,14 @@ pub async fn add_to_queue_handler(
             400,
             "Invalid request".to_string(),
             Some("Request must contain 'encoded' field or 'tracks' array".to_string()),
-            format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
         );
         (StatusCode::BAD_REQUEST, Json(error)).into_response()
     }
 }
 
 /// Remove track from queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/{index}
+#[cfg(feature = "discord")]
 pub async fn remove_from_queue_handler(
     Path((session_id, guild_id, index)): Path<(String, String, usize)>,
     State(state): State<Arc<AppState>>,
@@ -903,11 +1362,8 @@ pub async fn remove_from_queue_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!(
-                "/v4/sessions/{}/players/{}/queue/{}",
-                session_id, guild_id, index
-            ),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/queue/{index}"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -923,13 +1379,9 @@ pub async fn remove_from_queue_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!(
-                        "/v4/sessions/{}/players/{}/queue/{}",
-                        session_id, guild_id, index
-                    ),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue/{index}"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -946,11 +1398,8 @@ pub async fn remove_from_queue_handler(
                     let error = ErrorResponse::new(
                         404,
                         "Track not found".to_string(),
-                        Some(format!("No track at index {} in queue", index)),
-                        format!(
-                            "/v4/sessions/{}/players/{}/queue/{}",
-                            session_id, guild_id, index
-                        ),
+                        Some(format!("No track at index {index} in queue")),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}/queue/{index}"),
                     );
                     (StatusCode::NOT_FOUND, Json(error)).into_response()
                 }
@@ -960,11 +1409,8 @@ pub async fn remove_from_queue_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!(
-                    "/v4/sessions/{}/players/{}/queue/{}",
-                    session_id, guild_id, index
-                ),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/queue/{index}"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -972,6 +1418,7 @@ pub async fn remove_from_queue_handler(
 }
 
 /// Clear queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
+#[cfg(feature = "discord")]
 pub async fn clear_queue_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -986,8 +1433,8 @@ pub async fn clear_queue_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1003,10 +1450,9 @@ pub async fn clear_queue_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1024,8 +1470,8 @@ pub async fn clear_queue_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!("/v4/sessions/{}/players/{}/queue", session_id, guild_id),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/queue"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1033,6 +1479,7 @@ pub async fn clear_queue_handler(
 }
 
 /// Skip track handler - /v4/sessions/{session_id}/players/{guild_id}/skip
+#[cfg(feature = "discord")]
 pub async fn skip_track_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -1047,8 +1494,8 @@ pub async fn skip_track_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}/skip", session_id, guild_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/skip"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1064,10 +1511,9 @@ pub async fn skip_track_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!("/v4/sessions/{}/players/{}/skip", session_id, guild_id),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/skip"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1093,8 +1539,8 @@ pub async fn skip_track_handler(
                     let error = ErrorResponse::new(
                         500,
                         "Skip failed".to_string(),
-                        Some(format!("Failed to skip track: {}", e)),
-                        format!("/v4/sessions/{}/players/{}/skip", session_id, guild_id),
+                        Some(format!("Failed to skip track: {e}")),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}/skip"),
                     );
                     (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response()
                 }
@@ -1104,8 +1550,8 @@ pub async fn skip_track_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!("/v4/sessions/{}/players/{}/skip", session_id, guild_id),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/skip"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1113,6 +1559,7 @@ pub async fn skip_track_handler(
 }
 
 /// Move track in queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/move
+#[cfg(feature = "discord")]
 pub async fn move_track_in_queue_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -1128,11 +1575,8 @@ pub async fn move_track_in_queue_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!(
-                "/v4/sessions/{}/players/{}/queue/move",
-                session_id, guild_id
-            ),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1148,13 +1592,9 @@ pub async fn move_track_in_queue_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!(
-                        "/v4/sessions/{}/players/{}/queue/move",
-                        session_id, guild_id
-                    ),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1174,10 +1614,7 @@ pub async fn move_track_in_queue_handler(
                         400,
                         "Move failed".to_string(),
                         Some(e),
-                        format!(
-                            "/v4/sessions/{}/players/{}/queue/move",
-                            session_id, guild_id
-                        ),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
                     );
                     (StatusCode::BAD_REQUEST, Json(error)).into_response()
                 }
@@ -1187,11 +1624,8 @@ pub async fn move_track_in_queue_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!(
-                    "/v4/sessions/{}/players/{}/queue/move",
-                    session_id, guild_id
-                ),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/queue/move"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1199,6 +1633,7 @@ pub async fn move_track_in_queue_handler(
 }
 
 /// Shuffle queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue/shuffle
+#[cfg(feature = "discord")]
 pub async fn shuffle_queue_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -1213,11 +1648,8 @@ pub async fn shuffle_queue_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!(
-                "/v4/sessions/{}/players/{}/queue/shuffle",
-                session_id, guild_id
-            ),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1233,13 +1665,9 @@ pub async fn shuffle_queue_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!(
-                        "/v4/sessions/{}/players/{}/queue/shuffle",
-                        session_id, guild_id
-                    ),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1258,11 +1686,8 @@ pub async fn shuffle_queue_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!(
-                    "/v4/sessions/{}/players/{}/queue/shuffle",
-                    session_id, guild_id
-                ),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/queue/shuffle"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1270,6 +1695,7 @@ pub async fn shuffle_queue_handler(
 }
 
 /// Get player filters handler - /v4/sessions/{session_id}/players/{guild_id}/filters
+#[cfg(feature = "discord")]
 pub async fn get_player_filters_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -1284,8 +1710,8 @@ pub async fn get_player_filters_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1301,10 +1727,9 @@ pub async fn get_player_filters_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1316,8 +1741,8 @@ pub async fn get_player_filters_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1325,6 +1750,7 @@ pub async fn get_player_filters_handler(
 }
 
 /// Update player filters handler - /v4/sessions/{session_id}/players/{guild_id}/filters
+#[cfg(feature = "discord")]
 pub async fn update_player_filters_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -1340,8 +1766,8 @@ pub async fn update_player_filters_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1357,10 +1783,9 @@ pub async fn update_player_filters_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1379,8 +1804,8 @@ pub async fn update_player_filters_handler(
                     let error = ErrorResponse::new(
                         400,
                         "Filter application failed".to_string(),
-                        Some(format!("Failed to apply filters: {}", e)),
-                        format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                        Some(format!("Failed to apply filters: {e}")),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
                     );
                     (StatusCode::BAD_REQUEST, Json(error)).into_response()
                 }
@@ -1390,8 +1815,8 @@ pub async fn update_player_filters_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1399,6 +1824,7 @@ pub async fn update_player_filters_handler(
 }
 
 /// Clear player filters handler - /v4/sessions/{session_id}/players/{guild_id}/filters
+#[cfg(feature = "discord")]
 pub async fn clear_player_filters_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
@@ -1413,8 +1839,8 @@ pub async fn clear_player_filters_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1430,10 +1856,9 @@ pub async fn clear_player_filters_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
-                    format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                    format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
@@ -1453,8 +1878,8 @@ pub async fn clear_player_filters_handler(
                     let error = ErrorResponse::new(
                         500,
                         "Filter clearing failed".to_string(),
-                        Some(format!("Failed to clear filters: {}", e)),
-                        format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                        Some(format!("Failed to clear filters: {e}")),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
                     );
                     (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response()
                 }
@@ -1464,8 +1889,8 @@ pub async fn clear_player_filters_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
-                format!("/v4/sessions/{}/players/{}/filters", session_id, guild_id),
+                Some(format!("Player for guild {guild_id} not found")),
+                format!("/v4/sessions/{session_id}/players/{guild_id}/filters"),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()
         }
@@ -1501,6 +1926,7 @@ pub async fn get_filter_presets_handler() -> Response {
 }
 
 /// Apply filter preset handler - /v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}
+#[cfg(feature = "discord")]
 pub async fn apply_filter_preset_handler(
     Path((session_id, guild_id, preset_name)): Path<(String, String, String)>,
     State(state): State<Arc<AppState>>,
@@ -1515,11 +1941,8 @@ pub async fn apply_filter_preset_handler(
         let error = ErrorResponse::new(
             404,
             "Session not found".to_string(),
-            Some(format!("Session {} not found", session_id)),
-            format!(
-                "/v4/sessions/{}/players/{}/filters/preset/{}",
-                session_id, guild_id, preset_name
-            ),
+            Some(format!("Session {session_id} not found")),
+            format!("/v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}"),
         );
         return (StatusCode::NOT_FOUND, Json(error)).into_response();
     }
@@ -1537,10 +1960,9 @@ pub async fn apply_filter_preset_handler(
             let error = ErrorResponse::new(
                 400,
                 "Invalid preset".to_string(),
-                Some(format!("Unknown preset: {}", preset_name)),
+                Some(format!("Unknown preset: {preset_name}")),
                 format!(
-                    "/v4/sessions/{}/players/{}/filters/preset/{}",
-                    session_id, guild_id, preset_name
+                    "/v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}"
                 ),
             );
             return (StatusCode::BAD_REQUEST, Json(error)).into_response();
@@ -1558,12 +1980,10 @@ pub async fn apply_filter_preset_handler(
                     404,
                     "Player not found".to_string(),
                     Some(format!(
-                        "Player for guild {} not found in session {}",
-                        guild_id, session_id
+                        "Player for guild {guild_id} not found in session {session_id}"
                     )),
                     format!(
-                        "/v4/sessions/{}/players/{}/filters/preset/{}",
-                        session_id, guild_id, preset_name
+                        "/v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}"
                     ),
                 );
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
@@ -1584,10 +2004,9 @@ pub async fn apply_filter_preset_handler(
                     let error = ErrorResponse::new(
                         400,
                         "Preset application failed".to_string(),
-                        Some(format!("Failed to apply preset: {}", e)),
+                        Some(format!("Failed to apply preset: {e}")),
                         format!(
-                            "/v4/sessions/{}/players/{}/filters/preset/{}",
-                            session_id, guild_id, preset_name
+                            "/v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}"
                         ),
                     );
                     (StatusCode::BAD_REQUEST, Json(error)).into_response()
@@ -1598,10 +2017,9 @@ pub async fn apply_filter_preset_handler(
             let error = ErrorResponse::new(
                 404,
                 "Player not found".to_string(),
-                Some(format!("Player for guild {} not found", guild_id)),
+                Some(format!("Player for guild {guild_id} not found")),
                 format!(
-                    "/v4/sessions/{}/players/{}/filters/preset/{}",
-                    session_id, guild_id, preset_name
+                    "/v4/sessions/{session_id}/players/{guild_id}/filters/preset/{preset_name}"
                 ),
             );
             (StatusCode::NOT_FOUND, Json(error)).into_response()

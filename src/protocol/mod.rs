@@ -1,6 +1,8 @@
+#[cfg(feature = "rest-api")]
 use base64::{engine::general_purpose, Engine};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+#[cfg(any(feature = "plugins", feature = "rest-api"))]
 use std::collections::HashMap;
 
 pub mod filters;
@@ -14,6 +16,7 @@ mod tests;
 
 pub use filters::*;
 pub use info::*;
+#[cfg(any(feature = "websocket", feature = "discord"))]
 pub use messages::*;
 pub use player::*;
 
@@ -29,6 +32,7 @@ pub enum Omissible<T> {
 }
 
 impl<T> Omissible<T> {
+    #[allow(dead_code)] // Used by protocol system
     pub fn is_present(&self) -> bool {
         matches!(self, Omissible::Present(_))
     }
@@ -37,6 +41,7 @@ impl<T> Omissible<T> {
         matches!(self, Omissible::Omitted)
     }
 
+    #[allow(dead_code)] // Used by protocol system
     pub fn as_option(&self) -> Option<&T> {
         match self {
             Omissible::Present(value) => Some(value),
@@ -68,8 +73,10 @@ pub type Timestamp = DateTime<Utc>;
 pub struct Track {
     pub encoded: String,
     pub info: TrackInfo,
+    #[cfg(feature = "plugins")]
     #[serde(rename = "pluginInfo")]
     pub plugin_info: HashMap<String, serde_json::Value>,
+    #[cfg(feature = "rest-api")]
     #[serde(rename = "userData")]
     pub user_data: HashMap<String, serde_json::Value>,
 }
@@ -98,9 +105,12 @@ pub struct TrackInfo {
 
 impl Track {
     /// Decode a track from a base64 string
+    #[cfg(feature = "rest-api")]
     pub fn decode(encoded: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // First try to decode as base64
-        let decoded_bytes = general_purpose::STANDARD.decode(encoded)?;
+        let decoded_bytes = general_purpose::STANDARD
+            .decode(encoded)
+            .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)?;
 
         // Try to decode as JSON first (our format)
         if let Ok(track) = serde_json::from_slice::<Track>(&decoded_bytes) {
@@ -112,6 +122,7 @@ impl Track {
             return Ok(Track {
                 encoded: encoded.to_string(),
                 info: track_info,
+                #[cfg(feature = "plugins")]
                 plugin_info: HashMap::new(),
                 user_data: HashMap::new(),
             });
@@ -135,6 +146,7 @@ impl Track {
                     isrc: None,
                     source_name: "youtube".to_string(),
                 },
+                #[cfg(feature = "plugins")]
                 plugin_info: HashMap::new(),
                 user_data: HashMap::new(),
             });
@@ -192,6 +204,7 @@ pub struct LoadResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Playlist {
     pub info: PlaylistInfo,
+    #[cfg(feature = "plugins")]
     #[serde(rename = "pluginInfo")]
     pub plugin_info: HashMap<String, serde_json::Value>,
     pub tracks: Vec<Track>,
@@ -255,6 +268,7 @@ pub struct FrameStats {
 pub struct RoutePlannerStatus {
     #[serde(rename = "class")]
     pub class_name: Option<String>,
+    #[cfg(feature = "rest-api")]
     pub details: Option<serde_json::Value>,
 }
 
@@ -413,7 +427,7 @@ mod deserialization_tests {
         let result: Result<UpdatePlayerRequest, _> = serde_json::from_str(json);
         match result {
             Ok(request) => {
-                println!("Successfully deserialized: {:?}", request);
+                println!("Successfully deserialized: {request:?}");
                 assert!(request.track.is_some());
                 if let Some(TrackRequest::Identifier { identifier }) = request.track {
                     assert_eq!(identifier, "test-track-id");
@@ -422,7 +436,7 @@ mod deserialization_tests {
                 assert_eq!(request.paused, Some(false));
             }
             Err(e) => {
-                panic!("Failed to deserialize: {}", e);
+                panic!("Failed to deserialize: {e}");
             }
         }
     }
@@ -439,12 +453,12 @@ mod deserialization_tests {
         });
 
         let json_str = serde_json::to_string(&json).unwrap();
-        println!("JSON string: {}", json_str);
+        println!("JSON string: {json_str}");
 
         let result: Result<UpdatePlayerRequest, _> = serde_json::from_str(&json_str);
         match result {
             Ok(request) => {
-                println!("Successfully deserialized exact test JSON: {:?}", request);
+                println!("Successfully deserialized exact test JSON: {request:?}");
                 assert!(request.track.is_some());
                 if let Some(TrackRequest::Identifier { identifier }) = request.track {
                     assert_eq!(identifier, "test-track-id");
@@ -453,7 +467,7 @@ mod deserialization_tests {
                 assert_eq!(request.paused, Some(false));
             }
             Err(e) => {
-                panic!("Failed to deserialize exact test JSON: {}", e);
+                panic!("Failed to deserialize exact test JSON: {e}");
             }
         }
     }

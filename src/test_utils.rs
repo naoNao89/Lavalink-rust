@@ -54,17 +54,20 @@ pub fn create_test_config() -> LavalinkConfig {
                 youtube_config: None,
                 http_config: None,
                 timeouts: None,
+                discord_bot_token: None,
             },
             plugins: Some(PluginsConfig::default()),
         },
         metrics: None,
         sentry: None,
         logging: None,
+        #[cfg(feature = "plugins")]
         plugins: None,
     }
 }
 
 /// Test helper for JSON serialization/deserialization validation
+#[cfg(feature = "rest-api")]
 pub fn test_json_roundtrip<T>(json_str: &str) -> anyhow::Result<T>
 where
     T: serde::Serialize + serde::de::DeserializeOwned + PartialEq + std::fmt::Debug,
@@ -86,6 +89,7 @@ where
 
 /// Mock track data for testing
 pub fn create_mock_track() -> crate::protocol::Track {
+    #[cfg(any(feature = "plugins", feature = "rest-api"))]
     use std::collections::HashMap;
 
     crate::protocol::Track {
@@ -103,7 +107,9 @@ pub fn create_mock_track() -> crate::protocol::Track {
             isrc: None,
             source_name: "youtube".to_string(),
         },
+        #[cfg(feature = "plugins")]
         plugin_info: HashMap::new(),
+        #[cfg(feature = "rest-api")]
         user_data: HashMap::new(),
     }
 }

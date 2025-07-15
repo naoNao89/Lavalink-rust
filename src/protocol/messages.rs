@@ -1,5 +1,18 @@
 use super::{Exception, PlayerState, Stats, Track};
+#[cfg(feature = "discord")]
 use crate::player::TrackEndReason;
+
+// Fallback type when discord feature is disabled
+#[cfg(not(feature = "discord"))]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrackEndReason {
+    Finished,
+    LoadFailed,
+    Stopped,
+    Replaced,
+    Cleanup,
+}
 use serde::{Deserialize, Serialize};
 
 /// WebSocket message types
@@ -69,6 +82,7 @@ pub enum Event {
 
 impl TrackEndReason {
     /// Returns true if the track may be replaced with the next track in the queue
+    #[allow(dead_code)] // Used by player logic
     pub fn may_start_next(&self) -> bool {
         matches!(self, TrackEndReason::Finished | TrackEndReason::LoadFailed)
     }
@@ -130,8 +144,6 @@ pub struct VoiceState {
     pub endpoint: String,
     #[serde(rename = "sessionId")]
     pub session_id: String,
-    pub connected: bool,
-    pub ping: i32,
 }
 
 /// Collection of players
@@ -236,6 +248,7 @@ pub struct UnmarkAllFailedAddressesRequest {}
 
 impl Message {
     /// Create a ready message
+    #[allow(dead_code)] // Used by websocket system
     pub fn ready(resumed: bool, session_id: String) -> Self {
         Message::Ready {
             resumed,
@@ -244,11 +257,13 @@ impl Message {
     }
 
     /// Create a player update message
+    #[allow(dead_code)] // Used by websocket system
     pub fn player_update(guild_id: String, state: PlayerState) -> Self {
         Message::PlayerUpdate { guild_id, state }
     }
 
     /// Create an event message
+    #[allow(dead_code)] // Used by websocket system
     pub fn event(event: Event) -> Self {
         Message::Event(Box::new(event))
     }
@@ -256,16 +271,29 @@ impl Message {
 
 impl Event {
     /// Create a track start event
+    #[allow(dead_code)] // Used by event system
     pub fn track_start(guild_id: String, track: Track) -> Self {
         Event::TrackStart { guild_id, track }
     }
 
     /// Create a track end event
+    #[allow(dead_code)] // Used by event system
     pub fn track_end(guild_id: String, track: Track, reason: TrackEndReason) -> Self {
         Event::TrackEnd {
             guild_id,
             track,
             reason,
+        }
+    }
+
+    /// Create a websocket closed event
+    #[allow(dead_code)] // Used by event system
+    pub fn websocket_closed(guild_id: String, code: i32, reason: String, by_remote: bool) -> Self {
+        Event::WebSocketClosed {
+            guild_id,
+            code: code as u16,
+            reason,
+            by_remote,
         }
     }
 }

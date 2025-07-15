@@ -2,24 +2,32 @@
 // Handles loading and managing dynamic plugin libraries
 
 use anyhow::Result;
-use libloading::{Library, Symbol};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+
 use tracing::{debug, error, info, warn};
 
-use super::interface::{PluginInterface, PluginInterfaceWrapper, PLUGIN_INTERFACE_SYMBOL};
+#[cfg(feature = "plugins")]
+use libloading::{Library, Symbol};
+#[cfg(feature = "plugins")]
+use std::sync::Arc;
+
+use super::interface::PluginInterfaceWrapper;
+#[cfg(feature = "plugins")]
+use super::interface::{PluginInterface, PLUGIN_INTERFACE_SYMBOL};
 use crate::config::PluginsConfig;
 
 /// Dynamic plugin loader
 pub struct DynamicPluginLoader {
     plugins_dir: PathBuf,
+    #[cfg(feature = "plugins")]
     loaded_libraries: HashMap<String, Arc<Library>>,
     loaded_plugins: HashMap<String, PluginInterfaceWrapper>,
 }
 
 /// Plugin loading result
 #[derive(Debug)]
+#[allow(dead_code)] // Fields used by plugin system when plugins feature is enabled
 pub struct LoadedPlugin {
     pub name: String,
     pub version: String,
@@ -36,6 +44,7 @@ impl DynamicPluginLoader {
 
         Self {
             plugins_dir,
+            #[cfg(feature = "plugins")]
             loaded_libraries: HashMap::new(),
             loaded_plugins: HashMap::new(),
         }
@@ -86,6 +95,7 @@ impl DynamicPluginLoader {
     }
 
     /// Load a plugin from a library file
+    #[cfg(feature = "plugins")]
     pub fn load_plugin(&mut self, library_path: &Path) -> Result<LoadedPlugin> {
         info!("Loading plugin from: {:?}", library_path);
 
@@ -133,6 +143,12 @@ impl DynamicPluginLoader {
         Ok(loaded_plugin)
     }
 
+    /// Load a plugin from a library file (fallback for non-plugins builds)
+    #[cfg(not(feature = "plugins"))]
+    pub fn load_plugin(&mut self, _library_path: &Path) -> Result<LoadedPlugin> {
+        anyhow::bail!("Plugin loading requires 'plugins' feature")
+    }
+
     /// Load all plugins from the plugins directory
     pub fn load_all_plugins(&mut self) -> Result<Vec<LoadedPlugin>> {
         let plugin_paths = self.discover_plugins()?;
@@ -165,7 +181,10 @@ impl DynamicPluginLoader {
 
         // Remove from collections
         self.loaded_plugins.remove(name);
-        self.loaded_libraries.remove(name);
+        #[cfg(feature = "plugins")]
+        {
+            self.loaded_libraries.remove(name);
+        }
 
         info!("Unloaded plugin '{}'", name);
         Ok(())

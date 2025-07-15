@@ -50,3 +50,6 @@ nix/flake.lock
 
 # Local configuration override
 local_config/
+
+# Documentation build output
+site/
