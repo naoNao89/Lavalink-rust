@@ -227,6 +227,58 @@ fn setup_cross_compilation_env(target_arch: &str, target_os: &str, target_env: &
             std::env::set_var("OPENSSL_VENDORED", "1");
             println!("cargo:rustc-env=OPENSSL_VENDORED=1");
         }
+
+        // Fix for audiopus_sys CMake build with musl
+        // Tell CMake to not try to link C++ standard library
+        if std::env::var("CMAKE_CXX_STANDARD_LIBRARIES").is_err() {
+            std::env::set_var("CMAKE_CXX_STANDARD_LIBRARIES", "");
+            println!("cargo:rustc-env=CMAKE_CXX_STANDARD_LIBRARIES=");
+        }
+
+        // Disable C++ linking for Opus build
+        if std::env::var("CMAKE_CXX_FLAGS").is_err() {
+            std::env::set_var("CMAKE_CXX_FLAGS", "-nostdlib++");
+            println!("cargo:rustc-env=CMAKE_CXX_FLAGS=-nostdlib++");
+        }
+
+        // Use C compiler for C++ files in Opus (since it's mostly C anyway)
+        if std::env::var("CMAKE_CXX_COMPILER").is_err() {
+            if let Ok(cc) = std::env::var("CC") {
+                std::env::set_var("CMAKE_CXX_COMPILER", &cc);
+                println!("cargo:rustc-env=CMAKE_CXX_COMPILER={cc}");
+            }
+        }
+
+        // Additional Opus-specific environment variables for musl
+        if std::env::var("OPUS_STATIC").is_err() {
+            std::env::set_var("OPUS_STATIC", "1");
+            println!("cargo:rustc-env=OPUS_STATIC=1");
+        }
+
+        // Disable C++ features in Opus build
+        if std::env::var("CMAKE_DISABLE_CXX").is_err() {
+            std::env::set_var("CMAKE_DISABLE_CXX", "1");
+            println!("cargo:rustc-env=CMAKE_DISABLE_CXX=1");
+        }
+
+        // Tell CMake to use C linker instead of C++ linker
+        if std::env::var("CMAKE_LINKER_TYPE").is_err() {
+            std::env::set_var("CMAKE_LINKER_TYPE", "DEFAULT");
+            println!("cargo:rustc-env=CMAKE_LINKER_TYPE=DEFAULT");
+        }
+
+        // Force CMake to treat everything as C, not C++
+        if std::env::var("CMAKE_C_COMPILER_FORCED").is_err() {
+            std::env::set_var("CMAKE_C_COMPILER_FORCED", "1");
+            println!("cargo:rustc-env=CMAKE_C_COMPILER_FORCED=1");
+        }
+
+        // Alternative approach: tell audiopus_sys to use system opus if available
+        if std::env::var("LIBOPUS_STATIC").is_err() {
+            std::env::set_var("LIBOPUS_STATIC", "1");
+            println!("cargo:rustc-env=LIBOPUS_STATIC=1");
+        }
+    }
     }
 
     // Linux cross-compilation setup
