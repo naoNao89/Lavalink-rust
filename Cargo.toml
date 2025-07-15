@@ -19,6 +19,8 @@ rest-api = ["server", "dep:serde_json", "dep:serde_yaml", "dep:url", "dep:base64
 websocket = ["server", "axum/ws", "axum/macros"]
 
 # Discord integration features
+# Note: Discord features require audiopus_sys which may have C++ linking issues on musl
+# For musl builds, consider using: --no-default-features --features "server,rest-api,audio-processing,audio-sources"
 discord = ["dep:songbird", "dep:serenity", "dep:rand"]
 voice-receive = ["discord", "songbird/receive"]
 voice-encryption = ["discord", "songbird/builtin-queue"]
@@ -52,6 +54,7 @@ dev-tools = ["dep:mockall", "dep:wiremock", "dep:criterion"]
 
 # Convenience feature bundles
 minimal = ["server", "rest-api"]
+musl-safe = ["server", "rest-api", "audio-processing", "audio-sources", "websocket", "plugins", "metrics"]
 standard = ["default", "metrics", "plugins", "dep:serde_json", "dep:base64", "dep:rand"]
 full = ["standard", "codec-aac", "codec-vorbis", "codec-opus", "voice-receive", "tracing-json", "tracing-appender"]
 full-audio = ["audio-processing", "audio-sources", "codec-mp3", "codec-flac", "codec-wav", "codec-aac", "codec-vorbis", "codec-opus"]

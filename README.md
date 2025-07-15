@@ -35,6 +35,18 @@ cargo build --release
 cargo install lavalink-rust
 ```
 
+### musl/Alpine Linux Builds
+
+For musl-based systems (like Alpine Linux), Discord voice features may have linking issues. Use the musl-safe feature set:
+
+```bash
+# Build without Discord features for musl compatibility
+cargo build --release --no-default-features --features "musl-safe"
+
+# Or use the musl-safe feature bundle
+cargo build --release --features "musl-safe"
+```
+
 ## 🚀 Quick Start
 
 1. **Create a configuration file** (`application.yml`):
