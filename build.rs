@@ -56,12 +56,11 @@ fn configure_x86_64(target_os: &str, target_env: &str) {
     // Intel/x86_64 specific configurations
     match target_os {
         "linux" => {
-            if target_env == "musl" {
-                // Static linking for musl builds
-                println!("cargo:rustc-link-lib=static=stdc++");
-            } else {
-                // Dynamic linking for glibc builds
-                println!("cargo:rustc-link-lib=dylib=stdc++");
+            // Most of our dependencies are pure Rust and don't need C++ linking
+            // Only link what's actually needed for specific features
+            if target_env != "musl" {
+                // Only for glibc builds if needed by specific dependencies
+                // println!("cargo:rustc-link-lib=dylib=stdc++");
             }
         }
         "windows" => {
@@ -92,10 +91,6 @@ fn configure_aarch64(target_os: &str, target_env: &str) {
     // ARM64 specific configurations
     match target_os {
         "linux" => {
-            if target_env == "musl" {
-                // Static linking for musl builds on ARM64
-                println!("cargo:rustc-link-lib=static=stdc++");
-            }
             // ARM64 Linux may need additional math library linking
             println!("cargo:rustc-link-lib=m");
         }
@@ -113,9 +108,6 @@ fn configure_x86(target_os: &str, target_env: &str) {
     // 32-bit x86 specific configurations
     match target_os {
         "linux" => {
-            if target_env == "musl" {
-                println!("cargo:rustc-link-lib=static=stdc++");
-            }
             // 32-bit builds may need additional linking
             println!("cargo:rustc-link-lib=m");
         }
@@ -152,7 +144,8 @@ fn configure_linux(target_arch: &str, target_env: &str) {
         println!("cargo:rustc-link-lib=m");
         if target_arch == "x86_64" {
             // Additional x86_64 musl configurations
-            println!("cargo:rustc-link-lib=static=gcc");
+            // Most dependencies are pure Rust, avoid unnecessary static linking
+            // println!("cargo:rustc-link-lib=static=gcc");
         }
     } else {
         // glibc configurations
