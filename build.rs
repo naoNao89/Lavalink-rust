@@ -279,7 +279,6 @@ fn setup_cross_compilation_env(target_arch: &str, target_os: &str, target_env: &
             println!("cargo:rustc-env=LIBOPUS_STATIC=1");
         }
     }
-    }
 
     // Linux cross-compilation setup
     if target_os == "linux"
