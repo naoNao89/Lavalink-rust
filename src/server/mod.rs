@@ -1,7 +1,7 @@
 use anyhow::Result;
-use std::sync::Arc;
 #[cfg(feature = "websocket")]
 use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::{info, warn};
 
 #[cfg(feature = "server")]
@@ -36,11 +36,7 @@ use tower::ServiceBuilder;
 #[cfg(feature = "server")]
 use tower_http::{compression::CompressionLayer, cors::CorsLayer, trace::TraceLayer};
 
-use crate::{
-    config::LavalinkConfig,
-    plugin::PluginManager,
-    protocol::Info,
-};
+use crate::{config::LavalinkConfig, plugin::PluginManager, protocol::Info};
 
 #[cfg(feature = "server")]
 use crate::protocol::ErrorResponse;

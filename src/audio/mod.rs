@@ -72,7 +72,9 @@ use tracing::{debug, info, warn};
 use tokio::process::Command as AsyncCommand;
 
 use crate::config::SourcesConfig;
-use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity, Track, TrackInfo};
+use crate::protocol::{
+    Exception, LoadResult, LoadResultData, LoadType, Severity, Track, TrackInfo,
+};
 
 /// Helper function to create a Track with conditional compilation for optional fields
 fn create_track(encoded: String, info: TrackInfo) -> Track {

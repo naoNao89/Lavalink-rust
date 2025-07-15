@@ -87,7 +87,7 @@ fn configure_x86_64(target_os: &str, target_env: &str) {
     }
 }
 
-fn configure_aarch64(target_os: &str, target_env: &str) {
+fn configure_aarch64(target_os: &str, _target_env: &str) {
     // ARM64 specific configurations
     match target_os {
         "linux" => {
@@ -104,7 +104,7 @@ fn configure_aarch64(target_os: &str, target_env: &str) {
     }
 }
 
-fn configure_x86(target_os: &str, target_env: &str) {
+fn configure_x86(target_os: &str, _target_env: &str) {
     // 32-bit x86 specific configurations
     match target_os {
         "linux" => {

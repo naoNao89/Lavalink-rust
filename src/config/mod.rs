@@ -250,8 +250,7 @@ pub struct RollingPolicyConfig {
 
 impl LavalinkConfig {
     pub async fn load<P: AsRef<Path>>(
-        #[cfg_attr(not(feature = "server"), allow(unused_variables))]
-        path: P
+        #[cfg_attr(not(feature = "server"), allow(unused_variables))] path: P,
     ) -> Result<Self> {
         #[cfg(feature = "server")]
         {

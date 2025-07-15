@@ -572,8 +572,9 @@ pub async fn get_session_players_handler(
 #[cfg(not(feature = "discord"))]
 pub async fn get_session_players_handler(
     Path(session_id): Path<String>,
-    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
-    State(state): State<Arc<AppState>>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))] State(state): State<
+        Arc<AppState>,
+    >,
 ) -> Response {
     info!(
         "Getting players for session: {} (non-Discord mode)",
@@ -603,8 +604,9 @@ pub async fn get_session_players_handler(
 /// Get player handler - /v4/sessions/{session_id}/players/{guild_id}
 pub async fn get_player_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
-    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
-    State(state): State<Arc<AppState>>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))] State(state): State<
+        Arc<AppState>,
+    >,
 ) -> Response {
     #[cfg(not(feature = "discord"))]
     {
@@ -649,6 +651,7 @@ pub async fn get_player_handler(
             "filters": {}
         });
 
+        #[allow(clippy::needless_return)] // Return needed for conditional compilation
         return Json(player_response).into_response();
     }
 
@@ -706,8 +709,9 @@ pub async fn get_player_handler(
 /// Delete player handler - /v4/sessions/{session_id}/players/{guild_id}
 pub async fn delete_player_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
-    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
-    State(state): State<Arc<AppState>>,
+    #[cfg_attr(not(feature = "websocket"), allow(unused_variables))] State(state): State<
+        Arc<AppState>,
+    >,
 ) -> Response {
     #[cfg(not(feature = "discord"))]
     {
@@ -737,6 +741,7 @@ pub async fn delete_player_handler(
             "Player {} deleted successfully from session {} (non-Discord mode)",
             guild_id, session_id
         );
+        #[allow(clippy::needless_return)] // Return needed for conditional compilation
         return StatusCode::NO_CONTENT.into_response();
     }
 
