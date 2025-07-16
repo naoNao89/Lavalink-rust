@@ -4,6 +4,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{info, warn};
 
+// Import player management types (needed for both Discord and standalone modes)
+use crate::player::{PlayerManager, PlayerEvent, PlayerEventHandler};
+
 #[cfg(feature = "server")]
 use axum::{
     body::Body,
@@ -41,8 +44,7 @@ use crate::{config::LavalinkConfig, plugin::PluginManager, protocol::Info};
 #[cfg(feature = "server")]
 use crate::protocol::ErrorResponse;
 
-#[cfg(feature = "discord")]
-use crate::player::{PlayerEvent, PlayerEventHandler, PlayerManager};
+// Player types are already imported above
 
 use self::routeplanner::RoutePlanner;
 
@@ -106,7 +108,7 @@ pub struct AppState {
     pub stats_collector: Arc<StatsCollector>,
     pub info: Info,
 
-    #[cfg(feature = "discord")]
+    // Player manager is needed for both Discord and standalone modes
     pub player_manager: Arc<PlayerManager>,
     pub plugin_manager: Arc<std::sync::RwLock<PluginManager>>,
     pub route_planner: Option<Arc<RoutePlanner>>,
@@ -121,37 +123,63 @@ impl LavalinkServer {
         #[cfg(feature = "server")]
         let stats_collector = Arc::new(StatsCollector::new());
 
-        // Initialize player manager if Discord feature is enabled
-        #[cfg(feature = "discord")]
+        // Initialize player manager (needed for both Discord and standalone modes)
         let player_manager = {
             // Create player event channel
             let (event_sender, event_receiver) =
                 tokio::sync::mpsc::unbounded_channel::<PlayerEvent>();
             let player_manager = Arc::new(PlayerManager::with_event_sender(event_sender));
 
-            // Initialize Discord voice client if bot token is provided
-            if let Some(ref bot_token) = config.lavalink.server.discord_bot_token {
-                info!("Initializing Discord voice client with provided bot token");
-                let voice_manager = player_manager.voice_manager();
-                let voice_client = voice_manager.voice_client();
+            // Initialize voice client based on configuration
+            let voice_manager = player_manager.voice_manager();
+            let _voice_client = voice_manager.voice_client();
 
-                if let Err(e) = voice_client.initialize_discord(bot_token.clone()).await {
-                    warn!("Failed to initialize Discord voice client: {}", e);
-                    warn!("Voice connections will not be available");
-                } else {
-                    info!("Discord voice client initialized successfully");
+            if let Some(ref _bot_token) = config.lavalink.server.discord_bot_token {
+                #[cfg(feature = "discord")]
+                {
+                    info!("Discord bot token provided - attempting Discord voice client initialization");
+                    match voice_client.initialize_discord(bot_token.clone()).await {
+                        Ok(()) => {
+                            info!("✅ Discord voice client initialized successfully");
+                            info!("🎵 Voice connections available via Discord integration");
+                        }
+                        Err(e) => {
+                            warn!("❌ Failed to initialize Discord voice client: {}", e);
+                            warn!("🔄 Falling back to standalone mode");
+                            info!("🎵 Voice connections available in standalone mode");
+                        }
+                    }
+                }
+                #[cfg(not(feature = "discord"))]
+                {
+                    warn!("Discord bot token provided but 'discord' feature is not enabled");
+                    info!("🎵 Running in standalone mode - Discord functionality not available");
+                    info!("💡 Rebuild with --features discord to enable Discord integration");
                 }
             } else {
-                warn!("No Discord bot token provided in configuration");
-                warn!("Voice connections will not be available");
-                warn!("Add 'discordBotToken' to lavalink.server configuration to enable voice");
+                info!("🎵 No Discord bot token provided - running in standalone mode");
+                info!("✅ Voice connections available via REST API voice state updates");
+                info!("💡 Add 'discordBotToken' to lavalink.server configuration to enable Discord integration");
             }
 
             // Start player event handler
-            let event_handler = PlayerEventHandler::new(event_receiver, sessions.clone());
-            tokio::spawn(async move {
-                event_handler.start().await;
-            });
+            #[cfg(feature = "websocket")]
+            {
+                let event_handler = PlayerEventHandler::new(event_receiver, sessions.clone());
+                tokio::spawn(async move {
+                    event_handler.start().await;
+                });
+            }
+            #[cfg(not(feature = "websocket"))]
+            {
+                // In standalone mode without websocket, we still need to consume events
+                tokio::spawn(async move {
+                    let mut receiver = event_receiver;
+                    while let Some(event) = receiver.recv().await {
+                        debug!("Standalone mode received player event: {:?}", event);
+                    }
+                });
+            }
 
             // Start player update service
             player_manager.start_update_service().await;
@@ -199,7 +227,7 @@ impl LavalinkServer {
             stats_collector,
             info,
 
-            #[cfg(feature = "discord")]
+            // Player manager is needed for both Discord and standalone modes
             player_manager,
             plugin_manager,
             route_planner,

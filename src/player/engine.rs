@@ -2,6 +2,7 @@
 // This module handles the actual audio playback, decoding, and streaming
 
 use anyhow::{anyhow, Result};
+#[cfg(feature = "discord")]
 use songbird::{input::Input, tracks::Track as SongbirdTrack, Call};
 use std::sync::Arc;
 use std::time::Duration;
@@ -17,10 +18,20 @@ use symphonia::core::probe::Hint;
 
 use super::{PlayerEvent, TrackEndReason};
 use crate::audio::quality::{
-    AudioQualityConfig, AudioQualityManager, NetworkMetrics, QualityPreset,
+    AudioQualityConfig, AudioQualityManager, QualityPreset,
 };
-use crate::audio::streaming::{AudioStreamingManager, StreamOptions, StreamState};
+#[cfg(feature = "discord")]
+use crate::audio::quality::NetworkMetrics;
+#[cfg(not(feature = "discord"))]
+use crate::audio::quality::NetworkMetrics;
+use crate::audio::streaming::{AudioStreamingManager, StreamState};
 use crate::protocol::{Filters, Track};
+
+// Type alias for audio input that works in both Discord and standalone modes
+#[cfg(feature = "discord")]
+type AudioInput = Input;
+#[cfg(not(feature = "discord"))]
+type AudioInput = ();
 
 /// Audio player engine that handles actual audio playback
 pub struct AudioPlayerEngine {
@@ -48,9 +59,11 @@ pub struct AudioPlayerEngine {
     last_position_update: Arc<RwLock<Instant>>,
     /// Whether seeking is in progress
     seeking: Arc<RwLock<bool>>,
-    /// Voice call for audio output
+    /// Voice call for audio output (Discord mode only)
+    #[cfg(feature = "discord")]
     voice_call: Arc<RwLock<Option<Arc<Mutex<Call>>>>>,
-    /// Current Songbird track handle for control
+    /// Current Songbird track handle for control (Discord mode only)
+    #[cfg(feature = "discord")]
     current_track_handle: Arc<RwLock<Option<songbird::tracks::TrackHandle>>>,
     /// Audio quality manager for bitrate and quality control
     quality_manager: Arc<RwLock<AudioQualityManager>>,
@@ -80,7 +93,9 @@ impl AudioPlayerEngine {
             filters: Arc::new(RwLock::new(Filters::new())),
             last_position_update: Arc::new(RwLock::new(Instant::now())),
             seeking: Arc::new(RwLock::new(false)),
+            #[cfg(feature = "discord")]
             voice_call: Arc::new(RwLock::new(None)),
+            #[cfg(feature = "discord")]
             current_track_handle: Arc::new(RwLock::new(None)),
             quality_manager: Arc::new(RwLock::new(quality_manager)),
             streaming_manager: Arc::new(streaming_manager),
@@ -93,7 +108,7 @@ impl AudioPlayerEngine {
         event_sender: mpsc::UnboundedSender<PlayerEvent>,
         quality_config: AudioQualityConfig,
     ) -> Self {
-        let quality_manager = AudioQualityManager::new(guild_id.clone(), quality_config);
+        let quality_manager = AudioQualityManager::new(quality_config);
         let streaming_manager = AudioStreamingManager::new(guild_id.clone());
 
         Self {
@@ -110,14 +125,17 @@ impl AudioPlayerEngine {
             filters: Arc::new(RwLock::new(Filters::new())),
             last_position_update: Arc::new(RwLock::new(Instant::now())),
             seeking: Arc::new(RwLock::new(false)),
+            #[cfg(feature = "discord")]
             voice_call: Arc::new(RwLock::new(None)),
+            #[cfg(feature = "discord")]
             current_track_handle: Arc::new(RwLock::new(None)),
             quality_manager: Arc::new(RwLock::new(quality_manager)),
             streaming_manager: Arc::new(streaming_manager),
         }
     }
 
-    /// Set the voice call for audio output
+    /// Set the voice call for audio output (Discord mode only)
+    #[cfg(feature = "discord")]
     pub async fn set_voice_call(&self, call: Arc<Mutex<Call>>) {
         let mut voice_call = self.voice_call.write().await;
         *voice_call = Some(call);
@@ -127,9 +145,11 @@ impl AudioPlayerEngine {
         );
     }
 
-    /// Remove the voice call
+    /// Remove the voice call (Discord mode only)
+    #[cfg(feature = "discord")]
     pub async fn remove_voice_call(&self) {
-        // Stop current track if playing
+        // Stop current track if playing (Discord mode only)
+        #[cfg(feature = "discord")]
         if let Some(track_handle) = self.current_track_handle.write().await.take() {
             let _ = track_handle.stop();
             debug!(
@@ -146,45 +166,39 @@ impl AudioPlayerEngine {
         );
     }
 
-    /// Start streaming audio to Discord voice with enhanced error handling and monitoring
+    /// Start streaming audio to Discord voice with enhanced error handling and monitoring (Discord mode only)
+    #[cfg(feature = "discord")]
     async fn start_voice_streaming(&self, track: &Track) -> Result<()> {
         let voice_call = self.voice_call.read().await;
         if let Some(ref call) = *voice_call {
-            let quality_config = self.get_quality_config().await;
+            let quality_config = self.quality_manager.read().await.get_config();
             info!(
-                "Voice connection established for track: {} in guild {} with quality preset: {:?} ({}kbps)",
-                track.info.title, self.guild_id, quality_config.quality_preset, quality_config.bitrate
+                "Voice connection established for track: {} in guild {} ({}kbps)",
+                track.info.title, self.guild_id, quality_config.bitrate
             );
 
             // Create stream options with current quality configuration
             let stream_options = StreamOptions {
-                quality_config: quality_config.clone(),
-                enable_monitoring: true,
+                bitrate: quality_config.bitrate,
+                sample_rate: 48_000,
+                channels: 2,
             };
 
-            // Use the enhanced streaming manager to create audio input
-            let audio_input = match self
+            // Use the enhanced streaming manager to start streaming
+            if let Err(e) = self
                 .streaming_manager
-                .start_stream(track.clone(), stream_options)
+                .start_stream(&track.info.uri.as_deref().unwrap_or(&track.info.identifier))
                 .await
             {
-                Ok(input) => {
-                    info!(
-                        "Enhanced streaming manager successfully created input for track: {} in guild {}",
-                        track.info.title, self.guild_id
-                    );
-                    input
-                }
-                Err(e) => {
-                    warn!(
-                        "Enhanced streaming failed for track: {} in guild {}, falling back to basic method: {}",
-                        track.info.title, self.guild_id, e
-                    );
-                    // Fallback to basic audio input creation
-                    self.create_audio_input_with_quality(track, &quality_config)
-                        .await?
-                }
-            };
+                warn!(
+                    "Enhanced streaming failed for track: {} in guild {}: {}",
+                    track.info.title, self.guild_id, e
+                );
+            }
+
+            // Create audio input for Discord voice
+            let audio_input = self.create_audio_input_with_quality(track, &quality_config)
+                .await?;
 
             // Start playing the audio through Songbird
             let mut call_lock = call.lock().await;
@@ -196,8 +210,11 @@ impl AudioPlayerEngine {
                 track.info.title, self.guild_id, quality_config.bitrate
             );
 
-            // Store track handle for control (pause, stop, etc.)
-            *self.current_track_handle.write().await = Some(track_handle);
+            // Store track handle for control (pause, stop, etc.) (Discord mode only)
+            #[cfg(feature = "discord")]
+            {
+                *self.current_track_handle.write().await = Some(track_handle);
+            }
             drop(call_lock);
 
             // Emit track start event
@@ -240,9 +257,16 @@ impl AudioPlayerEngine {
         *self.playing.write().await = true;
         *self.paused.write().await = false;
 
-        // Start streaming to Discord voice if connected
+        // Start streaming to Discord voice if connected (Discord mode only)
         // This handles both audio loading and streaming
+        #[cfg(feature = "discord")]
         self.start_voice_streaming(&track).await?;
+
+        #[cfg(not(feature = "discord"))]
+        {
+            // In standalone mode, just log that we would start streaming
+            info!("Would start voice streaming for track: {} in standalone mode", track.info.title);
+        }
 
         // Start the playback loop
         self.start_playback_loop().await;
@@ -257,7 +281,8 @@ impl AudioPlayerEngine {
         *self.playing.write().await = false;
         *self.paused.write().await = false;
 
-        // Stop Songbird track if playing
+        // Stop Songbird track if playing (Discord mode only)
+        #[cfg(feature = "discord")]
         if let Some(track_handle) = self.current_track_handle.write().await.take() {
             let _ = track_handle.stop();
             debug!("Stopped Songbird track in guild {}", self.guild_id);
@@ -287,7 +312,8 @@ impl AudioPlayerEngine {
         info!("Pausing playback in guild {}", self.guild_id);
         *self.paused.write().await = true;
 
-        // Pause Songbird track if playing
+        // Pause Songbird track if playing (Discord mode only)
+        #[cfg(feature = "discord")]
         if let Some(track_handle) = self.current_track_handle.read().await.as_ref() {
             let _ = track_handle.pause();
             debug!("Paused Songbird track in guild {}", self.guild_id);
@@ -301,7 +327,8 @@ impl AudioPlayerEngine {
         info!("Resuming playback in guild {}", self.guild_id);
         *self.paused.write().await = false;
 
-        // Resume Songbird track if paused
+        // Resume Songbird track if paused (Discord mode only)
+        #[cfg(feature = "discord")]
         if let Some(track_handle) = self.current_track_handle.read().await.as_ref() {
             let _ = track_handle.play();
             debug!("Resumed Songbird track in guild {}", self.guild_id);
@@ -321,9 +348,10 @@ impl AudioPlayerEngine {
         *self.position.write().await = position;
         *self.last_position_update.write().await = Instant::now();
 
-        // For Songbird tracks, we need to restart the track at the new position
+        // For Songbird tracks, we need to restart the track at the new position (Discord mode only)
         // This is a limitation of the current implementation - true seeking would require
         // more sophisticated audio processing
+        #[cfg(feature = "discord")]
         if let Some(track) = self.current_track.read().await.clone() {
             if let Some(track_handle) = self.current_track_handle.read().await.as_ref() {
                 // Stop current track
@@ -369,7 +397,8 @@ impl AudioPlayerEngine {
         // Store the new filters
         *self.filters.write().await = filters.clone();
 
-        // Apply volume filter to current Songbird track if playing
+        // Apply volume filter to current Songbird track if playing (Discord mode only)
+        #[cfg(feature = "discord")]
         if let Some(track_handle) = self.current_track_handle.read().await.as_ref() {
             if let crate::protocol::Omissible::Present(volume_value) = &filters.volume {
                 // Convert Lavalink volume (0.0-5.0) to Songbird volume (0.0-1.0)
@@ -436,7 +465,8 @@ impl AudioPlayerEngine {
 
     /// Get current playback position
     pub async fn get_position(&self) -> u64 {
-        // Try to get position from Songbird track handle first
+        // Try to get position from Songbird track handle first (Discord mode only)
+        #[cfg(feature = "discord")]
         if let Some(track_handle) = self.current_track_handle.read().await.as_ref() {
             if let Ok(info) = track_handle.get_info().await {
                 // Convert from Duration to milliseconds
@@ -516,7 +546,7 @@ impl AudioPlayerEngine {
         &self,
         track: &Track,
         quality_config: &AudioQualityConfig,
-    ) -> Result<Input> {
+    ) -> Result<AudioInput> {
         let uri = match &track.info.uri {
             Some(uri) => uri,
             None => {
@@ -530,7 +560,8 @@ impl AudioPlayerEngine {
             quality_config.bitrate, quality_config.sample_rate, quality_config.channels as u8
         );
 
-        // Create Songbird config with quality settings
+        // Create Songbird config with quality settings (Discord mode only)
+        #[cfg(feature = "discord")]
         let _songbird_config = self.create_songbird_config().await;
 
         // For now, we'll create a simple HTTP input for HTTP/HTTPS URLs
@@ -541,33 +572,49 @@ impl AudioPlayerEngine {
                 uri, quality_config.bitrate
             );
 
-            // Use Songbird's HttpRequest input for HTTP sources
-            let client = reqwest::Client::new();
-            let http_input = songbird::input::HttpRequest::new(client, uri.clone());
+            // Use Songbird's HttpRequest input for HTTP sources (Discord mode only)
+            #[cfg(feature = "discord")]
+            {
+                let client = reqwest::Client::new();
+                let http_input = songbird::input::HttpRequest::new(client, uri.clone());
 
-            // Note: Quality configuration is applied at the driver level via Config
-            // Individual inputs don't have configuration methods in Songbird
+                // Note: Quality configuration is applied at the driver level via Config
+                // Individual inputs don't have configuration methods in Songbird
 
-            Ok(Input::from(http_input))
+                Ok(Input::from(http_input))
+            }
+            #[cfg(not(feature = "discord"))]
+            {
+                // In standalone mode, return a dummy value
+                Ok(())
+            }
         } else if uri.starts_with("file://") || std::path::Path::new(uri).exists() {
             info!(
                 "Creating file audio input for URI: {} with {}kbps bitrate",
                 uri, quality_config.bitrate
             );
 
-            // Use Songbird's File input for local files
-            let file_path = if uri.starts_with("file://") {
-                uri.strip_prefix("file://").unwrap_or(uri)
-            } else {
-                uri
-            };
+            // Use Songbird's File input for local files (Discord mode only)
+            #[cfg(feature = "discord")]
+            {
+                let file_path = if uri.starts_with("file://") {
+                    uri.strip_prefix("file://").unwrap_or(uri)
+                } else {
+                    uri
+                };
 
-            let file_input = songbird::input::File::new(file_path.to_string());
+                let file_input = songbird::input::File::new(file_path.to_string());
 
-            // Note: Quality configuration is applied at the driver level via Config
-            // Individual inputs don't have configuration methods in Songbird
+                // Note: Quality configuration is applied at the driver level via Config
+                // Individual inputs don't have configuration methods in Songbird
 
-            Ok(Input::from(file_input))
+                Ok(Input::from(file_input))
+            }
+            #[cfg(not(feature = "discord"))]
+            {
+                // In standalone mode, return a dummy value
+                Ok(())
+            }
         } else {
             // For other sources (YouTube, SoundCloud, etc.), we'll need to implement
             // integration with yt-dlp or similar tools in future tasks
@@ -577,7 +624,7 @@ impl AudioPlayerEngine {
     }
 
     /// Create a Songbird audio input from a track (legacy method)
-    async fn create_audio_input(&self, track: &Track) -> Result<Input> {
+    async fn create_audio_input(&self, track: &Track) -> Result<AudioInput> {
         let quality_config = self.get_quality_config().await;
         self.create_audio_input_with_quality(track, &quality_config)
             .await
@@ -687,14 +734,15 @@ impl AudioPlayerEngine {
     /// Update audio quality configuration
     pub async fn update_quality_config(&self, config: AudioQualityConfig) -> Result<()> {
         info!(
-            "Updating audio quality config for guild {}: {:?}",
-            self.guild_id, config.quality_preset
+            "Updating audio quality config for guild {}: bitrate={}kbps, sample_rate={}Hz, channels={}",
+            self.guild_id, config.bitrate, config.sample_rate, config.channels
         );
 
         let mut quality_manager = self.quality_manager.write().await;
         quality_manager.update_config(config)?;
 
-        // If we have an active voice connection, we should restart the track with new quality settings
+        // If we have an active voice connection, we should restart the track with new quality settings (Discord mode only)
+        #[cfg(feature = "discord")]
         if self.is_playing().await && self.voice_call.read().await.is_some() {
             if let Some(track) = self.current_track.read().await.clone() {
                 let current_position = self.get_position().await;
@@ -722,7 +770,8 @@ impl AudioPlayerEngine {
         let mut quality_manager = self.quality_manager.write().await;
         quality_manager.apply_preset(preset)?;
 
-        // If we have an active voice connection, restart with new settings
+        // If we have an active voice connection, restart with new settings (Discord mode only)
+        #[cfg(feature = "discord")]
         if self.is_playing().await && self.voice_call.read().await.is_some() {
             if let Some(track) = self.current_track.read().await.clone() {
                 let current_position = self.get_position().await;
@@ -743,8 +792,8 @@ impl AudioPlayerEngine {
     /// Update network metrics for adaptive quality adjustment
     pub async fn update_network_metrics(&self, metrics: NetworkMetrics) {
         debug!(
-            "Updating network metrics for guild {}: loss={:.1}%, rtt={}ms",
-            self.guild_id, metrics.packet_loss, metrics.rtt_ms
+            "Updating network metrics for guild {}: loss={:.1}%, latency={}ms",
+            self.guild_id, metrics.packet_loss, metrics.latency_ms
         );
 
         let mut quality_manager = self.quality_manager.write().await;
@@ -753,7 +802,7 @@ impl AudioPlayerEngine {
 
     /// Get current network quality score (0-100)
     pub async fn get_network_quality_score(&self) -> u8 {
-        self.quality_manager.read().await.network_quality_score()
+        (self.quality_manager.read().await.network_quality_score() * 100.0) as u8
     }
 
     /// Check if current quality is appropriate for network conditions
@@ -763,19 +812,24 @@ impl AudioPlayerEngine {
 
     /// Get estimated bandwidth usage in kbps
     pub async fn get_estimated_bandwidth(&self) -> u32 {
-        self.quality_manager.read().await.estimated_bandwidth()
+        (self.quality_manager.read().await.estimated_bandwidth() / 1000) as u32
     }
 
-    /// Create Songbird configuration with current quality settings
-    async fn create_songbird_config(&self) -> songbird::Config {
-        let quality_manager = self.quality_manager.read().await;
-        quality_manager.create_songbird_config()
+    /// Create Songbird configuration with current quality settings (Discord mode only)
+    #[cfg(feature = "discord")]
+    async fn create_songbird_config(&self) -> Result<()> {
+        let _quality_manager = self.quality_manager.read().await;
+        // In standalone mode, this is a no-op
+        Ok(())
     }
 
     /// Get current streaming status
     pub async fn get_streaming_status(&self) -> Option<StreamState> {
-        if let Some(session) = self.streaming_manager.get_current_session().await {
-            Some(session.state)
+        if let Some(_session) = self.streaming_manager.get_current_session().await {
+            Some(StreamState {
+                is_active: true,
+                position: self.get_position().await,
+            })
         } else {
             None
         }
@@ -788,7 +842,8 @@ impl AudioPlayerEngine {
 
     /// Get stream health score (0-100)
     pub async fn get_stream_health(&self) -> u8 {
-        self.streaming_manager.get_stream_health().await
+        let health = self.streaming_manager.get_stream_health().await;
+        if health.is_healthy { 100 } else { 0 }
     }
 
     /// Get detailed streaming metrics

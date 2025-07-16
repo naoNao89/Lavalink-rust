@@ -73,6 +73,7 @@ pub struct LavalinkPlayer {
 /// Events that can be emitted by players
 #[derive(Debug, Clone, serde::Serialize)]
 pub enum PlayerEvent {
+    #[allow(dead_code)]
     TrackStart {
         guild_id: String,
         track: Track,
@@ -103,6 +104,30 @@ pub enum TrackEndReason {
     Stopped,
     Replaced,
     Cleanup,
+}
+
+impl TrackEndReason {
+    /// Check if this end reason should trigger the next track to start
+    pub fn may_start_next(&self) -> bool {
+        match self {
+            TrackEndReason::Finished => true,
+            TrackEndReason::LoadFailed => true,
+            TrackEndReason::Stopped => false,
+            TrackEndReason::Replaced => false,
+            TrackEndReason::Cleanup => false,
+        }
+    }
+
+    /// Convert to messages::TrackEndReason for protocol compatibility
+    pub fn to_messages_reason(&self) -> crate::protocol::messages::TrackEndReason {
+        match self {
+            TrackEndReason::Finished => crate::protocol::messages::TrackEndReason::Finished,
+            TrackEndReason::LoadFailed => crate::protocol::messages::TrackEndReason::LoadFailed,
+            TrackEndReason::Stopped => crate::protocol::messages::TrackEndReason::Stopped,
+            TrackEndReason::Replaced => crate::protocol::messages::TrackEndReason::Replaced,
+            TrackEndReason::Cleanup => crate::protocol::messages::TrackEndReason::Cleanup,
+        }
+    }
 }
 
 impl PlayerManager {
@@ -204,6 +229,7 @@ impl PlayerManager {
     }
 
     /// Get all players for a session
+    #[allow(dead_code)]
     pub async fn get_players_for_session(
         &self,
         session_id: &str,
@@ -222,6 +248,7 @@ impl PlayerManager {
     }
 
     /// Remove a player
+    #[allow(dead_code)]
     pub async fn remove_player(&self, guild_id: &str) -> Option<Arc<RwLock<LavalinkPlayer>>> {
         let mut players = self.players.write().await;
         let player = players.remove(guild_id);
@@ -243,6 +270,7 @@ impl PlayerManager {
     }
 
     /// Remove all players for a session
+    #[allow(dead_code)]
     pub async fn remove_players_for_session(&self, session_id: &str) {
         let mut players = self.players.write().await;
         let mut to_remove = Vec::new();
@@ -277,6 +305,7 @@ impl PlayerManager {
     }
 
     /// Emit a player event
+    #[allow(dead_code)]
     pub async fn emit_event(&self, event: PlayerEvent) {
         if let Some(ref sender) = self.event_sender {
             if let Err(e) = sender.send(event) {
@@ -286,6 +315,7 @@ impl PlayerManager {
     }
 
     /// Shutdown the player manager and clean up all resources
+    #[allow(dead_code)]
     pub async fn shutdown(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         info!("Shutting down player manager...");
 
@@ -519,11 +549,12 @@ impl LavalinkPlayer {
                 .update_voice_state(self.guild_id.clone(), voice_state)
                 .await
             {
-                Ok(Some(call)) => {
+                Ok(Some(_call)) => {
                     info!("Voice connection established for guild {}", self.guild_id);
                     self.state.connected = true;
 
-                    // Connect the voice call to the audio engine
+                    // Connect the voice call to the audio engine (Discord mode only)
+                    #[cfg(feature = "discord")]
                     if let Some(ref audio_engine) = self.audio_engine {
                         audio_engine.set_voice_call(call).await;
                         info!(
@@ -541,7 +572,8 @@ impl LavalinkPlayer {
                     self.state.connected = false;
                     self.state.ping = -1; // Indicate no connection
 
-                    // Disconnect the audio engine from voice
+                    // Disconnect the audio engine from voice (Discord mode only)
+                    #[cfg(feature = "discord")]
                     if let Some(ref audio_engine) = self.audio_engine {
                         audio_engine.remove_voice_call().await;
                         info!(
@@ -946,6 +978,7 @@ impl LavalinkPlayer {
     }
 
     /// Play a track
+    #[allow(dead_code)]
     pub async fn play_track(
         &mut self,
         track: Track,
@@ -990,6 +1023,7 @@ impl LavalinkPlayer {
     }
 
     /// Apply filters
+    #[allow(dead_code)]
     pub async fn apply_filters(
         &mut self,
         filters: Filters,
@@ -1018,6 +1052,7 @@ impl LavalinkPlayer {
     }
 
     /// Get list of disabled filters from configuration
+    #[allow(dead_code)]
     fn get_disabled_filters(&self) -> Vec<String> {
         // TODO: Read from actual configuration
         // For now, return empty list (all filters enabled)
@@ -1025,6 +1060,7 @@ impl LavalinkPlayer {
     }
 
     /// Get current filters
+    #[allow(dead_code)]
     pub fn get_filters(&self) -> &Filters {
         &self.filters
     }
@@ -1035,6 +1071,7 @@ impl LavalinkPlayer {
     }
 
     /// Add a track to the queue
+    #[allow(dead_code)]
     pub fn add_to_queue(&mut self, track: Track) {
         info!(
             "Adding track '{}' to queue for guild {}",
@@ -1044,6 +1081,7 @@ impl LavalinkPlayer {
     }
 
     /// Remove a track from the queue by index
+    #[allow(dead_code)]
     pub fn remove_from_queue(&mut self, index: usize) -> Option<Track> {
         if index < self.queue.len() {
             let track = self.queue.remove(index);
@@ -1060,6 +1098,7 @@ impl LavalinkPlayer {
     }
 
     /// Clear the entire queue
+    #[allow(dead_code)]
     pub fn clear_queue(&mut self) {
         let count = self.queue.len();
         self.queue.clear();
@@ -1102,16 +1141,19 @@ impl LavalinkPlayer {
     }
 
     /// Get the queue as a vector (for API responses)
+    #[allow(dead_code)]
     pub fn get_queue(&self) -> Vec<Track> {
         self.queue.iter().cloned().collect()
     }
 
     /// Get queue length
+    #[allow(dead_code)]
     pub fn queue_length(&self) -> usize {
         self.queue.len()
     }
 
     /// Skip to the next track in the queue
+    #[allow(dead_code)]
     pub async fn skip_track(
         &mut self,
     ) -> Result<Option<Track>, Box<dyn std::error::Error + Send + Sync>> {
@@ -1142,6 +1184,7 @@ impl LavalinkPlayer {
     }
 
     /// Move a track from one position to another in the queue
+    #[allow(dead_code)]
     pub fn move_track(&mut self, from: usize, to: usize) -> Result<Track, String> {
         if from >= self.queue.len() {
             return Err(format!(
@@ -1170,6 +1213,7 @@ impl LavalinkPlayer {
     }
 
     /// Shuffle the current queue
+    #[allow(dead_code)]
     pub fn shuffle_queue(&mut self) {
         let mut rng = rand::rng();
 
@@ -1263,6 +1307,7 @@ impl Default for PlayerManager {
 /// Player event handler for processing events and sending WebSocket messages
 pub struct PlayerEventHandler {
     event_receiver: mpsc::UnboundedReceiver<PlayerEvent>,
+    #[cfg(feature = "websocket")]
     websocket_sessions: Arc<dashmap::DashMap<String, crate::server::WebSocketSession>>,
     player_manager: Option<Arc<PlayerManager>>,
 }
@@ -1271,10 +1316,12 @@ impl PlayerEventHandler {
     /// Create a new event handler
     pub fn new(
         event_receiver: mpsc::UnboundedReceiver<PlayerEvent>,
+        #[cfg(feature = "websocket")]
         websocket_sessions: Arc<dashmap::DashMap<String, crate::server::WebSocketSession>>,
     ) -> Self {
         Self {
             event_receiver,
+            #[cfg(feature = "websocket")]
             websocket_sessions,
             player_manager: None,
         }
@@ -1284,11 +1331,13 @@ impl PlayerEventHandler {
     #[allow(dead_code)]
     pub fn with_player_manager(
         event_receiver: mpsc::UnboundedReceiver<PlayerEvent>,
+        #[cfg(feature = "websocket")]
         websocket_sessions: Arc<dashmap::DashMap<String, crate::server::WebSocketSession>>,
         player_manager: Arc<PlayerManager>,
     ) -> Self {
         Self {
             event_receiver,
+            #[cfg(feature = "websocket")]
             websocket_sessions,
             player_manager: Some(player_manager),
         }
@@ -1324,7 +1373,7 @@ impl PlayerEventHandler {
                     guild_id, track.info.title, reason
                 );
 
-                let message = Message::event(Event::track_end(guild_id, track, reason));
+                let message = Message::event(Event::track_end(guild_id, track, reason.to_messages_reason()));
                 self.broadcast_to_sessions(message).await;
             }
 
@@ -1423,13 +1472,21 @@ impl PlayerEventHandler {
 
     /// Broadcast a message to all WebSocket sessions
     async fn broadcast_to_sessions(&self, message: Message) {
-        for session in self.websocket_sessions.iter() {
-            if let Err(e) = session.send_message(message.clone()).await {
-                error!(
-                    "Failed to send message to session {}: {}",
-                    session.session_id, e
-                );
+        #[cfg(feature = "websocket")]
+        {
+            for session in self.websocket_sessions.iter() {
+                if let Err(e) = session.send_message(message.clone()).await {
+                    error!(
+                        "Failed to send message to session {}: {}",
+                        session.session_id, e
+                    );
+                }
             }
+        }
+        #[cfg(not(feature = "websocket"))]
+        {
+            // In standalone mode without websocket, just log the message
+            debug!("Would broadcast message to websocket sessions: {:?}", message);
         }
     }
 }

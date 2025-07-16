@@ -12,10 +12,12 @@ mod server;
 #[cfg(feature = "audio-processing")]
 mod audio;
 
-#[cfg(feature = "discord")]
+// Player module is needed for both Discord and standalone modes
+#[cfg(any(feature = "discord", feature = "server"))]
 mod player;
 
-#[cfg(feature = "discord")]
+// Voice module is needed for both Discord and standalone modes
+#[cfg(any(feature = "discord", feature = "server"))]
 mod voice;
 
 #[cfg(test)]

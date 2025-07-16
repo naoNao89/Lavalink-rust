@@ -10,10 +10,10 @@ pub mod server;
 #[cfg(feature = "audio-processing")]
 pub mod audio;
 
-#[cfg(feature = "discord")]
+// Player module is needed for both Discord and standalone modes
 pub mod player;
 
-#[cfg(feature = "discord")]
+// Voice module is needed for both Discord and standalone modes
 pub mod voice;
 
 pub mod test_utils;
