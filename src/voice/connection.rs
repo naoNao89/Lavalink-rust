@@ -27,6 +27,7 @@ type VoiceCallHandle = Arc<Mutex<Call>>;
 type VoiceCallHandle = Arc<Mutex<()>>;
 
 #[cfg(feature = "discord")]
+#[allow(dead_code)]
 type VoiceConnectionError = SongbirdConnectionError;
 #[cfg(not(feature = "discord"))]
 #[allow(dead_code)]
@@ -948,11 +949,10 @@ impl VoiceConnectionManager {
 
     /// Get voice connection for a guild
     pub async fn get_voice_connection(&self, guild_id: &str) -> Option<VoiceCallHandle> {
-        if let Some(connection) = self.voice_client.get_connection(guild_id).await {
-            Some(Self::convert_connection_to_handle(connection))
-        } else {
-            None
-        }
+        self.voice_client
+            .get_connection(guild_id)
+            .await
+            .map(Self::convert_connection_to_handle)
     }
 
     /// Check if connected to voice channel

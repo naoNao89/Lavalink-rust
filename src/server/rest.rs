@@ -904,9 +904,8 @@ pub async fn update_player_handler(
 
     // Apply updates from the request
     if let Some(volume) = request.volume {
-        if volume <= 255 {
-            player_guard.volume = volume;
-        }
+        // Volume is u8, so it's always valid (0-255)
+        player_guard.volume = volume;
     }
 
     if let Some(paused) = request.paused {

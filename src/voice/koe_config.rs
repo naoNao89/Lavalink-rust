@@ -29,6 +29,7 @@ pub enum GatewayVersion {
 /// System architecture types for native audio optimization
 #[derive(Debug, Clone, PartialEq)]
 #[allow(dead_code)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ArchitectureType {
     X86_32,
     X86_64,

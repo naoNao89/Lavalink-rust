@@ -205,21 +205,12 @@ pub mod streaming {
 }
 
 // StreamState struct available for both Discord and non-Discord builds
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct StreamState {
     #[allow(dead_code)]
     pub is_active: bool,
     #[allow(dead_code)]
     pub position: u64,
-}
-
-impl Default for StreamState {
-    fn default() -> Self {
-        Self {
-            is_active: false,
-            position: 0,
-        }
-    }
 }
 
 use anyhow::Result;

@@ -300,7 +300,9 @@ async fn test_discord_bot_initialization() {
         // Test that we can get the Songbird manager (indicates successful initialization)
         let songbird = voice_client.songbird();
         // Just verify we can access the songbird manager without panicking
-        let _manager_ref = &*songbird;
+        if let Some(ref manager) = songbird {
+            let _manager_ref = manager.as_ref();
+        }
 
         info!("Discord bot initialization test passed");
         Ok(())

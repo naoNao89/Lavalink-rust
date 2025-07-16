@@ -339,6 +339,12 @@ pub struct MockAudioFrameProvider {
     can_provide: AtomicBool,
 }
 
+impl Default for MockAudioFrameProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockAudioFrameProvider {
     #[allow(dead_code)]
     pub fn new() -> Self {
