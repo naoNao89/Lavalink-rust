@@ -225,7 +225,10 @@ impl VoiceConnectionPool {
                 // Store the connection
                 {
                     let mut connections = self.connections.write().await;
-                    connections.insert(guild_id.clone(), Self::convert_connection_to_handle(call.clone()));
+                    connections.insert(
+                        guild_id.clone(),
+                        Self::convert_connection_to_handle(call.clone()),
+                    );
                 }
 
                 // Update connection info
@@ -315,7 +318,10 @@ impl VoiceConnectionPool {
                 #[cfg(not(feature = "discord"))]
                 {
                     // In standalone mode, just log that we would leave
-                    info!("Would leave voice channel for guild {} in standalone mode", guild_id);
+                    info!(
+                        "Would leave voice channel for guild {} in standalone mode",
+                        guild_id
+                    );
                 }
             }
 

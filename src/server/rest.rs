@@ -950,20 +950,36 @@ pub async fn update_player_handler(
 
     // 🎯 CRITICAL FIX: Handle voice state updates (this was completely missing!)
     if let Some(voice_state) = request.voice {
-        info!("🎵 Updating voice state for guild {}: endpoint={}, token={}, sessionId={}",
-              guild_id, voice_state.endpoint,
-              if voice_state.token.is_empty() { "empty" } else { "provided" },
-              voice_state.session_id);
+        info!(
+            "🎵 Updating voice state for guild {}: endpoint={}, token={}, sessionId={}",
+            guild_id,
+            voice_state.endpoint,
+            if voice_state.token.is_empty() {
+                "empty"
+            } else {
+                "provided"
+            },
+            voice_state.session_id
+        );
 
         // Validate voice state (matching official Lavalink validation)
-        if voice_state.endpoint.is_empty() || voice_state.token.is_empty() || voice_state.session_id.is_empty() {
+        if voice_state.endpoint.is_empty()
+            || voice_state.token.is_empty()
+            || voice_state.session_id.is_empty()
+        {
             let error = ErrorResponse::new(
                 400,
                 "Bad Request".to_string(),
-                Some(format!("Partial Lavalink voice state: endpoint={}, token={}, sessionId={}",
-                           voice_state.endpoint,
-                           if voice_state.token.is_empty() { "empty" } else { "provided" },
-                           voice_state.session_id)),
+                Some(format!(
+                    "Partial Lavalink voice state: endpoint={}, token={}, sessionId={}",
+                    voice_state.endpoint,
+                    if voice_state.token.is_empty() {
+                        "empty"
+                    } else {
+                        "provided"
+                    },
+                    voice_state.session_id
+                )),
                 format!("/v4/sessions/{session_id}/players/{guild_id}"),
             );
             return (StatusCode::BAD_REQUEST, Json(error)).into_response();

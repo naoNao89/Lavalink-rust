@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tracing::{info, warn};
 
 // Import player management types (needed for both Discord and standalone modes)
-use crate::player::{PlayerManager, PlayerEvent, PlayerEventHandler};
+use crate::player::{PlayerEvent, PlayerEventHandler, PlayerManager};
 
 #[cfg(feature = "server")]
 use axum::{

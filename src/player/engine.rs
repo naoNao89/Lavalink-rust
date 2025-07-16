@@ -17,13 +17,11 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 use super::{PlayerEvent, TrackEndReason};
-use crate::audio::quality::{
-    AudioQualityConfig, AudioQualityManager, QualityPreset,
-};
 #[cfg(feature = "discord")]
 use crate::audio::quality::NetworkMetrics;
 #[cfg(not(feature = "discord"))]
 use crate::audio::quality::NetworkMetrics;
+use crate::audio::quality::{AudioQualityConfig, AudioQualityManager, QualityPreset};
 use crate::audio::streaming::{AudioStreamingManager, StreamOptions};
 use crate::audio::StreamState;
 use crate::protocol::{Filters, Track};
@@ -197,7 +195,8 @@ impl AudioPlayerEngine {
             }
 
             // Create audio input for Discord voice
-            let audio_input = self.create_audio_input_with_quality(track, &quality_config)
+            let audio_input = self
+                .create_audio_input_with_quality(track, &quality_config)
                 .await?;
 
             // Start playing the audio through Songbird
@@ -265,7 +264,10 @@ impl AudioPlayerEngine {
         #[cfg(not(feature = "discord"))]
         {
             // In standalone mode, just log that we would start streaming
-            info!("Would start voice streaming for track: {} in standalone mode", track.info.title);
+            info!(
+                "Would start voice streaming for track: {} in standalone mode",
+                track.info.title
+            );
         }
 
         // Start the playback loop

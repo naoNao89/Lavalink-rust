@@ -4,9 +4,9 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 #[cfg(feature = "discord")]
 use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use crate::protocol::messages::VoiceState;
@@ -146,7 +146,9 @@ impl VoiceClient {
     #[cfg(feature = "discord")]
     pub async fn initialize_discord(&self, bot_token: String) -> Result<()> {
         if self.mode != VoiceMode::Discord {
-            return Err(anyhow::anyhow!("Cannot initialize Discord in standalone mode"));
+            return Err(anyhow::anyhow!(
+                "Cannot initialize Discord in standalone mode"
+            ));
         }
 
         if let Some(ref discord_client_arc) = self.discord_client {
@@ -200,12 +202,17 @@ impl VoiceClient {
         channel_id: u64,
         user_id: u64,
     ) -> Result<VoiceConnectionType> {
-        info!("Joining voice channel for guild {} in {:?} mode", guild_id, self.mode);
+        info!(
+            "Joining voice channel for guild {} in {:?} mode",
+            guild_id, self.mode
+        );
 
         // Use connection pool if available
         if let Some(ref _pool) = self.connection_pool {
             // Note: Pool needs to be updated to support VoiceConnectionType
-            warn!("Connection pool not yet updated for multi-mode support, using direct connection");
+            warn!(
+                "Connection pool not yet updated for multi-mode support, using direct connection"
+            );
         }
 
         // Use direct connection management
@@ -268,7 +275,10 @@ impl VoiceClient {
 
     /// Leave a voice channel
     pub async fn leave_channel(&self, guild_id: &str) -> Result<()> {
-        info!("Leaving voice channel for guild {} in {:?} mode", guild_id, self.mode);
+        info!(
+            "Leaving voice channel for guild {} in {:?} mode",
+            guild_id, self.mode
+        );
 
         // Use connection pool if available
         if let Some(ref _pool) = self.connection_pool {
@@ -379,12 +389,18 @@ impl VoiceClient {
                 VoiceConnectionType::Discord(call) => {
                     let mut call_guard = call.lock().await;
                     if let Err(e) = call_guard.leave().await {
-                        warn!("Error leaving Discord voice channel for guild {}: {}", guild_id, e);
+                        warn!(
+                            "Error leaving Discord voice channel for guild {}: {}",
+                            guild_id, e
+                        );
                     }
                 }
                 VoiceConnectionType::Standalone(conn) => {
                     if let Err(e) = conn.disconnect().await {
-                        warn!("Error disconnecting standalone voice connection for guild {}: {}", guild_id, e);
+                        warn!(
+                            "Error disconnecting standalone voice connection for guild {}: {}",
+                            guild_id, e
+                        );
                     }
                 }
             }

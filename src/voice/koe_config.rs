@@ -93,16 +93,46 @@ impl KoeOptions {
     /// Get list of supported system types for native audio
     fn get_supported_systems() -> Vec<SystemType> {
         vec![
-            SystemType { architecture: ArchitectureType::ARM, os: OperatingSystemType::Linux },
-            SystemType { architecture: ArchitectureType::X86_64, os: OperatingSystemType::Linux },
-            SystemType { architecture: ArchitectureType::X86_32, os: OperatingSystemType::Linux },
-            SystemType { architecture: ArchitectureType::ARMv8_64, os: OperatingSystemType::Linux },
-            SystemType { architecture: ArchitectureType::X86_64, os: OperatingSystemType::LinuxMusl },
-            SystemType { architecture: ArchitectureType::ARMv8_64, os: OperatingSystemType::LinuxMusl },
-            SystemType { architecture: ArchitectureType::X86_64, os: OperatingSystemType::Windows },
-            SystemType { architecture: ArchitectureType::X86_32, os: OperatingSystemType::Windows },
-            SystemType { architecture: ArchitectureType::X86_64, os: OperatingSystemType::Darwin },
-            SystemType { architecture: ArchitectureType::ARMv8_64, os: OperatingSystemType::Darwin },
+            SystemType {
+                architecture: ArchitectureType::ARM,
+                os: OperatingSystemType::Linux,
+            },
+            SystemType {
+                architecture: ArchitectureType::X86_64,
+                os: OperatingSystemType::Linux,
+            },
+            SystemType {
+                architecture: ArchitectureType::X86_32,
+                os: OperatingSystemType::Linux,
+            },
+            SystemType {
+                architecture: ArchitectureType::ARMv8_64,
+                os: OperatingSystemType::Linux,
+            },
+            SystemType {
+                architecture: ArchitectureType::X86_64,
+                os: OperatingSystemType::LinuxMusl,
+            },
+            SystemType {
+                architecture: ArchitectureType::ARMv8_64,
+                os: OperatingSystemType::LinuxMusl,
+            },
+            SystemType {
+                architecture: ArchitectureType::X86_64,
+                os: OperatingSystemType::Windows,
+            },
+            SystemType {
+                architecture: ArchitectureType::X86_32,
+                os: OperatingSystemType::Windows,
+            },
+            SystemType {
+                architecture: ArchitectureType::X86_64,
+                os: OperatingSystemType::Darwin,
+            },
+            SystemType {
+                architecture: ArchitectureType::ARMv8_64,
+                os: OperatingSystemType::Darwin,
+            },
         ]
     }
 
@@ -138,8 +168,11 @@ impl KoeOptions {
     #[allow(dead_code)]
     pub fn log_system_info(&self) {
         if let Some(system_type) = Self::detect_system_type() {
-            info!("OS: {:?}, Arch: {:?}", system_type.os, system_type.architecture);
-            
+            info!(
+                "OS: {:?}, Arch: {:?}",
+                system_type.os, system_type.architecture
+            );
+
             if let Some(buffer_duration) = self.buffer_duration_ms {
                 if buffer_duration == 0 {
                     info!("Native audio is disabled! GC pauses may cause audio stuttering during playback.");
@@ -149,7 +182,10 @@ impl KoeOptions {
                 if Self::is_native_audio_supported() {
                     info!("Enabling native audio optimization");
                     if buffer_duration < 40 {
-                        info!("Buffer size of {}ms is too small. Using default 400ms", buffer_duration);
+                        info!(
+                            "Buffer size of {}ms is too small. Using default 400ms",
+                            buffer_duration
+                        );
                     }
                 } else {
                     info!(

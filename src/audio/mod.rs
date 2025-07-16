@@ -202,7 +202,6 @@ pub mod streaming {
             }
         }
     }
-
 }
 
 // StreamState struct available for both Discord and non-Discord builds

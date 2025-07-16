@@ -74,10 +74,7 @@ pub struct LavalinkPlayer {
 #[derive(Debug, Clone, serde::Serialize)]
 pub enum PlayerEvent {
     #[allow(dead_code)]
-    TrackStart {
-        guild_id: String,
-        track: Track,
-    },
+    TrackStart { guild_id: String, track: Track },
     TrackEnd {
         guild_id: String,
         track: Track,
@@ -1316,8 +1313,9 @@ impl PlayerEventHandler {
     /// Create a new event handler
     pub fn new(
         event_receiver: mpsc::UnboundedReceiver<PlayerEvent>,
-        #[cfg(feature = "websocket")]
-        websocket_sessions: Arc<dashmap::DashMap<String, crate::server::WebSocketSession>>,
+        #[cfg(feature = "websocket")] websocket_sessions: Arc<
+            dashmap::DashMap<String, crate::server::WebSocketSession>,
+        >,
     ) -> Self {
         Self {
             event_receiver,
@@ -1331,8 +1329,9 @@ impl PlayerEventHandler {
     #[allow(dead_code)]
     pub fn with_player_manager(
         event_receiver: mpsc::UnboundedReceiver<PlayerEvent>,
-        #[cfg(feature = "websocket")]
-        websocket_sessions: Arc<dashmap::DashMap<String, crate::server::WebSocketSession>>,
+        #[cfg(feature = "websocket")] websocket_sessions: Arc<
+            dashmap::DashMap<String, crate::server::WebSocketSession>,
+        >,
         player_manager: Arc<PlayerManager>,
     ) -> Self {
         Self {
@@ -1373,7 +1372,11 @@ impl PlayerEventHandler {
                     guild_id, track.info.title, reason
                 );
 
-                let message = Message::event(Event::track_end(guild_id, track, reason.to_messages_reason()));
+                let message = Message::event(Event::track_end(
+                    guild_id,
+                    track,
+                    reason.to_messages_reason(),
+                ));
                 self.broadcast_to_sessions(message).await;
             }
 
@@ -1486,7 +1489,10 @@ impl PlayerEventHandler {
         #[cfg(not(feature = "websocket"))]
         {
             // In standalone mode without websocket, just log the message
-            debug!("Would broadcast message to websocket sessions: {:?}", message);
+            debug!(
+                "Would broadcast message to websocket sessions: {:?}",
+                message
+            );
         }
     }
 }

@@ -1100,10 +1100,14 @@ impl VoiceConnectionManager {
                     SongbirdConnectionError::InterconnectFailure(_) => VoiceErrorType::Temporary,
                     SongbirdConnectionError::AttemptDiscarded => VoiceErrorType::Temporary,
                     SongbirdConnectionError::EndpointUrl => VoiceErrorType::Configuration,
-                    SongbirdConnectionError::IllegalDiscoveryResponse => VoiceErrorType::Configuration,
+                    SongbirdConnectionError::IllegalDiscoveryResponse => {
+                        VoiceErrorType::Configuration
+                    }
                     SongbirdConnectionError::IllegalIp => VoiceErrorType::Configuration,
                     SongbirdConnectionError::CryptoModeInvalid => VoiceErrorType::Authentication,
-                    SongbirdConnectionError::CryptoModeUnavailable => VoiceErrorType::Authentication,
+                    SongbirdConnectionError::CryptoModeUnavailable => {
+                        VoiceErrorType::Authentication
+                    }
                     SongbirdConnectionError::Crypto(_) => VoiceErrorType::Authentication,
                     SongbirdConnectionError::CryptoInvalidLength => VoiceErrorType::Authentication,
                     SongbirdConnectionError::Json(_) => VoiceErrorType::Temporary,

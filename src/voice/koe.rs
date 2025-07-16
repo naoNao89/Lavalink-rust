@@ -3,8 +3,8 @@
 
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
@@ -104,7 +104,6 @@ impl MediaConnection {
             correlation_id,
         }
     }
-
 }
 
 impl MediaConnectionTrait for MediaConnection {
@@ -119,8 +118,11 @@ impl MediaConnectionTrait for MediaConnection {
         // Validate voice server info
         if voice_server_info.token.is_empty()
             || voice_server_info.endpoint.is_empty()
-            || voice_server_info.session_id.is_empty() {
-            return Err(anyhow!("Invalid voice server info: missing required fields"));
+            || voice_server_info.session_id.is_empty()
+        {
+            return Err(anyhow!(
+                "Invalid voice server info: missing required fields"
+            ));
         }
 
         // Store voice server info
@@ -158,7 +160,10 @@ impl MediaConnectionTrait for MediaConnection {
 
         self.connected.store(false, Ordering::SeqCst);
 
-        info!("Successfully disconnected voice server for guild {}", self.guild_id);
+        info!(
+            "Successfully disconnected voice server for guild {}",
+            self.guild_id
+        );
         Ok(())
     }
 
@@ -169,7 +174,11 @@ impl MediaConnectionTrait for MediaConnection {
     fn ping(&self) -> i32 {
         // For standalone operation, return a mock ping value
         // In real implementation, this would return actual network latency
-        if self.is_open() { 50 } else { -1 }
+        if self.is_open() {
+            50
+        } else {
+            -1
+        }
     }
 
     fn set_audio_sender(&self, sender: Arc<dyn AudioFrameProvider + Send + Sync>) {
@@ -219,7 +228,10 @@ impl KoeClient {
             connections.insert(guild_id, connection.clone());
         }
 
-        info!("Successfully created media connection for guild {}", guild_id);
+        info!(
+            "Successfully created media connection for guild {}",
+            guild_id
+        );
         connection
     }
 
@@ -247,7 +259,10 @@ impl KoeClient {
             }
         }
 
-        info!("Successfully destroyed media connection for guild {}", guild_id);
+        info!(
+            "Successfully destroyed media connection for guild {}",
+            guild_id
+        );
         Ok(())
     }
 
@@ -274,7 +289,8 @@ impl KoeClient {
         guild_id: String,
         voice_state: VoiceState,
     ) -> Result<Arc<MediaConnection>> {
-        let guild_id_u64 = guild_id.parse::<u64>()
+        let guild_id_u64 = guild_id
+            .parse::<u64>()
             .map_err(|_| anyhow!("Invalid guild ID format: {}", guild_id))?;
 
         info!("Joining voice channel for guild {}", guild_id);
@@ -301,7 +317,8 @@ impl KoeClient {
 
     /// Leave voice channel (compatibility method for old interface)
     pub async fn leave_voice_channel(&self, guild_id: &str) -> Result<()> {
-        let guild_id_u64 = guild_id.parse::<u64>()
+        let guild_id_u64 = guild_id
+            .parse::<u64>()
             .map_err(|_| anyhow!("Invalid guild ID format: {}", guild_id))?;
 
         self.destroy_connection(guild_id_u64).await

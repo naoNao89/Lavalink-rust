@@ -68,8 +68,6 @@ pub enum Event {
     },
 }
 
-
-
 /// REST API request/response types
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdatePlayerRequest {
