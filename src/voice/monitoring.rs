@@ -451,7 +451,7 @@ impl VoiceConnectionMonitor {
         // Simulate ping by checking connection status
         // In a real implementation, you might send a ping packet or check connection timing
         let latency = if let Some(call) = self.get_voice_connection(guild_id).await {
-            let _call_guard = call.lock().await;
+            let call_guard = call.lock().await;
 
             // Check if connection is active (Discord mode only)
             #[cfg(feature = "discord")]
@@ -1000,7 +1000,7 @@ impl VoiceConnectionMonitor {
                             let connections = voice_connections.read().await;
                             connections.get(&guild_id_clone).cloned()
                         } {
-                            let _call_guard = call.lock().await;
+                            let call_guard = call.lock().await;
 
                             // Check if connection is active and measure latency (Discord mode only)
                             #[cfg(feature = "discord")]

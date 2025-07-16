@@ -307,7 +307,7 @@ impl VoiceConnectionPool {
         if let Some(call) = removed {
             // Leave the voice channel
             {
-                let mut _call_guard = call.lock().await;
+                let mut call_guard = call.lock().await;
                 #[cfg(feature = "discord")]
                 if let Err(e) = call_guard.leave().await {
                     warn!("Error leaving voice channel for guild {}: {}", guild_id, e);

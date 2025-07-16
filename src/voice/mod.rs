@@ -106,7 +106,7 @@ impl VoiceClient {
             connections: Arc::new(RwLock::new(HashMap::new())),
             connection_pool: None,
             discord_client: Some(Arc::new(RwLock::new(discord::DiscordVoiceClient::new()))),
-            standalone_client: Arc::new(RwLock::new(standalone::StandaloneVoiceClient::new())),
+            koe_client: Arc::new(RwLock::new(koe::KoeClient::new())),
             mode: VoiceMode::Discord,
         }
     }

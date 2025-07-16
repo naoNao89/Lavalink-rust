@@ -1,18 +1,6 @@
 use super::{Exception, PlayerState, Stats, Track};
-#[cfg(feature = "discord")]
-use crate::player::TrackEndReason;
-
-// Fallback type when discord feature is disabled
-#[cfg(not(feature = "discord"))]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrackEndReason {
-    Finished,
-    LoadFailed,
-    Stopped,
-    Replaced,
-    Cleanup,
-}
+// Use the player's TrackEndReason for consistency
+pub use crate::player::TrackEndReason;
 use serde::{Deserialize, Serialize};
 
 /// WebSocket message types
@@ -80,13 +68,7 @@ pub enum Event {
     },
 }
 
-impl TrackEndReason {
-    /// Returns true if the track may be replaced with the next track in the queue
-    #[allow(dead_code)] // Used by player logic
-    pub fn may_start_next(&self) -> bool {
-        matches!(self, TrackEndReason::Finished | TrackEndReason::LoadFailed)
-    }
-}
+
 
 /// REST API request/response types
 #[derive(Debug, Clone, Serialize, Deserialize)]

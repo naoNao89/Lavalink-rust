@@ -549,7 +549,7 @@ impl LavalinkPlayer {
                 .update_voice_state(self.guild_id.clone(), voice_state)
                 .await
             {
-                Ok(Some(_call)) => {
+                Ok(Some(call)) => {
                     info!("Voice connection established for guild {}", self.guild_id);
                     self.state.connected = true;
 

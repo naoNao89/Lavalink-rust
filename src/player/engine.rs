@@ -24,7 +24,8 @@ use crate::audio::quality::{
 use crate::audio::quality::NetworkMetrics;
 #[cfg(not(feature = "discord"))]
 use crate::audio::quality::NetworkMetrics;
-use crate::audio::streaming::{AudioStreamingManager, StreamState};
+use crate::audio::streaming::{AudioStreamingManager, StreamOptions};
+use crate::audio::StreamState;
 use crate::protocol::{Filters, Track};
 
 // Type alias for audio input that works in both Discord and standalone modes
@@ -108,7 +109,7 @@ impl AudioPlayerEngine {
         event_sender: mpsc::UnboundedSender<PlayerEvent>,
         quality_config: AudioQualityConfig,
     ) -> Self {
-        let quality_manager = AudioQualityManager::new(quality_config);
+        let quality_manager = AudioQualityManager::new(guild_id.clone(), quality_config);
         let streaming_manager = AudioStreamingManager::new(guild_id.clone());
 
         Self {
@@ -171,7 +172,7 @@ impl AudioPlayerEngine {
     async fn start_voice_streaming(&self, track: &Track) -> Result<()> {
         let voice_call = self.voice_call.read().await;
         if let Some(ref call) = *voice_call {
-            let quality_config = self.quality_manager.read().await.get_config();
+            let quality_config = self.quality_manager.read().await.get_config().clone();
             info!(
                 "Voice connection established for track: {} in guild {} ({}kbps)",
                 track.info.title, self.guild_id, quality_config.bitrate
@@ -179,15 +180,14 @@ impl AudioPlayerEngine {
 
             // Create stream options with current quality configuration
             let stream_options = StreamOptions {
-                bitrate: quality_config.bitrate,
-                sample_rate: 48_000,
-                channels: 2,
+                quality_config: quality_config.clone(),
+                enable_monitoring: true,
             };
 
             // Use the enhanced streaming manager to start streaming
             if let Err(e) = self
                 .streaming_manager
-                .start_stream(&track.info.uri.as_deref().unwrap_or(&track.info.identifier))
+                .start_stream(track.clone(), stream_options)
                 .await
             {
                 warn!(
@@ -793,7 +793,7 @@ impl AudioPlayerEngine {
     pub async fn update_network_metrics(&self, metrics: NetworkMetrics) {
         debug!(
             "Updating network metrics for guild {}: loss={:.1}%, latency={}ms",
-            self.guild_id, metrics.packet_loss, metrics.latency_ms
+            self.guild_id, metrics.packet_loss, metrics.rtt_ms
         );
 
         let mut quality_manager = self.quality_manager.write().await;
@@ -802,7 +802,7 @@ impl AudioPlayerEngine {
 
     /// Get current network quality score (0-100)
     pub async fn get_network_quality_score(&self) -> u8 {
-        (self.quality_manager.read().await.network_quality_score() * 100.0) as u8
+        self.quality_manager.read().await.network_quality_score()
     }
 
     /// Check if current quality is appropriate for network conditions
@@ -842,8 +842,7 @@ impl AudioPlayerEngine {
 
     /// Get stream health score (0-100)
     pub async fn get_stream_health(&self) -> u8 {
-        let health = self.streaming_manager.get_stream_health().await;
-        if health.is_healthy { 100 } else { 0 }
+        self.streaming_manager.get_stream_health().await
     }
 
     /// Get detailed streaming metrics
