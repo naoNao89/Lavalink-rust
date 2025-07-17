@@ -80,8 +80,9 @@ async fn test_track_loading_performance() {
             server
                 .get("/v4/loadtracks")
                 .add_header(auth_header().0, auth_header().1)
-                .add_query_param("identifier", &identifier)
-        ).await;
+                .add_query_param("identifier", &identifier),
+        )
+        .await;
 
         match response_result {
             Ok(response) => {
@@ -211,8 +212,9 @@ async fn test_memory_usage() {
                 server
                     .get("/v4/loadtracks")
                     .add_header(auth_header().0, auth_header().1)
-                    .add_query_param("identifier", &identifier)
-            ).await;
+                    .add_query_param("identifier", &identifier),
+            )
+            .await;
             // Ignore timeout errors - we're just testing memory usage patterns
         }
     }
