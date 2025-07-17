@@ -6,6 +6,12 @@ pub mod quality;
 #[cfg(feature = "discord")]
 pub mod streaming;
 
+// Audio filter system
+pub mod filters;
+
+#[cfg(test)]
+mod filter_tests;
+
 // Minimal stubs for non-Discord builds
 #[cfg(not(feature = "discord"))]
 pub mod quality {

@@ -26,7 +26,7 @@ voice-receive = ["discord", "songbird/receive"]
 voice-encryption = ["discord", "songbird/builtin-queue"]
 
 # Audio processing features
-audio-processing = ["dep:symphonia", "dep:rubato", "dep:num_cpus"]
+audio-processing = ["dep:symphonia", "dep:rubato", "dep:fundsp", "dep:num_cpus"]
 audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:html-escape", "dep:serde_json", "dep:base64", "tokio/process"]
 
 # Optional audio codecs (granular control)
@@ -92,6 +92,7 @@ serenity = { version = "0.12", default-features = false, features = ["client", "
 # Audio decoding and processing (no default codecs)
 symphonia = { version = "0.5", default-features = false, optional = true }
 rubato = { version = "0.14", default-features = false, optional = true }
+fundsp = { version = "0.20", default-features = false, optional = true }
 
 # HTTP client for audio sources (optional)
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"], optional = true }
