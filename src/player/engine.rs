@@ -826,7 +826,7 @@ impl AudioPlayerEngine {
     /// Get estimated bandwidth usage in kbps
     pub async fn get_estimated_bandwidth(&self) -> u32 {
         let bandwidth = self.quality_manager.read().await.estimated_bandwidth();
-        (bandwidth / 1000) as u32
+        bandwidth / 1000
     }
 
     /// Create Songbird configuration with current quality settings (Discord mode only)

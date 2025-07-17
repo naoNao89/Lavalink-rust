@@ -65,7 +65,7 @@ pub mod quality {
             true // Always appropriate in standalone mode
         }
 
-        pub fn estimated_bandwidth(&self) -> u64 {
+        pub fn estimated_bandwidth(&self) -> u32 {
             1_000_000 // 1 Mbps default
         }
 
