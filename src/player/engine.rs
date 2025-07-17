@@ -109,6 +109,9 @@ impl AudioPlayerEngine {
         event_sender: mpsc::UnboundedSender<PlayerEvent>,
         quality_config: AudioQualityConfig,
     ) -> Self {
+        #[cfg(feature = "discord")]
+        let quality_manager = AudioQualityManager::new(guild_id.clone(), quality_config);
+        #[cfg(not(feature = "discord"))]
         let quality_manager = AudioQualityManager::new(quality_config);
         let streaming_manager = AudioStreamingManager::new(guild_id.clone());
 
@@ -795,6 +798,12 @@ impl AudioPlayerEngine {
 
     /// Update network metrics for adaptive quality adjustment
     pub async fn update_network_metrics(&self, metrics: NetworkMetrics) {
+        #[cfg(feature = "discord")]
+        debug!(
+            "Updating network metrics for guild {}: loss={:.1}%, latency={}ms",
+            self.guild_id, metrics.packet_loss, metrics.rtt_ms
+        );
+        #[cfg(not(feature = "discord"))]
         debug!(
             "Updating network metrics for guild {}: loss={:.1}%, latency={}ms",
             self.guild_id, metrics.packet_loss, metrics.latency_ms
@@ -806,7 +815,7 @@ impl AudioPlayerEngine {
 
     /// Get current network quality score (0-100)
     pub async fn get_network_quality_score(&self) -> u8 {
-        (self.quality_manager.read().await.network_quality_score() * 100.0) as u8
+        self.quality_manager.read().await.network_quality_score()
     }
 
     /// Check if current quality is appropriate for network conditions

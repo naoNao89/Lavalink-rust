@@ -547,12 +547,12 @@ impl LavalinkPlayer {
                 .update_voice_state(self.guild_id.clone(), voice_state)
                 .await
             {
-                Ok(Some(_call)) => {
+                #[cfg(feature = "discord")]
+                Ok(Some(call)) => {
                     info!("Voice connection established for guild {}", self.guild_id);
                     self.state.connected = true;
 
                     // Connect the voice call to the audio engine (Discord mode only)
-                    #[cfg(feature = "discord")]
                     if let Some(ref audio_engine) = self.audio_engine {
                         audio_engine.set_voice_call(call).await;
                         info!(
@@ -564,6 +564,12 @@ impl LavalinkPlayer {
                     // Update ping from voice connection if available
                     // For now, we'll use a placeholder value since Songbird doesn't expose ping directly
                     self.state.ping = 0; // Will be updated by voice gateway events
+                }
+                #[cfg(not(feature = "discord"))]
+                Ok(Some(_)) => {
+                    info!("Voice connection established for guild {} (standalone mode)", self.guild_id);
+                    self.state.connected = true;
+                    self.state.ping = 0; // Placeholder for standalone mode
                 }
                 Ok(None) => {
                     info!("Voice connection disconnected for guild {}", self.guild_id);

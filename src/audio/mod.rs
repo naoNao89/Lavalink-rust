@@ -57,8 +57,8 @@ pub mod quality {
             // No-op for standalone mode
         }
 
-        pub fn network_quality_score(&self) -> f64 {
-            1.0 // Perfect quality in standalone mode
+        pub fn network_quality_score(&self) -> u8 {
+            100 // Perfect quality in standalone mode
         }
 
         pub fn is_quality_appropriate(&self) -> bool {

@@ -307,22 +307,23 @@ impl VoiceConnectionPool {
             connections.remove(guild_id)
         };
 
+        #[allow(unused_variables)]
         if let Some(call) = removed {
             // Leave the voice channel
+            #[cfg(feature = "discord")]
             {
-                let _call_guard = call.lock().await;
-                #[cfg(feature = "discord")]
+                let mut call_guard = call.lock().await;
                 if let Err(e) = call_guard.leave().await {
                     warn!("Error leaving voice channel for guild {}: {}", guild_id, e);
                 }
-                #[cfg(not(feature = "discord"))]
-                {
-                    // In standalone mode, just log that we would leave
-                    info!(
-                        "Would leave voice channel for guild {} in standalone mode",
-                        guild_id
-                    );
-                }
+            }
+            #[cfg(not(feature = "discord"))]
+            {
+                // In standalone mode, just log that we would leave
+                info!(
+                    "Would leave voice channel for guild {} in standalone mode",
+                    guild_id
+                );
             }
 
             // Update connection info

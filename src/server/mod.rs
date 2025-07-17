@@ -131,10 +131,13 @@ impl LavalinkServer {
             let player_manager = Arc::new(PlayerManager::with_event_sender(event_sender));
 
             // Initialize voice client based on configuration
+            #[cfg(feature = "discord")]
             let voice_manager = player_manager.voice_manager();
-            let _voice_client = voice_manager.voice_client();
+            #[cfg(feature = "discord")]
+            let voice_client = voice_manager.voice_client();
 
-            if let Some(ref _bot_token) = config.lavalink.server.discord_bot_token {
+            #[cfg(feature = "discord")]
+            if let Some(ref bot_token) = config.lavalink.server.discord_bot_token {
                 #[cfg(feature = "discord")]
                 {
                     info!("Discord bot token provided - attempting Discord voice client initialization");
