@@ -567,7 +567,10 @@ impl LavalinkPlayer {
                 }
                 #[cfg(not(feature = "discord"))]
                 Ok(Some(_)) => {
-                    info!("Voice connection established for guild {} (standalone mode)", self.guild_id);
+                    info!(
+                        "Voice connection established for guild {} (standalone mode)",
+                        self.guild_id
+                    );
                     self.state.connected = true;
                     self.state.ping = 0; // Placeholder for standalone mode
                 }
