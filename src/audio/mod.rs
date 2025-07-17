@@ -15,11 +15,17 @@ pub mod quality {
     #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct AudioQualityConfig {
         pub bitrate: u32,
+        pub sample_rate: u32,
+        pub channels: u32,
     }
 
     impl Default for AudioQualityConfig {
         fn default() -> Self {
-            Self { bitrate: 128 }
+            Self {
+                bitrate: 128_000,
+                sample_rate: 48_000,
+                channels: 2,
+            }
         }
     }
 
@@ -29,6 +35,60 @@ pub mod quality {
     impl AudioQualityManager {
         pub fn new(_config: AudioQualityConfig) -> Self {
             Self
+        }
+
+        pub fn with_preset(_guild_id: String, _preset: QualityPreset) -> Self {
+            Self
+        }
+
+        pub fn get_config(&self) -> AudioQualityConfig {
+            AudioQualityConfig::default()
+        }
+
+        pub fn update_config(&mut self, _config: AudioQualityConfig) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        pub fn apply_preset(&mut self, _preset: QualityPreset) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        pub fn update_network_metrics(&mut self, _metrics: NetworkMetrics) {
+            // No-op for standalone mode
+        }
+
+        pub fn network_quality_score(&self) -> u8 {
+            100 // Perfect quality in standalone mode
+        }
+
+        pub fn is_quality_appropriate(&self) -> bool {
+            true // Always appropriate in standalone mode
+        }
+
+        pub fn estimated_bandwidth(&self) -> u32 {
+            1_000_000 // 1 Mbps default
+        }
+
+        #[allow(dead_code)]
+        pub fn create_songbird_config(&self) -> anyhow::Result<()> {
+            Ok(()) // No songbird in standalone mode
+        }
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct NetworkMetrics {
+        pub latency_ms: u32,
+        pub packet_loss: f32,
+        pub jitter_ms: u32,
+    }
+
+    impl Default for NetworkMetrics {
+        fn default() -> Self {
+            Self {
+                latency_ms: 50,
+                packet_loss: 0.0,
+                jitter_ms: 5,
+            }
         }
     }
 
@@ -53,6 +113,7 @@ pub mod streaming {
             Self
         }
 
+        #[allow(dead_code)]
         pub async fn start_stream(&self, _track_url: &str) -> Result<()> {
             Ok(())
         }
@@ -60,7 +121,87 @@ pub mod streaming {
         pub async fn stop_stream(&self) -> Result<()> {
             Ok(())
         }
+
+        pub async fn get_current_session(&self) -> Option<StreamSession> {
+            None // No active sessions in standalone mode
+        }
+
+        pub async fn is_streaming(&self) -> bool {
+            false // Never streaming in standalone mode
+        }
+
+        pub async fn get_stream_health(&self) -> u8 {
+            100 // Perfect health in standalone mode
+        }
+
+        pub async fn get_stream_metrics(&self) -> StreamMetrics {
+            StreamMetrics::default()
+        }
     }
+
+    #[derive(Debug, Clone)]
+    pub struct StreamSession {
+        #[allow(dead_code)]
+        pub id: String,
+        #[allow(dead_code)]
+        pub started_at: std::time::Instant,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct StreamHealth {
+        #[allow(dead_code)]
+        pub is_healthy: bool,
+        #[allow(dead_code)]
+        pub issues: Vec<String>,
+    }
+
+    impl Default for StreamHealth {
+        fn default() -> Self {
+            Self {
+                is_healthy: true,
+                issues: Vec::new(),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, Default)]
+    pub struct StreamMetrics {
+        #[allow(dead_code)]
+        pub bytes_sent: u64,
+        #[allow(dead_code)]
+        pub packets_sent: u64,
+        #[allow(dead_code)]
+        pub errors: u64,
+    }
+
+    #[derive(Debug, Clone)]
+    pub struct StreamOptions {
+        #[allow(dead_code)]
+        pub bitrate: u32,
+        #[allow(dead_code)]
+        pub sample_rate: u32,
+        #[allow(dead_code)]
+        pub channels: u8,
+    }
+
+    impl Default for StreamOptions {
+        fn default() -> Self {
+            Self {
+                bitrate: 128_000,
+                sample_rate: 48_000,
+                channels: 2,
+            }
+        }
+    }
+}
+
+// StreamState struct available for both Discord and non-Discord builds
+#[derive(Debug, Clone, Default)]
+pub struct StreamState {
+    #[allow(dead_code)]
+    pub is_active: bool,
+    #[allow(dead_code)]
+    pub position: u64,
 }
 
 use anyhow::Result;

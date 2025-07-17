@@ -54,7 +54,8 @@ dev-tools = ["dep:mockall", "dep:wiremock", "dep:criterion"]
 
 # Convenience feature bundles
 minimal = ["server", "rest-api"]
-musl-safe = ["server", "rest-api", "audio-processing", "audio-sources", "websocket", "plugins", "metrics"]
+standalone = ["server", "rest-api", "audio-processing", "audio-sources", "websocket", "plugins", "metrics", "dep:rand"]
+musl-safe = ["standalone"]  # Alias for standalone mode (no Discord dependencies)
 standard = ["default", "metrics", "plugins", "dep:serde_json", "dep:base64", "dep:rand"]
 full = ["standard", "codec-aac", "codec-vorbis", "codec-opus", "voice-receive", "tracing-json", "tracing-appender"]
 full-audio = ["audio-processing", "audio-sources", "codec-mp3", "codec-flac", "codec-wav", "codec-aac", "codec-vorbis", "codec-opus"]

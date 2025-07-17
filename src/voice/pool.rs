@@ -1,6 +1,7 @@
 // Voice connection pooling for managing multiple Discord server connections
 
 use anyhow::Result;
+#[cfg(feature = "discord")]
 use songbird::Call;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -8,7 +9,13 @@ use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error, info, warn};
 
-use super::VoiceClient;
+use super::{VoiceClient, VoiceConnectionType};
+
+// Type alias for voice call handle that works in both Discord and standalone modes
+#[cfg(feature = "discord")]
+type VoiceCallHandle = Arc<Mutex<Call>>;
+#[cfg(not(feature = "discord"))]
+type VoiceCallHandle = Arc<Mutex<()>>;
 
 /// Configuration for voice connection pool
 #[derive(Debug, Clone)]
@@ -107,7 +114,7 @@ pub struct VoiceConnectionPool {
     config: ConnectionPoolConfig,
     /// Active voice connections
     #[allow(dead_code)]
-    connections: Arc<RwLock<HashMap<String, Arc<Mutex<Call>>>>>,
+    connections: Arc<RwLock<HashMap<String, VoiceCallHandle>>>,
     /// Connection metadata
     #[allow(dead_code)]
     connection_info: Arc<RwLock<HashMap<String, ConnectionInfo>>>,
@@ -140,7 +147,7 @@ impl VoiceConnectionPool {
         guild_id: String,
         channel_id: u64,
         user_id: u64,
-    ) -> Result<Arc<Mutex<Call>>> {
+    ) -> Result<VoiceCallHandle> {
         // Check if connection already exists
         {
             let connections = self.connections.read().await;
@@ -175,7 +182,7 @@ impl VoiceConnectionPool {
         guild_id: String,
         channel_id: u64,
         user_id: u64,
-    ) -> Result<Arc<Mutex<Call>>> {
+    ) -> Result<VoiceCallHandle> {
         let start_time = Instant::now();
 
         info!("Creating new voice connection for guild {}", guild_id);
@@ -218,7 +225,10 @@ impl VoiceConnectionPool {
                 // Store the connection
                 {
                     let mut connections = self.connections.write().await;
-                    connections.insert(guild_id.clone(), call.clone());
+                    connections.insert(
+                        guild_id.clone(),
+                        Self::convert_connection_to_handle(call.clone()),
+                    );
                 }
 
                 // Update connection info
@@ -254,7 +264,7 @@ impl VoiceConnectionPool {
                     "Successfully created voice connection for guild {} in {:?}",
                     guild_id, connection_time
                 );
-                Ok(call)
+                Ok(Self::convert_connection_to_handle(call))
             }
             Err(e) => {
                 // Update failed connection metrics
@@ -297,13 +307,23 @@ impl VoiceConnectionPool {
             connections.remove(guild_id)
         };
 
+        #[allow(unused_variables)]
         if let Some(call) = removed {
             // Leave the voice channel
+            #[cfg(feature = "discord")]
             {
                 let mut call_guard = call.lock().await;
                 if let Err(e) = call_guard.leave().await {
                     warn!("Error leaving voice channel for guild {}: {}", guild_id, e);
                 }
+            }
+            #[cfg(not(feature = "discord"))]
+            {
+                // In standalone mode, just log that we would leave
+                info!(
+                    "Would leave voice channel for guild {} in standalone mode",
+                    guild_id
+                );
             }
 
             // Update connection info
@@ -394,6 +414,21 @@ impl VoiceConnectionPool {
         }
 
         info!("All voice connections cleaned up");
+    }
+
+    /// Convert VoiceConnectionType to VoiceCallHandle
+    fn convert_connection_to_handle(connection: VoiceConnectionType) -> VoiceCallHandle {
+        match connection {
+            #[cfg(feature = "discord")]
+            VoiceConnectionType::Discord(call) => call,
+            VoiceConnectionType::Standalone(_standalone_conn) => {
+                // In standalone mode, return a dummy handle
+                #[cfg(not(feature = "discord"))]
+                return Arc::new(Mutex::new(()));
+                #[cfg(feature = "discord")]
+                unreachable!("Standalone connection type should not exist in Discord mode");
+            }
+        }
     }
 }
 

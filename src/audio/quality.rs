@@ -411,6 +411,12 @@ impl AudioSampleRate {
     }
 }
 
+impl std::fmt::Display for AudioSampleRate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_u32())
+    }
+}
+
 impl AudioChannels {
     /// Convert to Songbird MixMode enum
     pub fn to_mix_mode(self) -> MixMode {
@@ -426,6 +432,15 @@ impl AudioChannels {
         match self {
             AudioChannels::Mono => 1,
             AudioChannels::Stereo => 2,
+        }
+    }
+}
+
+impl std::fmt::Display for AudioChannels {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AudioChannels::Mono => write!(f, "mono"),
+            AudioChannels::Stereo => write!(f, "stereo"),
         }
     }
 }

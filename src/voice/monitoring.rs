@@ -3,6 +3,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "discord")]
 use songbird::Call;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -13,6 +14,12 @@ use tracing::{debug, error, info, warn};
 
 use crate::voice::connection::VoiceConnectionEvent;
 use crate::voice::logging::{VoiceEventLogger, VoiceEventType};
+
+// Type alias for voice call handle that works in both Discord and standalone modes
+#[cfg(feature = "discord")]
+type VoiceCallHandle = Arc<Mutex<Call>>;
+#[cfg(not(feature = "discord"))]
+type VoiceCallHandle = Arc<Mutex<()>>;
 
 /// Voice connection health status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -330,7 +337,7 @@ pub struct VoiceConnectionMonitor {
     /// Real-time metrics collectors per guild
     metrics_collectors: Arc<RwLock<HashMap<String, ConnectionMetricsCollector>>>,
     /// Voice connections for real metrics collection
-    voice_connections: Arc<RwLock<HashMap<String, Arc<Mutex<Call>>>>>,
+    voice_connections: Arc<RwLock<HashMap<String, VoiceCallHandle>>>,
 }
 
 /// Helper function to get current timestamp as seconds since UNIX epoch
@@ -384,7 +391,7 @@ impl VoiceConnectionMonitor {
     pub async fn register_voice_connection(
         &self,
         guild_id: String,
-        call: Arc<Mutex<Call>>,
+        call: VoiceCallHandle,
     ) -> Result<()> {
         info!(
             "Registering voice connection for monitoring: guild {}",
@@ -444,10 +451,16 @@ impl VoiceConnectionMonitor {
         // Simulate ping by checking connection status
         // In a real implementation, you might send a ping packet or check connection timing
         let latency = if let Some(call) = self.get_voice_connection(guild_id).await {
-            let call_guard = call.lock().await;
+            // Check if connection is active (Discord mode only)
+            #[cfg(feature = "discord")]
+            let is_connected = {
+                let call_guard = call.lock().await;
+                call_guard.current_connection().is_some()
+            };
+            #[cfg(not(feature = "discord"))]
+            let is_connected = true; // In standalone mode, assume connected
 
-            // Check if connection is active
-            if call_guard.current_connection().is_some() {
+            if is_connected {
                 // Simulate network round-trip time
                 let start = Instant::now();
 
@@ -475,7 +488,7 @@ impl VoiceConnectionMonitor {
     }
 
     /// Get voice connection for a guild
-    async fn get_voice_connection(&self, guild_id: &str) -> Option<Arc<Mutex<Call>>> {
+    async fn get_voice_connection(&self, guild_id: &str) -> Option<VoiceCallHandle> {
         let connections = self.voice_connections.read().await;
         connections.get(guild_id).cloned()
     }
@@ -988,10 +1001,16 @@ impl VoiceConnectionMonitor {
                             let connections = voice_connections.read().await;
                             connections.get(&guild_id_clone).cloned()
                         } {
-                            let call_guard = call.lock().await;
+                            // Check if connection is active and measure latency (Discord mode only)
+                            #[cfg(feature = "discord")]
+                            let is_connected = {
+                                let call_guard = call.lock().await;
+                                call_guard.current_connection().is_some()
+                            };
+                            #[cfg(not(feature = "discord"))]
+                            let is_connected = true; // In standalone mode, assume connected
 
-                            // Check if connection is active and measure latency
-                            if call_guard.current_connection().is_some() {
+                            if is_connected {
                                 let start = std::time::Instant::now();
 
                                 // Use a small timeout to simulate ping

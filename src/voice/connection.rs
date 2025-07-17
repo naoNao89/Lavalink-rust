@@ -1,7 +1,9 @@
 // Voice connection management for integrating with player system
 
 use anyhow::Result;
+#[cfg(any(feature = "discord", feature = "crypto"))]
 use rand::Rng;
+#[cfg(feature = "discord")]
 use songbird::{error::ConnectionError as SongbirdConnectionError, Call};
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -15,9 +17,22 @@ use super::logging::{
     VoiceEventType,
 };
 use super::monitoring::VoiceConnectionMonitor;
-use super::{pool, VoiceClient};
+use super::{pool, VoiceClient, VoiceConnectionType};
 use crate::log_voice_connection;
 use crate::protocol::messages::VoiceState;
+
+// Type aliases for voice types that work in both Discord and standalone modes
+#[cfg(feature = "discord")]
+type VoiceCallHandle = Arc<Mutex<Call>>;
+#[cfg(not(feature = "discord"))]
+type VoiceCallHandle = Arc<Mutex<()>>;
+
+#[cfg(feature = "discord")]
+#[allow(dead_code)]
+type VoiceConnectionError = SongbirdConnectionError;
+#[cfg(not(feature = "discord"))]
+#[allow(dead_code)]
+type VoiceConnectionError = anyhow::Error;
 
 /// Event subscription filter for voice connection events
 #[derive(Debug, Clone)]
@@ -542,7 +557,7 @@ impl VoiceConnectionManager {
         &self,
         guild_id: String,
         voice_state: VoiceState,
-    ) -> Result<Option<Arc<Mutex<Call>>>> {
+    ) -> Result<Option<VoiceCallHandle>> {
         let operation_correlation_id = CorrelationId::new();
         let timer = PerformanceTimer::start(
             "update_voice_state",
@@ -677,7 +692,7 @@ impl VoiceConnectionManager {
         &self,
         guild_id: String,
         voice_state: VoiceState,
-    ) -> Result<Option<Arc<Mutex<Call>>>> {
+    ) -> Result<Option<VoiceCallHandle>> {
         let operation_correlation_id = CorrelationId::new();
 
         log_voice_connection!(
@@ -695,7 +710,12 @@ impl VoiceConnectionManager {
                 guild_id,
                 "Already connected to voice channel"
             );
-            return Ok(self.voice_client.get_connection(&guild_id).await);
+            // Convert VoiceConnectionType to VoiceCallHandle
+            if let Some(connection) = self.voice_client.get_connection(&guild_id).await {
+                return Ok(Some(Self::convert_connection_to_handle(connection)));
+            } else {
+                return Ok(None);
+            }
         }
 
         // Check circuit breaker state
@@ -764,7 +784,7 @@ impl VoiceConnectionManager {
         &self,
         guild_id: String,
         voice_state: VoiceState,
-    ) -> Result<Option<Arc<Mutex<Call>>>> {
+    ) -> Result<Option<VoiceCallHandle>> {
         let mut last_error = None;
 
         for attempt in 0..=self.recovery_config.max_retries {
@@ -881,7 +901,7 @@ impl VoiceConnectionManager {
         &self,
         guild_id: &str,
         voice_state: &VoiceState,
-    ) -> Result<Arc<Mutex<Call>>> {
+    ) -> Result<VoiceCallHandle> {
         // TODO: Get actual channel_id and user_id from Discord bot context
         let channel_id = 0; // Placeholder - should come from Discord bot
         let user_id = 0; // Placeholder - should come from Discord bot
@@ -896,12 +916,12 @@ impl VoiceConnectionManager {
             )
             .await
         {
-            Ok(call) => {
+            Ok(connection) => {
                 info!(
                     "Successfully connected to voice channel for guild {}",
                     guild_id
                 );
-                Ok(call)
+                Ok(Self::convert_connection_to_handle(connection))
             }
             Err(e) => {
                 debug!("Connection attempt failed for guild {}: {}", guild_id, e);
@@ -929,8 +949,11 @@ impl VoiceConnectionManager {
     }
 
     /// Get voice connection for a guild
-    pub async fn get_voice_connection(&self, guild_id: &str) -> Option<Arc<Mutex<Call>>> {
-        self.voice_client.get_connection(guild_id).await
+    pub async fn get_voice_connection(&self, guild_id: &str) -> Option<VoiceCallHandle> {
+        self.voice_client
+            .get_connection(guild_id)
+            .await
+            .map(Self::convert_connection_to_handle)
     }
 
     /// Check if connected to voice channel
@@ -941,6 +964,21 @@ impl VoiceConnectionManager {
     /// Get all active voice connections
     pub async fn get_active_connections(&self) -> Vec<String> {
         self.voice_client.get_all_connections().await
+    }
+
+    /// Convert VoiceConnectionType to VoiceCallHandle
+    fn convert_connection_to_handle(connection: VoiceConnectionType) -> VoiceCallHandle {
+        match connection {
+            #[cfg(feature = "discord")]
+            VoiceConnectionType::Discord(call) => call,
+            VoiceConnectionType::Standalone(_standalone_conn) => {
+                // In standalone mode, return a dummy handle
+                #[cfg(not(feature = "discord"))]
+                return Arc::new(Mutex::new(()));
+                #[cfg(feature = "discord")]
+                unreachable!("Discord connection type should not exist in standalone mode");
+            }
+        }
     }
 
     /// Cleanup all voice connections
@@ -1052,40 +1090,47 @@ impl VoiceConnectionManager {
 
     /// Classify Songbird connection error for recovery strategy
     fn classify_error(&self, error: &anyhow::Error) -> VoiceErrorType {
-        // Check if the error is a Songbird ConnectionError
-        if let Some(songbird_error) = error.downcast_ref::<SongbirdConnectionError>() {
-            match songbird_error {
-                SongbirdConnectionError::TimedOut => VoiceErrorType::Temporary,
-                SongbirdConnectionError::Io(_) => VoiceErrorType::Temporary,
-                SongbirdConnectionError::Ws(_) => VoiceErrorType::Temporary,
-                SongbirdConnectionError::InterconnectFailure(_) => VoiceErrorType::Temporary,
-                SongbirdConnectionError::AttemptDiscarded => VoiceErrorType::Temporary,
-                SongbirdConnectionError::EndpointUrl => VoiceErrorType::Configuration,
-                SongbirdConnectionError::IllegalDiscoveryResponse => VoiceErrorType::Configuration,
-                SongbirdConnectionError::IllegalIp => VoiceErrorType::Configuration,
-                SongbirdConnectionError::CryptoModeInvalid => VoiceErrorType::Authentication,
-                SongbirdConnectionError::CryptoModeUnavailable => VoiceErrorType::Authentication,
-                SongbirdConnectionError::Crypto(_) => VoiceErrorType::Authentication,
-                SongbirdConnectionError::CryptoInvalidLength => VoiceErrorType::Authentication,
-                SongbirdConnectionError::Json(_) => VoiceErrorType::Temporary,
-                // Handle any future variants as temporary errors
-                _ => VoiceErrorType::Temporary,
+        #[cfg(feature = "discord")]
+        {
+            // Check if the error is a Songbird ConnectionError
+            if let Some(songbird_error) = error.downcast_ref::<SongbirdConnectionError>() {
+                return match songbird_error {
+                    SongbirdConnectionError::TimedOut => VoiceErrorType::Temporary,
+                    SongbirdConnectionError::Io(_) => VoiceErrorType::Temporary,
+                    SongbirdConnectionError::Ws(_) => VoiceErrorType::Temporary,
+                    SongbirdConnectionError::InterconnectFailure(_) => VoiceErrorType::Temporary,
+                    SongbirdConnectionError::AttemptDiscarded => VoiceErrorType::Temporary,
+                    SongbirdConnectionError::EndpointUrl => VoiceErrorType::Configuration,
+                    SongbirdConnectionError::IllegalDiscoveryResponse => {
+                        VoiceErrorType::Configuration
+                    }
+                    SongbirdConnectionError::IllegalIp => VoiceErrorType::Configuration,
+                    SongbirdConnectionError::CryptoModeInvalid => VoiceErrorType::Authentication,
+                    SongbirdConnectionError::CryptoModeUnavailable => {
+                        VoiceErrorType::Authentication
+                    }
+                    SongbirdConnectionError::Crypto(_) => VoiceErrorType::Authentication,
+                    SongbirdConnectionError::CryptoInvalidLength => VoiceErrorType::Authentication,
+                    SongbirdConnectionError::Json(_) => VoiceErrorType::Temporary,
+                    // Handle any future variants as temporary errors
+                    _ => VoiceErrorType::Temporary,
+                };
             }
+        }
+
+        // For other error types (or in standalone mode), check the error message for common patterns
+        let error_msg = error.to_string().to_lowercase();
+        if error_msg.contains("timeout") || error_msg.contains("network") {
+            VoiceErrorType::Temporary
+        } else if error_msg.contains("permission") || error_msg.contains("unauthorized") {
+            VoiceErrorType::Authentication
+        } else if error_msg.contains("rate limit") || error_msg.contains("too many") {
+            VoiceErrorType::ResourceExhaustion
+        } else if error_msg.contains("invalid") || error_msg.contains("malformed") {
+            VoiceErrorType::Configuration
         } else {
-            // For other error types, check the error message for common patterns
-            let error_msg = error.to_string().to_lowercase();
-            if error_msg.contains("timeout") || error_msg.contains("network") {
-                VoiceErrorType::Temporary
-            } else if error_msg.contains("permission") || error_msg.contains("unauthorized") {
-                VoiceErrorType::Authentication
-            } else if error_msg.contains("rate limit") || error_msg.contains("too many") {
-                VoiceErrorType::ResourceExhaustion
-            } else if error_msg.contains("invalid") || error_msg.contains("malformed") {
-                VoiceErrorType::Configuration
-            } else {
-                // Default to temporary for unknown errors
-                VoiceErrorType::Temporary
-            }
+            // Default to temporary for unknown errors
+            VoiceErrorType::Temporary
         }
     }
 
@@ -1100,10 +1145,15 @@ impl VoiceConnectionManager {
         let delay = delay.min(max_delay);
 
         // Add jitter to prevent thundering herd
-        let jitter_range = delay * self.recovery_config.jitter_factor;
-        let mut rng = rand::rng();
-        let jitter = (rng.random::<f64>() - 0.5) * 2.0 * jitter_range;
-        let final_delay = (delay + jitter).max(0.0) as u64;
+        #[cfg(any(feature = "discord", feature = "crypto"))]
+        let final_delay = {
+            let jitter_range = delay * self.recovery_config.jitter_factor;
+            let mut rng = rand::rng();
+            let jitter = (rng.random::<f64>() - 0.5) * 2.0 * jitter_range;
+            (delay + jitter).max(0.0) as u64
+        };
+        #[cfg(not(any(feature = "discord", feature = "crypto")))]
+        let final_delay = delay as u64;
 
         Duration::from_millis(final_delay)
     }

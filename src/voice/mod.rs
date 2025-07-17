@@ -1,17 +1,23 @@
-// Discord voice integration module
-// Handles voice connections using Songbird
+// Voice integration module
+// Handles voice connections with optional Discord integration
 
 use anyhow::Result;
-use songbird::{Call, Songbird};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+#[cfg(feature = "discord")]
+use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 
 use crate::protocol::messages::VoiceState;
+use crate::voice::connection::VoiceConnectionEvent;
+use crate::voice::koe::MediaConnectionTrait;
 
 pub mod connection;
+#[cfg(feature = "discord")]
 pub mod discord;
+pub mod koe;
+pub mod koe_config;
 pub mod logging;
 pub mod monitoring;
 pub mod pool;
@@ -33,30 +39,75 @@ pub use connection::VoiceConnectionManager;
 // Note: Pool types are available but not currently used in the public API
 // pub use pool::{VoiceConnectionPool, ConnectionPoolConfig, ConnectionMetrics};
 
-/// Voice client wrapper for Discord voice connections
+/// Voice client wrapper that supports both Discord and standalone voice connections
 pub struct VoiceClient {
-    /// Songbird voice manager
-    #[allow(dead_code)]
-    songbird: Arc<Songbird>,
+    /// Songbird voice manager (Discord mode only)
+    #[cfg(feature = "discord")]
+    songbird: Option<Arc<songbird::Songbird>>,
     /// Active voice connections per guild
     #[allow(dead_code)]
-    connections: Arc<RwLock<HashMap<String, Arc<Mutex<Call>>>>>,
+    connections: Arc<RwLock<HashMap<String, VoiceConnectionType>>>,
     /// Connection pool for managing multiple servers
     #[allow(dead_code)]
     connection_pool: Option<Arc<pool::VoiceConnectionPool>>,
     /// Discord voice client for actual Discord integration
-    discord_client: Arc<RwLock<discord::DiscordVoiceClient>>,
+    #[cfg(feature = "discord")]
+    discord_client: Option<Arc<RwLock<discord::DiscordVoiceClient>>>,
+    /// Koe client for non-Discord operation (standalone)
+    koe_client: Arc<RwLock<koe::KoeClient>>,
+    /// Voice mode (Discord or Standalone)
+    mode: VoiceMode,
+}
+
+/// Voice connection type enum to support both Discord and standalone connections
+#[derive(Clone)]
+pub enum VoiceConnectionType {
+    #[cfg(feature = "discord")]
+    Discord(Arc<Mutex<songbird::Call>>),
+    Standalone(Arc<koe::MediaConnection>),
+}
+
+/// Voice mode enum
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum VoiceMode {
+    #[cfg(feature = "discord")]
+    Discord,
+    Standalone,
 }
 
 #[allow(dead_code)]
 impl VoiceClient {
-    /// Create a new voice client
+    /// Create a new voice client in standalone mode
     pub fn new() -> Self {
+        Self::new_standalone()
+    }
+
+    /// Create a new voice client in standalone mode
+    pub fn new_standalone() -> Self {
+        info!("Creating voice client in standalone mode");
         Self {
-            songbird: Songbird::serenity(),
+            #[cfg(feature = "discord")]
+            songbird: None,
             connections: Arc::new(RwLock::new(HashMap::new())),
             connection_pool: None,
-            discord_client: Arc::new(RwLock::new(discord::DiscordVoiceClient::new())),
+            #[cfg(feature = "discord")]
+            discord_client: None,
+            koe_client: Arc::new(RwLock::new(koe::KoeClient::new())),
+            mode: VoiceMode::Standalone,
+        }
+    }
+
+    /// Create a new voice client in Discord mode (requires discord feature)
+    #[cfg(feature = "discord")]
+    pub fn new_discord() -> Self {
+        info!("Creating voice client in Discord mode");
+        Self {
+            songbird: Some(songbird::Songbird::serenity()),
+            connections: Arc::new(RwLock::new(HashMap::new())),
+            connection_pool: None,
+            discord_client: Some(Arc::new(RwLock::new(discord::DiscordVoiceClient::new()))),
+            koe_client: Arc::new(RwLock::new(koe::KoeClient::new())),
+            mode: VoiceMode::Discord,
         }
     }
 
@@ -69,34 +120,78 @@ impl VoiceClient {
         ));
 
         Self {
+            #[cfg(feature = "discord")]
             songbird: client.songbird.clone(),
             connections: client.connections.clone(),
             connection_pool: Some(pool),
+            #[cfg(feature = "discord")]
             discord_client: client.discord_client.clone(),
+            koe_client: client.koe_client.clone(),
+            mode: client.mode,
         }
     }
 
-    /// Get the Songbird manager
-    pub fn songbird(&self) -> Arc<Songbird> {
+    /// Get the Songbird manager (Discord mode only)
+    #[cfg(feature = "discord")]
+    pub fn songbird(&self) -> Option<Arc<songbird::Songbird>> {
         self.songbird.clone()
     }
 
-    /// Initialize Discord bot connection
+    /// Get the current voice mode
+    pub fn mode(&self) -> VoiceMode {
+        self.mode
+    }
+
+    /// Initialize Discord bot connection (Discord mode only)
+    #[cfg(feature = "discord")]
     pub async fn initialize_discord(&self, bot_token: String) -> Result<()> {
-        let mut discord_client = self.discord_client.write().await;
-        discord_client.initialize(bot_token).await?;
-        discord_client.start().await?;
-        info!("Discord voice client initialized and started");
+        if self.mode != VoiceMode::Discord {
+            return Err(anyhow::anyhow!(
+                "Cannot initialize Discord in standalone mode"
+            ));
+        }
+
+        if let Some(ref discord_client_arc) = self.discord_client {
+            let mut discord_client = discord_client_arc.write().await;
+            discord_client.initialize(bot_token).await?;
+            discord_client.start().await?;
+            info!("Discord voice client initialized and started");
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Discord client not available"))
+        }
+    }
+
+    /// Initialize Discord bot connection (no-op in standalone mode)
+    #[cfg(not(feature = "discord"))]
+    pub async fn initialize_discord(&self, _bot_token: String) -> Result<()> {
+        warn!("Discord initialization requested but discord feature is not enabled");
+        warn!("Running in standalone mode - Discord functionality not available");
         Ok(())
     }
 
-    /// Set voice event callback for Discord integration
+    /// Set voice event callback for voice integration
     pub async fn set_voice_event_callback<F>(&self, callback: F)
     where
         F: Fn(String, connection::VoiceConnectionEvent) + Send + Sync + 'static,
     {
-        let mut discord_client = self.discord_client.write().await;
-        discord_client.set_voice_event_callback(callback);
+        match self.mode {
+            #[cfg(feature = "discord")]
+            VoiceMode::Discord => {
+                if let Some(ref discord_client_arc) = self.discord_client {
+                    let mut discord_client = discord_client_arc.write().await;
+                    discord_client.set_voice_event_callback(callback);
+                }
+            }
+            VoiceMode::Standalone => {
+                let mut koe_client = self.koe_client.write().await;
+                // Convert String-based callback to u64-based callback
+                let converted_callback = move |guild_id: u64, event: VoiceConnectionEvent| {
+                    callback(guild_id.to_string(), event);
+                };
+                koe_client.set_voice_event_callback(converted_callback);
+            }
+        }
     }
 
     /// Join a voice channel
@@ -106,15 +201,21 @@ impl VoiceClient {
         voice_state: VoiceState,
         channel_id: u64,
         user_id: u64,
-    ) -> Result<Arc<Mutex<Call>>> {
-        info!("Joining voice channel for guild {}", guild_id);
+    ) -> Result<VoiceConnectionType> {
+        info!(
+            "Joining voice channel for guild {} in {:?} mode",
+            guild_id, self.mode
+        );
 
         // Use connection pool if available
-        if let Some(ref pool) = self.connection_pool {
-            return pool.get_connection(guild_id, channel_id, user_id).await;
+        if let Some(ref _pool) = self.connection_pool {
+            // Note: Pool needs to be updated to support VoiceConnectionType
+            warn!(
+                "Connection pool not yet updated for multi-mode support, using direct connection"
+            );
         }
 
-        // Fallback to direct connection management
+        // Use direct connection management
         self.join_channel_direct(guild_id, voice_state, channel_id, user_id)
             .await
     }
@@ -126,7 +227,7 @@ impl VoiceClient {
         voice_state: VoiceState,
         _channel_id: u64,
         _user_id: u64,
-    ) -> Result<Arc<Mutex<Call>>> {
+    ) -> Result<VoiceConnectionType> {
         // Validate voice state
         if voice_state.token.is_empty()
             || voice_state.endpoint.is_empty()
@@ -142,34 +243,64 @@ impl VoiceClient {
             .parse()
             .map_err(|_| anyhow::anyhow!("Invalid guild ID format"))?;
 
-        // Use Discord client for actual voice connection
-        let discord_client = self.discord_client.read().await;
-        let call = discord_client
-            .join_voice_channel(guild_id.clone(), voice_state)
-            .await?;
+        let connection_result = match self.mode {
+            #[cfg(feature = "discord")]
+            VoiceMode::Discord => {
+                if let Some(ref discord_client_arc) = self.discord_client {
+                    let discord_client = discord_client_arc.read().await;
+                    let call = discord_client
+                        .join_voice_channel(guild_id.clone(), voice_state)
+                        .await?;
+                    VoiceConnectionType::Discord(call)
+                } else {
+                    return Err(anyhow::anyhow!("Discord client not available"));
+                }
+            }
+            VoiceMode::Standalone => {
+                let koe_client = self.koe_client.read().await;
+                let connection = koe_client
+                    .join_voice_channel(guild_id.clone(), voice_state)
+                    .await?;
+                VoiceConnectionType::Standalone(connection)
+            }
+        };
 
         // Store the connection
         let mut connections = self.connections.write().await;
-        connections.insert(guild_id.clone(), call.clone());
+        connections.insert(guild_id.clone(), connection_result.clone());
 
         info!("Successfully joined voice channel for guild {}", guild_id);
-        Ok(call)
+        Ok(connection_result)
     }
 
     /// Leave a voice channel
     pub async fn leave_channel(&self, guild_id: &str) -> Result<()> {
-        info!("Leaving voice channel for guild {}", guild_id);
+        info!(
+            "Leaving voice channel for guild {} in {:?} mode",
+            guild_id, self.mode
+        );
 
         // Use connection pool if available
-        if let Some(ref pool) = self.connection_pool {
-            return pool.remove_connection(guild_id).await;
+        if let Some(ref _pool) = self.connection_pool {
+            warn!("Connection pool not yet updated for multi-mode support");
+            // return pool.remove_connection(guild_id).await;
         }
 
-        // Use Discord client to leave voice channel
-        let discord_client = self.discord_client.read().await;
-        discord_client
-            .leave_voice_channel(guild_id.to_string())
-            .await?;
+        match self.mode {
+            #[cfg(feature = "discord")]
+            VoiceMode::Discord => {
+                if let Some(ref discord_client_arc) = self.discord_client {
+                    let discord_client = discord_client_arc.read().await;
+                    discord_client
+                        .leave_voice_channel(guild_id.to_string())
+                        .await?;
+                }
+            }
+            VoiceMode::Standalone => {
+                let koe_client = self.koe_client.read().await;
+                koe_client.leave_voice_channel(guild_id).await?;
+            }
+        }
 
         // Remove from local connections
         let mut connections = self.connections.write().await;
@@ -180,7 +311,7 @@ impl VoiceClient {
     }
 
     /// Get an active voice connection
-    pub async fn get_connection(&self, guild_id: &str) -> Option<Arc<Mutex<Call>>> {
+    pub async fn get_connection(&self, guild_id: &str) -> Option<VoiceConnectionType> {
         let connections = self.connections.read().await;
         connections.get(guild_id).cloned()
     }
@@ -188,13 +319,26 @@ impl VoiceClient {
     /// Check if connected to a voice channel
     pub async fn is_connected(&self, guild_id: &str) -> bool {
         // Use connection pool if available
-        if let Some(ref pool) = self.connection_pool {
-            return pool.is_connected(guild_id).await;
+        if let Some(ref _pool) = self.connection_pool {
+            warn!("Connection pool not yet updated for multi-mode support");
+            // return pool.is_connected(guild_id).await;
         }
 
-        // Use Discord client to check connection status
-        let discord_client = self.discord_client.read().await;
-        discord_client.is_connected(guild_id).await
+        match self.mode {
+            #[cfg(feature = "discord")]
+            VoiceMode::Discord => {
+                if let Some(ref discord_client_arc) = self.discord_client {
+                    let discord_client = discord_client_arc.read().await;
+                    discord_client.is_connected(guild_id).await
+                } else {
+                    false
+                }
+            }
+            VoiceMode::Standalone => {
+                let koe_client = self.koe_client.read().await;
+                koe_client.is_connected_str(guild_id).await
+            }
+        }
     }
 
     /// Get all active connections
@@ -239,10 +383,26 @@ impl VoiceClient {
 
         // Fallback to direct cleanup
         let mut connections = self.connections.write().await;
-        for (guild_id, call) in connections.drain() {
-            let mut call_guard = call.lock().await;
-            if let Err(e) = call_guard.leave().await {
-                warn!("Error leaving voice channel for guild {}: {}", guild_id, e);
+        for (guild_id, connection) in connections.drain() {
+            match connection {
+                #[cfg(feature = "discord")]
+                VoiceConnectionType::Discord(call) => {
+                    let mut call_guard = call.lock().await;
+                    if let Err(e) = call_guard.leave().await {
+                        warn!(
+                            "Error leaving Discord voice channel for guild {}: {}",
+                            guild_id, e
+                        );
+                    }
+                }
+                VoiceConnectionType::Standalone(conn) => {
+                    if let Err(e) = conn.disconnect().await {
+                        warn!(
+                            "Error disconnecting standalone voice connection for guild {}: {}",
+                            guild_id, e
+                        );
+                    }
+                }
             }
         }
 

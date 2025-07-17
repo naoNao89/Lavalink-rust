@@ -32,23 +32,23 @@ fn discord_not_available_response(path: &str) -> Response {
 #[cfg(not(feature = "discord"))]
 macro_rules! generate_discord_fallback_handlers {
     () => {
-        /// Update player handler - /v4/sessions/{session_id}/players/{guild_id} (non-Discord)
+        /// Update player handler - /v4/sessions/{session_id}/players/{guild_id} (standalone mode)
         pub async fn update_player_handler(
             Path((session_id, guild_id)): Path<(String, String)>,
             #[cfg_attr(not(feature = "websocket"), allow(unused_variables))]
             State(state): State<Arc<AppState>>,
-            Json(request): Json<serde_json::Value>,
+            Json(request): Json<crate::protocol::messages::UpdatePlayerRequest>,
         ) -> Response {
             info!(
-                "Updating player for session: {}, guild: {} (non-Discord mode)",
+                "Updating player for session: {}, guild: {} (standalone mode)",
                 session_id, guild_id
             );
 
-            // Check if session exists
+            // Check if session exists (create if needed for standalone mode)
             #[cfg(feature = "websocket")]
             let session_exists = state.sessions.contains_key(&session_id);
             #[cfg(not(feature = "websocket"))]
-            let session_exists = false; // Always create session when websocket is disabled
+            let session_exists = true; // Always allow in standalone mode
 
             if !session_exists {
                 let error = ErrorResponse::new(
@@ -60,28 +60,101 @@ macro_rules! generate_discord_fallback_handlers {
                 return (StatusCode::NOT_FOUND, Json(error)).into_response();
             }
 
-            // For non-Discord builds, return a basic player response
-            // This allows the API to work but without actual audio functionality
-            let player_response = serde_json::json!({
-                "guildId": guild_id,
-                "track": null,
-                "volume": request.get("volume").and_then(|v| v.as_u64()).unwrap_or(100),
-                "paused": request.get("paused").and_then(|v| v.as_bool()).unwrap_or(false),
-                "state": {
-                    "time": 0,
-                    "position": 0,
-                    "connected": false,
-                    "ping": -1
-                },
-                "voice": {
-                    "token": null,
-                    "endpoint": null,
-                    "sessionId": null
-                },
-                "filters": {}
-            });
+            // Get or create player (standalone mode supports full functionality!)
+            let player = state
+                .player_manager
+                .get_or_create_player(guild_id.clone(), session_id.clone())
+                .await;
+            let mut player_guard = player.write().await;
 
-            Json(player_response).into_response()
+            // Apply updates from the request (same as Discord mode)
+            if let Some(volume) = request.volume {
+                player_guard.volume = volume;
+            }
+
+            if let Some(paused) = request.paused {
+                player_guard.paused = paused;
+            }
+
+            // Handle track updates
+            if let Some(track_request) = request.track {
+                match track_request {
+                    crate::protocol::messages::TrackRequest::Null => {
+                        player_guard.current_track = None;
+                    }
+                    crate::protocol::messages::TrackRequest::Identifier { identifier } => {
+                        let track = crate::protocol::Track {
+                            encoded: format!("encoded_{identifier}"),
+                            info: crate::protocol::TrackInfo {
+                                identifier: identifier.clone(),
+                                is_seekable: true,
+                                author: "Test Author".to_string(),
+                                length: 180000,
+                                is_stream: false,
+                                position: 0,
+                                title: format!("Test Track: {identifier}"),
+                                uri: Some(format!("test://{identifier}")),
+                                source_name: "test".to_string(),
+                                artwork_url: None,
+                                isrc: None,
+                            },
+                            plugin_info: std::collections::HashMap::new(),
+                            user_data: std::collections::HashMap::new(),
+                        };
+                        player_guard.current_track = Some(track);
+                    }
+                    crate::protocol::messages::TrackRequest::Encoded { encoded } => {
+                        info!("Encoded track update not yet implemented: {}", encoded);
+                    }
+                }
+            }
+
+            // 🎯 CRITICAL: Handle voice state updates in standalone mode
+            if let Some(voice_state) = request.voice {
+                info!("🎵 [STANDALONE] Updating voice state for guild {}: endpoint={}, token={}, sessionId={}",
+                      guild_id, voice_state.endpoint,
+                      if voice_state.token.is_empty() { "empty" } else { "provided" },
+                      voice_state.session_id);
+
+                // Validate voice state
+                if voice_state.endpoint.is_empty() || voice_state.token.is_empty() || voice_state.session_id.is_empty() {
+                    let error = ErrorResponse::new(
+                        400,
+                        "Bad Request".to_string(),
+                        Some(format!("Partial Lavalink voice state: endpoint={}, token={}, sessionId={}",
+                                   voice_state.endpoint,
+                                   if voice_state.token.is_empty() { "empty" } else { "provided" },
+                                   voice_state.session_id)),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}"),
+                    );
+                    return (StatusCode::BAD_REQUEST, Json(error)).into_response();
+                }
+
+                // Update voice state in player (standalone mode)
+                // Convert protocol::VoiceState to messages::VoiceState
+                let messages_voice_state = crate::protocol::messages::VoiceState {
+                    token: voice_state.token.clone(),
+                    endpoint: voice_state.endpoint.clone(),
+                    session_id: voice_state.session_id.clone(),
+                };
+                if let Err(e) = player_guard.update_voice_state(messages_voice_state).await {
+                    warn!("Failed to update voice state for guild {} in standalone mode: {}", guild_id, e);
+                    let error = ErrorResponse::new(
+                        500,
+                        "Internal Server Error".to_string(),
+                        Some("Failed to connect to voice server".to_string()),
+                        format!("/v4/sessions/{session_id}/players/{guild_id}"),
+                    );
+                    return (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response();
+                }
+
+                info!("✅ [STANDALONE] Voice state updated successfully for guild {}", guild_id);
+            }
+
+            let response = player_guard.to_protocol_player();
+            drop(player_guard);
+
+            (StatusCode::OK, Json(response)).into_response()
         }
 
         /// Get player queue handler - /v4/sessions/{session_id}/players/{guild_id}/queue
@@ -803,13 +876,13 @@ pub async fn delete_player_handler(
 pub async fn update_player_handler(
     Path((session_id, guild_id)): Path<(String, String)>,
     State(state): State<Arc<AppState>>,
-    Json(request): Json<serde_json::Value>,
+    Json(request): Json<crate::protocol::messages::UpdatePlayerRequest>,
 ) -> Response {
     info!(
         "Updating player for session: {}, guild: {}",
         session_id, guild_id
     );
-    info!("Request data: {}", request);
+    info!("Request data: {:?}", request);
 
     // Check if session exists
     if !state.sessions.contains_key(&session_id) {
@@ -830,42 +903,106 @@ pub async fn update_player_handler(
     let mut player_guard = player.write().await;
 
     // Apply updates from the request
-    if let Some(volume) = request.get("volume").and_then(|v| v.as_u64()) {
-        if volume <= 255 {
-            player_guard.volume = volume as u8;
-        }
+    if let Some(volume) = request.volume {
+        // Volume is u8, so it's always valid (0-255)
+        player_guard.volume = volume;
     }
 
-    if let Some(paused) = request.get("paused").and_then(|v| v.as_bool()) {
+    if let Some(paused) = request.paused {
         player_guard.paused = paused;
     }
 
     // Handle track updates
-    if let Some(track_data) = request.get("track") {
-        if track_data.is_null() {
-            player_guard.current_track = None;
-        } else if let Some(identifier) = track_data.get("identifier").and_then(|v| v.as_str()) {
-            // Create a simple track from identifier for testing
-            let track = crate::protocol::Track {
-                encoded: format!("encoded_{identifier}"),
-                info: crate::protocol::TrackInfo {
-                    identifier: identifier.to_string(),
-                    is_seekable: true,
-                    author: "Test Author".to_string(),
-                    length: 180000, // 3 minutes
-                    is_stream: false,
-                    position: 0,
-                    title: format!("Test Track: {identifier}"),
-                    uri: Some(format!("test://{identifier}")),
-                    source_name: "test".to_string(),
-                    artwork_url: None,
-                    isrc: None,
-                },
-                plugin_info: std::collections::HashMap::new(),
-                user_data: std::collections::HashMap::new(),
-            };
-            player_guard.current_track = Some(track);
+    if let Some(track_request) = request.track {
+        match track_request {
+            crate::protocol::messages::TrackRequest::Null => {
+                player_guard.current_track = None;
+            }
+            crate::protocol::messages::TrackRequest::Identifier { identifier } => {
+                // Create a simple track from identifier for testing
+                let track = crate::protocol::Track {
+                    encoded: format!("encoded_{identifier}"),
+                    info: crate::protocol::TrackInfo {
+                        identifier: identifier.clone(),
+                        is_seekable: true,
+                        author: "Test Author".to_string(),
+                        length: 180000, // 3 minutes
+                        is_stream: false,
+                        position: 0,
+                        title: format!("Test Track: {identifier}"),
+                        uri: Some(format!("test://{identifier}")),
+                        source_name: "test".to_string(),
+                        artwork_url: None,
+                        isrc: None,
+                    },
+                    plugin_info: std::collections::HashMap::new(),
+                    user_data: std::collections::HashMap::new(),
+                };
+                player_guard.current_track = Some(track);
+            }
+            crate::protocol::messages::TrackRequest::Encoded { encoded } => {
+                // TODO: Decode the encoded track
+                info!("Encoded track update not yet implemented: {}", encoded);
+            }
         }
+    }
+
+    // 🎯 CRITICAL FIX: Handle voice state updates (this was completely missing!)
+    if let Some(voice_state) = request.voice {
+        info!(
+            "🎵 Updating voice state for guild {}: endpoint={}, token={}, sessionId={}",
+            guild_id,
+            voice_state.endpoint,
+            if voice_state.token.is_empty() {
+                "empty"
+            } else {
+                "provided"
+            },
+            voice_state.session_id
+        );
+
+        // Validate voice state (matching official Lavalink validation)
+        if voice_state.endpoint.is_empty()
+            || voice_state.token.is_empty()
+            || voice_state.session_id.is_empty()
+        {
+            let error = ErrorResponse::new(
+                400,
+                "Bad Request".to_string(),
+                Some(format!(
+                    "Partial Lavalink voice state: endpoint={}, token={}, sessionId={}",
+                    voice_state.endpoint,
+                    if voice_state.token.is_empty() {
+                        "empty"
+                    } else {
+                        "provided"
+                    },
+                    voice_state.session_id
+                )),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            return (StatusCode::BAD_REQUEST, Json(error)).into_response();
+        }
+
+        // Update voice state in player
+        // Convert protocol::VoiceState to messages::VoiceState
+        let messages_voice_state = crate::protocol::messages::VoiceState {
+            token: voice_state.token.clone(),
+            endpoint: voice_state.endpoint.clone(),
+            session_id: voice_state.session_id.clone(),
+        };
+        if let Err(e) = player_guard.update_voice_state(messages_voice_state).await {
+            warn!("Failed to update voice state for guild {}: {}", guild_id, e);
+            let error = ErrorResponse::new(
+                500,
+                "Internal Server Error".to_string(),
+                Some("Failed to connect to voice server".to_string()),
+                format!("/v4/sessions/{session_id}/players/{guild_id}"),
+            );
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(error)).into_response();
+        }
+
+        info!("✅ Voice state updated successfully for guild {}", guild_id);
     }
 
     let response = player_guard.to_protocol_player();
