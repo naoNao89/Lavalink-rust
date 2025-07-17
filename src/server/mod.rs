@@ -2,7 +2,7 @@ use anyhow::Result;
 #[cfg(feature = "websocket")]
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 // Import player management types (needed for both Discord and standalone modes)
 use crate::player::{PlayerEvent, PlayerEventHandler, PlayerManager};
@@ -180,6 +180,49 @@ impl LavalinkServer {
                     let mut receiver = event_receiver;
                     while let Some(event) = receiver.recv().await {
                         debug!("Standalone mode received player event: {:?}", event);
+                    }
+                });
+            }
+
+            // Start stats broadcasting task
+            #[cfg(all(feature = "websocket", feature = "server"))]
+            {
+                let stats_collector = stats_collector.clone();
+                let player_manager = player_manager.clone();
+                let sessions = sessions.clone();
+
+                tokio::spawn(async move {
+                    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+                    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+                    loop {
+                        interval.tick().await;
+
+                        // Get current stats
+                        let stats = stats_collector
+                            .get_stats_with_players(&player_manager)
+                            .await;
+                        let stats_message = crate::protocol::Message::Stats(stats);
+
+                        // Broadcast to all connected sessions
+                        let mut disconnected_sessions = Vec::new();
+                        for entry in sessions.iter() {
+                            let session_id = entry.key();
+                            let session = entry.value();
+
+                            if let Err(e) = session.send_message(stats_message.clone()).await {
+                                warn!("Failed to send stats to session {}: {}", session_id, e);
+                                disconnected_sessions.push(session_id.clone());
+                            }
+                        }
+
+                        // Clean up disconnected sessions
+                        for session_id in disconnected_sessions {
+                            sessions.remove(&session_id);
+                            debug!("Removed disconnected session: {}", session_id);
+                        }
+
+                        debug!("Broadcasted stats to {} sessions", sessions.len());
                     }
                 });
             }

@@ -245,6 +245,22 @@ impl PlayerManager {
         result
     }
 
+    /// Get player counts for statistics
+    pub async fn get_player_counts(&self) -> (u32, u32) {
+        let players = self.players.read().await;
+        let total_players = players.len() as u32;
+        let mut playing_players = 0u32;
+
+        for player in players.values() {
+            let player_guard = player.read().await;
+            if player_guard.is_playing() {
+                playing_players += 1;
+            }
+        }
+
+        (total_players, playing_players)
+    }
+
     /// Remove a player
     #[allow(dead_code)]
     pub async fn remove_player(&self, guild_id: &str) -> Option<Arc<RwLock<LavalinkPlayer>>> {
