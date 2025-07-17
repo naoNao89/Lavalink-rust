@@ -1,6 +1,7 @@
 // Voice connection management for integrating with player system
 
 use anyhow::Result;
+#[cfg(any(feature = "discord", feature = "crypto"))]
 use rand::Rng;
 #[cfg(feature = "discord")]
 use songbird::{error::ConnectionError as SongbirdConnectionError, Call};
@@ -1144,10 +1145,15 @@ impl VoiceConnectionManager {
         let delay = delay.min(max_delay);
 
         // Add jitter to prevent thundering herd
-        let jitter_range = delay * self.recovery_config.jitter_factor;
-        let mut rng = rand::rng();
-        let jitter = (rng.random::<f64>() - 0.5) * 2.0 * jitter_range;
-        let final_delay = (delay + jitter).max(0.0) as u64;
+        #[cfg(any(feature = "discord", feature = "crypto"))]
+        let final_delay = {
+            let jitter_range = delay * self.recovery_config.jitter_factor;
+            let mut rng = rand::rng();
+            let jitter = (rng.random::<f64>() - 0.5) * 2.0 * jitter_range;
+            (delay + jitter).max(0.0) as u64
+        };
+        #[cfg(not(any(feature = "discord", feature = "crypto")))]
+        let final_delay = delay as u64;
 
         Duration::from_millis(final_delay)
     }

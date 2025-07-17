@@ -22,7 +22,9 @@ use crate::audio::quality::NetworkMetrics;
 #[cfg(not(feature = "discord"))]
 use crate::audio::quality::NetworkMetrics;
 use crate::audio::quality::{AudioQualityConfig, AudioQualityManager, QualityPreset};
-use crate::audio::streaming::{AudioStreamingManager, StreamOptions};
+use crate::audio::streaming::AudioStreamingManager;
+#[cfg(feature = "discord")]
+use crate::audio::streaming::StreamOptions;
 use crate::audio::StreamState;
 use crate::protocol::{Filters, Track};
 
@@ -107,7 +109,7 @@ impl AudioPlayerEngine {
         event_sender: mpsc::UnboundedSender<PlayerEvent>,
         quality_config: AudioQualityConfig,
     ) -> Self {
-        let quality_manager = AudioQualityManager::new(guild_id.clone(), quality_config);
+        let quality_manager = AudioQualityManager::new(quality_config);
         let streaming_manager = AudioStreamingManager::new(guild_id.clone());
 
         Self {
@@ -795,7 +797,7 @@ impl AudioPlayerEngine {
     pub async fn update_network_metrics(&self, metrics: NetworkMetrics) {
         debug!(
             "Updating network metrics for guild {}: loss={:.1}%, latency={}ms",
-            self.guild_id, metrics.packet_loss, metrics.rtt_ms
+            self.guild_id, metrics.packet_loss, metrics.latency_ms
         );
 
         let mut quality_manager = self.quality_manager.write().await;
@@ -804,7 +806,7 @@ impl AudioPlayerEngine {
 
     /// Get current network quality score (0-100)
     pub async fn get_network_quality_score(&self) -> u8 {
-        self.quality_manager.read().await.network_quality_score()
+        (self.quality_manager.read().await.network_quality_score() * 100.0) as u8
     }
 
     /// Check if current quality is appropriate for network conditions
@@ -815,7 +817,7 @@ impl AudioPlayerEngine {
     /// Get estimated bandwidth usage in kbps
     pub async fn get_estimated_bandwidth(&self) -> u32 {
         let bandwidth = self.quality_manager.read().await.estimated_bandwidth();
-        bandwidth / 1000
+        (bandwidth / 1000) as u32
     }
 
     /// Create Songbird configuration with current quality settings (Discord mode only)

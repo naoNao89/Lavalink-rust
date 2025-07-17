@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::{interval, Duration, Instant};
 
+#[cfg(any(feature = "discord", feature = "crypto"))]
 use rand::prelude::*;
 use tracing::{debug, error, info, warn};
 
@@ -546,7 +547,7 @@ impl LavalinkPlayer {
                 .update_voice_state(self.guild_id.clone(), voice_state)
                 .await
             {
-                Ok(Some(call)) => {
+                Ok(Some(_call)) => {
                     info!("Voice connection established for guild {}", self.guild_id);
                     self.state.connected = true;
 
@@ -1118,10 +1119,18 @@ impl LavalinkPlayer {
 
         if self.shuffle {
             // Shuffle mode: pick a random track from the queue
-            let mut rng = rand::rng();
-            let indices: Vec<usize> = (0..self.queue.len()).collect();
-            if let Some(&random_index) = indices.choose(&mut rng) {
-                return self.queue.remove(random_index);
+            #[cfg(any(feature = "discord", feature = "crypto"))]
+            {
+                let mut rng = rand::rng();
+                let indices: Vec<usize> = (0..self.queue.len()).collect();
+                if let Some(&random_index) = indices.choose(&mut rng) {
+                    return self.queue.remove(random_index);
+                }
+            }
+            #[cfg(not(any(feature = "discord", feature = "crypto")))]
+            {
+                // Fallback: just take the first track when rand is not available
+                return self.queue.pop_front();
             }
         }
 
@@ -1212,12 +1221,20 @@ impl LavalinkPlayer {
     /// Shuffle the current queue
     #[allow(dead_code)]
     pub fn shuffle_queue(&mut self) {
-        let mut rng = rand::rng();
+        #[cfg(any(feature = "discord", feature = "crypto"))]
+        {
+            let mut rng = rand::rng();
 
-        // Convert to Vec, shuffle, then back to VecDeque
-        let mut tracks: Vec<Track> = self.queue.drain(..).collect();
-        tracks.shuffle(&mut rng);
-        self.queue = tracks.into();
+            // Convert to Vec, shuffle, then back to VecDeque
+            let mut tracks: Vec<Track> = self.queue.drain(..).collect();
+            tracks.shuffle(&mut rng);
+            self.queue = tracks.into();
+        }
+        #[cfg(not(any(feature = "discord", feature = "crypto")))]
+        {
+            // No-op when rand is not available
+            warn!("Shuffle requested but rand feature not available");
+        }
 
         info!(
             "Shuffled queue for guild {} ({} tracks)",

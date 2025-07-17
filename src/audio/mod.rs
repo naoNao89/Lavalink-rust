@@ -130,8 +130,8 @@ pub mod streaming {
             false // Never streaming in standalone mode
         }
 
-        pub async fn get_stream_health(&self) -> StreamHealth {
-            StreamHealth::default()
+        pub async fn get_stream_health(&self) -> u8 {
+            100 // Perfect health in standalone mode
         }
 
         pub async fn get_stream_metrics(&self) -> StreamMetrics {
@@ -149,6 +149,7 @@ pub mod streaming {
 
     #[derive(Debug, Clone)]
     pub struct StreamHealth {
+        #[allow(dead_code)]
         pub is_healthy: bool,
         #[allow(dead_code)]
         pub issues: Vec<String>,
@@ -163,7 +164,7 @@ pub mod streaming {
         }
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Default)]
     pub struct StreamMetrics {
         #[allow(dead_code)]
         pub bytes_sent: u64,
@@ -171,16 +172,6 @@ pub mod streaming {
         pub packets_sent: u64,
         #[allow(dead_code)]
         pub errors: u64,
-    }
-
-    impl Default for StreamMetrics {
-        fn default() -> Self {
-            Self {
-                bytes_sent: 0,
-                packets_sent: 0,
-                errors: 0,
-            }
-        }
     }
 
     #[derive(Debug, Clone)]
