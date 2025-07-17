@@ -1,5 +1,5 @@
 //! Audio filter system for Lavalink-rust
-//! 
+//!
 //! This module provides a comprehensive audio filter system that matches the original
 //! Lavalink filter functionality. It uses FunDSP for efficient audio processing.
 
@@ -35,16 +35,16 @@ impl Default for AudioFormat {
 pub trait AudioFilter: Send + Sync {
     /// Process audio samples in place
     fn process(&mut self, samples: &mut [f32], format: &AudioFormat) -> Result<()>;
-    
+
     /// Get the filter name for debugging
     fn name(&self) -> &'static str;
-    
+
     /// Check if the filter is enabled
     fn is_enabled(&self) -> bool;
-    
+
     /// Reset filter state
     fn reset(&mut self);
-    
+
     /// Get filter latency in samples
     fn latency(&self) -> usize {
         0
@@ -67,46 +67,46 @@ impl FilterChain {
             enabled: false,
         }
     }
-    
+
     /// Add a filter to the chain
     pub fn add_filter(&mut self, filter: Box<dyn AudioFilter>) {
         self.enabled = true;
         self.filters.push(filter);
     }
-    
+
     /// Clear all filters
     pub fn clear(&mut self) {
         self.filters.clear();
         self.enabled = false;
     }
-    
+
     /// Process audio through the filter chain
     pub fn process(&mut self, samples: &mut [f32]) -> Result<()> {
         if !self.enabled || self.filters.is_empty() {
             return Ok(());
         }
-        
+
         for filter in &mut self.filters {
             if filter.is_enabled() {
                 filter.process(samples, &self.format)?;
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if any filters are enabled
     pub fn is_enabled(&self) -> bool {
         self.enabled && self.filters.iter().any(|f| f.is_enabled())
     }
-    
+
     /// Reset all filters
     pub fn reset(&mut self) {
         for filter in &mut self.filters {
             filter.reset();
         }
     }
-    
+
     /// Get total latency of the filter chain
     pub fn total_latency(&self) -> usize {
         self.filters.iter().map(|f| f.latency()).sum()
@@ -126,7 +126,7 @@ impl VolumeFilter {
             enabled: volume != 1.0,
         }
     }
-    
+
     pub fn set_volume(&mut self, volume: f32) {
         self.volume = volume.max(0.0).min(5.0);
         self.enabled = volume != 1.0;
@@ -138,22 +138,22 @@ impl AudioFilter for VolumeFilter {
         if !self.enabled {
             return Ok(());
         }
-        
+
         for sample in samples.iter_mut() {
             *sample *= self.volume;
         }
-        
+
         Ok(())
     }
-    
+
     fn name(&self) -> &'static str {
         "Volume"
     }
-    
+
     fn is_enabled(&self) -> bool {
         self.enabled
     }
-    
+
     fn reset(&mut self) {
         // Volume filter has no state to reset
     }
@@ -364,8 +364,7 @@ pub struct TremoloFilter {
 
 impl TremoloFilter {
     pub fn new(config: Tremolo) -> Self {
-        let enabled = config.frequency.unwrap_or(2.0) > 0.0
-            && config.depth.unwrap_or(0.5) > 0.0;
+        let enabled = config.frequency.unwrap_or(2.0) > 0.0 && config.depth.unwrap_or(0.5) > 0.0;
 
         Self {
             config,
@@ -422,8 +421,7 @@ pub struct VibratoFilter {
 
 impl VibratoFilter {
     pub fn new(config: Vibrato) -> Self {
-        let enabled = config.frequency.unwrap_or(2.0) > 0.0
-            && config.depth.unwrap_or(0.5) > 0.0;
+        let enabled = config.frequency.unwrap_or(2.0) > 0.0 && config.depth.unwrap_or(0.5) > 0.0;
 
         // Create delay buffer for vibrato effect (max 10ms delay)
         let buffer_size = (48000.0 * 0.01) as usize; // 10ms at 48kHz
@@ -503,7 +501,7 @@ impl FilterFactory {
     /// Create a filter chain from Lavalink filters configuration
     pub fn create_filter_chain(filters: &Filters, format: AudioFormat) -> Result<FilterChain> {
         let mut chain = FilterChain::new(format.clone());
-        
+
         // Add volume filter if specified
         if let Some(volume) = filters.volume.as_option() {
             let volume_filter = VolumeFilter::new(*volume);
@@ -512,7 +510,7 @@ impl FilterFactory {
                 debug!("Added volume filter with volume: {}", volume);
             }
         }
-        
+
         // Add equalizer filter if specified
         if let Some(eq_bands) = filters.equalizer.as_option() {
             let eq_filter = EqualizerFilter::new(eq_bands.clone());
@@ -521,7 +519,7 @@ impl FilterFactory {
                 debug!("Added equalizer filter with {} bands", eq_bands.len());
             }
         }
-        
+
         // Add karaoke filter if specified
         if let Some(karaoke) = filters.karaoke.as_option().and_then(|k| k.as_ref()) {
             let karaoke_filter = KaraokeFilter::new(karaoke.clone());
@@ -578,30 +576,30 @@ impl AudioFilterManager {
             format,
         }
     }
-    
+
     /// Update filters from Lavalink configuration
     pub async fn update_filters(&self, filters: &Filters) -> Result<()> {
         let new_chain = FilterFactory::create_filter_chain(filters, self.format.clone())?;
-        
+
         let mut chain_lock = self.filter_chain.write().await;
         *chain_lock = new_chain;
-        
+
         info!("Updated filter chain");
         Ok(())
     }
-    
+
     /// Process audio samples through the filter chain
     pub async fn process_audio(&self, samples: &mut [f32]) -> Result<()> {
         let mut chain_lock = self.filter_chain.write().await;
         chain_lock.process(samples)
     }
-    
+
     /// Check if any filters are enabled
     pub async fn is_enabled(&self) -> bool {
         let chain_lock = self.filter_chain.read().await;
         chain_lock.is_enabled()
     }
-    
+
     /// Reset all filters
     pub async fn reset(&self) {
         let mut chain_lock = self.filter_chain.write().await;

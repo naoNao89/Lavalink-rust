@@ -1,5 +1,5 @@
 //! SoundCloud API integration for Lavalink-rust
-//! 
+//!
 //! This module provides a complete SoundCloud API client that implements
 //! the official SoundCloud API v2 with OAuth 2.1 Client Credentials authentication.
 
@@ -138,7 +138,7 @@ impl SoundCloudApiClient {
         debug!("Refreshing SoundCloud access token");
 
         let auth_url = format!("{}/oauth/token", self.config.auth_base_url);
-        
+
         // Prepare Basic Auth header
         let credentials = format!("{}:{}", self.config.client_id, self.config.client_secret);
         let encoded_credentials = base64::engine::general_purpose::STANDARD.encode(credentials);
@@ -163,10 +163,11 @@ impl SoundCloudApiClient {
         }
 
         let token_response: TokenResponse = response.json().await?;
-        
+
         // Calculate expiration time (subtract 60 seconds for safety)
-        let expires_at = SystemTime::now() + Duration::from_secs(token_response.expires_in.saturating_sub(60));
-        
+        let expires_at =
+            SystemTime::now() + Duration::from_secs(token_response.expires_in.saturating_sub(60));
+
         let cached_token = CachedToken {
             access_token: token_response.access_token.clone(),
             expires_at,
@@ -185,9 +186,9 @@ impl SoundCloudApiClient {
     /// Resolve a SoundCloud URL to get track information
     pub async fn resolve_url(&self, url: &str) -> Result<SoundCloudTrack> {
         let access_token = self.get_access_token().await?;
-        
+
         let resolve_url = format!("{}/resolve", self.config.api_base_url);
-        
+
         let response = self
             .client
             .get(&resolve_url)
@@ -199,11 +200,7 @@ impl SoundCloudApiClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(anyhow!(
-                "SoundCloud resolve failed: {} - {}",
-                status,
-                body
-            ));
+            return Err(anyhow!("SoundCloud resolve failed: {} - {}", status, body));
         }
 
         let track: SoundCloudTrack = response.json().await?;
@@ -211,12 +208,16 @@ impl SoundCloudApiClient {
     }
 
     /// Search for tracks on SoundCloud
-    pub async fn search_tracks(&self, query: &str, limit: Option<u32>) -> Result<Vec<SoundCloudTrack>> {
+    pub async fn search_tracks(
+        &self,
+        query: &str,
+        limit: Option<u32>,
+    ) -> Result<Vec<SoundCloudTrack>> {
         let access_token = self.get_access_token().await?;
-        
+
         let search_url = format!("{}/tracks", self.config.api_base_url);
         let limit = limit.unwrap_or(20).min(200); // SoundCloud max is 200
-        
+
         let response = self
             .client
             .get(&search_url)
@@ -233,11 +234,7 @@ impl SoundCloudApiClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(anyhow!(
-                "SoundCloud search failed: {} - {}",
-                status,
-                body
-            ));
+            return Err(anyhow!("SoundCloud search failed: {} - {}", status, body));
         }
 
         let search_response: SoundCloudSearchResponse = response.json().await?;
@@ -247,9 +244,9 @@ impl SoundCloudApiClient {
     /// Get stream URL for a track
     pub async fn get_stream_url(&self, track_id: u64) -> Result<String> {
         let access_token = self.get_access_token().await?;
-        
+
         let stream_url = format!("{}/tracks/{}/stream", self.config.api_base_url, track_id);
-        
+
         let response = self
             .client
             .get(&stream_url)
@@ -317,9 +314,7 @@ impl SoundCloudApiClient {
 pub fn is_valid_soundcloud_url(url: &str) -> bool {
     if let Ok(parsed_url) = Url::parse(url) {
         if let Some(host) = parsed_url.host_str() {
-            return host == "soundcloud.com" 
-                || host == "www.soundcloud.com" 
-                || host == "snd.sc";
+            return host == "soundcloud.com" || host == "www.soundcloud.com" || host == "snd.sc";
         }
     }
     false
@@ -338,8 +333,12 @@ mod tests {
 
     #[test]
     fn test_soundcloud_url_validation() {
-        assert!(is_valid_soundcloud_url("https://soundcloud.com/artist/track"));
-        assert!(is_valid_soundcloud_url("https://www.soundcloud.com/artist/track"));
+        assert!(is_valid_soundcloud_url(
+            "https://soundcloud.com/artist/track"
+        ));
+        assert!(is_valid_soundcloud_url(
+            "https://www.soundcloud.com/artist/track"
+        ));
         assert!(is_valid_soundcloud_url("https://snd.sc/abc123"));
         assert!(!is_valid_soundcloud_url("https://youtube.com/watch?v=123"));
         assert!(!is_valid_soundcloud_url("not-a-url"));
@@ -349,7 +348,7 @@ mod tests {
     async fn test_soundcloud_client_creation() {
         let config = SoundCloudConfig::default();
         let client = SoundCloudApiClient::new(config);
-        
+
         // Just test that we can create the client
         assert!(client.cached_token.read().await.is_none());
     }

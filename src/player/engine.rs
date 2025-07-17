@@ -17,6 +17,7 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 use super::{PlayerEvent, TrackEndReason};
+use crate::audio::filters::{AudioFilterManager, AudioFormat};
 #[cfg(feature = "discord")]
 use crate::audio::quality::NetworkMetrics;
 #[cfg(not(feature = "discord"))]
@@ -26,7 +27,6 @@ use crate::audio::streaming::AudioStreamingManager;
 #[cfg(feature = "discord")]
 use crate::audio::streaming::StreamOptions;
 use crate::audio::StreamState;
-use crate::audio::filters::{AudioFilterManager, AudioFormat};
 use crate::protocol::{Filters, Track};
 
 // Type alias for audio input that works in both Discord and standalone modes

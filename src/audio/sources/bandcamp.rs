@@ -1,5 +1,5 @@
 //! Bandcamp web scraping integration for Lavalink-rust
-//! 
+//!
 //! This module provides Bandcamp track and album loading through web scraping
 //! since Bandcamp doesn't provide a public API.
 
@@ -12,7 +12,9 @@ use std::time::Duration;
 use tracing::{debug, warn};
 use url::Url;
 
-use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity, Track, TrackInfo};
+use crate::protocol::{
+    Exception, LoadResult, LoadResultData, LoadType, Severity, Track, TrackInfo,
+};
 
 /// Bandcamp web scraper for track and album information
 pub struct BandcampScraper {
@@ -37,9 +39,12 @@ impl BandcampScraper {
 
         // Fetch the page
         let response = self.client.get(url).send().await?;
-        
+
         if !response.status().is_success() {
-            return Err(anyhow!("Failed to fetch Bandcamp page: {}", response.status()));
+            return Err(anyhow!(
+                "Failed to fetch Bandcamp page: {}",
+                response.status()
+            ));
         }
 
         let html = response.text().await?;
@@ -53,7 +58,10 @@ impl BandcampScraper {
     pub async fn search_tracks(&self, query: &str, limit: Option<u32>) -> Result<Vec<Track>> {
         debug!("Searching Bandcamp for: {}", query);
 
-        let search_url = format!("https://bandcamp.com/search?q={}", urlencoding::encode(query));
+        let search_url = format!(
+            "https://bandcamp.com/search?q={}",
+            urlencoding::encode(query)
+        );
         let response = self.client.get(&search_url).send().await?;
 
         if !response.status().is_success() {
@@ -63,14 +71,15 @@ impl BandcampScraper {
         let html = response.text().await?;
         let document = Html::parse_document(&html);
 
-        self.extract_search_results(&document, limit.unwrap_or(20)).await
+        self.extract_search_results(&document, limit.unwrap_or(20))
+            .await
     }
 
     /// Extract track information from Bandcamp page HTML
     async fn extract_track_from_html(&self, document: &Html, page_url: &str) -> Result<Track> {
         // Try to find the track data in the page's JavaScript
         let script_selector = Selector::parse("script[type='application/ld+json']").unwrap();
-        
+
         // Look for JSON-LD structured data first
         for script_element in document.select(&script_selector) {
             if let Some(script_content) = script_element.text().next() {
@@ -83,15 +92,22 @@ impl BandcampScraper {
         }
 
         // Fallback to parsing HTML elements
-        self.extract_track_from_html_elements(document, page_url).await
+        self.extract_track_from_html_elements(document, page_url)
+            .await
     }
 
     /// Parse track from JSON-LD structured data
     fn parse_json_ld_track(&self, json_data: &Value, page_url: &str) -> Result<Option<Track>> {
         if json_data["@type"] == "MusicRecording" {
-            let title = json_data["name"].as_str().unwrap_or("Unknown Title").to_string();
-            let artist = json_data["byArtist"]["name"].as_str().unwrap_or("Unknown Artist").to_string();
-            
+            let title = json_data["name"]
+                .as_str()
+                .unwrap_or("Unknown Title")
+                .to_string();
+            let artist = json_data["byArtist"]["name"]
+                .as_str()
+                .unwrap_or("Unknown Artist")
+                .to_string();
+
             // Duration might be in ISO 8601 format (PT1M30S) or seconds
             let duration = if let Some(duration_str) = json_data["duration"].as_str() {
                 self.parse_duration(duration_str).unwrap_or(0)
@@ -127,10 +143,18 @@ impl BandcampScraper {
     }
 
     /// Extract track from HTML elements (fallback method)
-    async fn extract_track_from_html_elements(&self, document: &Html, page_url: &str) -> Result<Track> {
+    async fn extract_track_from_html_elements(
+        &self,
+        document: &Html,
+        page_url: &str,
+    ) -> Result<Track> {
         // Try to extract title from meta tags or page title
-        let title = self.extract_title(document).unwrap_or_else(|| "Unknown Title".to_string());
-        let artist = self.extract_artist(document).unwrap_or_else(|| "Unknown Artist".to_string());
+        let title = self
+            .extract_title(document)
+            .unwrap_or_else(|| "Unknown Title".to_string());
+        let artist = self
+            .extract_artist(document)
+            .unwrap_or_else(|| "Unknown Artist".to_string());
         let artwork_url = self.extract_artwork_url(document);
 
         let track = Track {
@@ -158,7 +182,7 @@ impl BandcampScraper {
     /// Extract search results from Bandcamp search page
     async fn extract_search_results(&self, document: &Html, limit: u32) -> Result<Vec<Track>> {
         let mut tracks = Vec::new();
-        
+
         // Bandcamp search results are in .searchresult elements
         let result_selector = Selector::parse(".searchresult").unwrap();
         let link_selector = Selector::parse(".heading a").unwrap();
@@ -180,7 +204,7 @@ impl BandcampScraper {
 
                     // Extract title
                     let title = link_element.text().collect::<String>().trim().to_string();
-                    
+
                     // Extract artist
                     let artist = result_element
                         .select(&artist_selector)
@@ -279,13 +303,13 @@ impl BandcampScraper {
         if duration_str.starts_with("PT") {
             let mut total_seconds = 0u64;
             let duration_part = &duration_str[2..]; // Remove "PT"
-            
+
             // Simple parsing for minutes and seconds
             if let Some(m_pos) = duration_part.find('M') {
                 if let Ok(minutes) = duration_part[..m_pos].parse::<u64>() {
                     total_seconds += minutes * 60;
                 }
-                
+
                 let remaining = &duration_part[m_pos + 1..];
                 if let Some(s_pos) = remaining.find('S') {
                     if let Ok(seconds) = remaining[..s_pos].parse::<u64>() {
@@ -297,7 +321,7 @@ impl BandcampScraper {
                     total_seconds += seconds;
                 }
             }
-            
+
             return Some(total_seconds * 1000); // Convert to milliseconds
         }
 
@@ -332,10 +356,16 @@ mod tests {
 
     #[test]
     fn test_bandcamp_url_validation() {
-        assert!(is_valid_bandcamp_url("https://artist.bandcamp.com/track/song"));
-        assert!(is_valid_bandcamp_url("https://artist.bandcamp.com/album/album-name"));
+        assert!(is_valid_bandcamp_url(
+            "https://artist.bandcamp.com/track/song"
+        ));
+        assert!(is_valid_bandcamp_url(
+            "https://artist.bandcamp.com/album/album-name"
+        ));
         assert!(is_valid_bandcamp_url("https://bandcamp.com/search?q=test"));
-        assert!(!is_valid_bandcamp_url("https://soundcloud.com/artist/track"));
+        assert!(!is_valid_bandcamp_url(
+            "https://soundcloud.com/artist/track"
+        ));
         assert!(!is_valid_bandcamp_url("not-a-url"));
     }
 

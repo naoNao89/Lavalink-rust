@@ -1,5 +1,5 @@
 //! Audio source implementations for various platforms
-//! 
+//!
 //! This module contains implementations for loading tracks from different
 //! audio platforms like SoundCloud, Bandcamp, YouTube, etc.
 

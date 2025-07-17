@@ -876,22 +876,20 @@ impl AudioSource for SoundCloudAudioSource {
             if let Some(ref api_client) = self.api_client {
                 // Use SoundCloud API
                 match api_client.resolve_url(identifier).await {
-                    Ok(sc_track) => {
-                        match api_client.to_lavalink_track(&sc_track).await {
-                            Ok(track) => Ok(LoadResult {
-                                load_type: LoadType::Track,
-                                data: Some(LoadResultData::Track(Box::new(track))),
-                            }),
-                            Err(e) => Ok(LoadResult {
-                                load_type: LoadType::Error,
-                                data: Some(LoadResultData::Exception(Exception {
-                                    message: Some("Failed to convert SoundCloud track".to_string()),
-                                    severity: Severity::Common,
-                                    cause: e.to_string(),
-                                })),
-                            }),
-                        }
-                    }
+                    Ok(sc_track) => match api_client.to_lavalink_track(&sc_track).await {
+                        Ok(track) => Ok(LoadResult {
+                            load_type: LoadType::Track,
+                            data: Some(LoadResultData::Track(Box::new(track))),
+                        }),
+                        Err(e) => Ok(LoadResult {
+                            load_type: LoadType::Error,
+                            data: Some(LoadResultData::Exception(Exception {
+                                message: Some("Failed to convert SoundCloud track".to_string()),
+                                severity: Severity::Common,
+                                cause: e.to_string(),
+                            })),
+                        }),
+                    },
                     Err(e) => Ok(LoadResult {
                         load_type: LoadType::Error,
                         data: Some(LoadResultData::Exception(Exception {
@@ -931,7 +929,10 @@ impl AudioSource for SoundCloudAudioSource {
                                 match api_client.to_lavalink_track(&sc_track).await {
                                     Ok(track) => tracks.push(track),
                                     Err(e) => {
-                                        warn!("Failed to convert SoundCloud track {}: {}", sc_track.id, e);
+                                        warn!(
+                                            "Failed to convert SoundCloud track {}: {}",
+                                            sc_track.id, e
+                                        );
                                     }
                                 }
                             }

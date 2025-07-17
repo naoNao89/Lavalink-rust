@@ -1,5 +1,5 @@
 //! Enhanced HTTP audio source for Lavalink-rust
-//! 
+//!
 //! This module provides an enhanced HTTP audio source that can detect
 //! audio content types, extract metadata, and validate streams.
 
@@ -10,7 +10,9 @@ use std::time::Duration;
 use tracing::{debug, warn};
 use url::Url;
 
-use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity, Track, TrackInfo};
+use crate::protocol::{
+    Exception, LoadResult, LoadResultData, LoadType, Severity, Track, TrackInfo,
+};
 
 /// Enhanced HTTP audio source with content detection and metadata extraction
 pub struct EnhancedHttpSource {
@@ -85,7 +87,7 @@ impl EnhancedHttpSource {
     /// Check if URL should be handled by other sources
     fn should_be_handled_by_other_source(&self, url: &str) -> bool {
         let url_lower = url.to_lowercase();
-        
+
         // List of domains that should be handled by specific sources
         let specific_domains = [
             "youtube.com",
@@ -101,14 +103,16 @@ impl EnhancedHttpSource {
             "deezer.com",
         ];
 
-        specific_domains.iter().any(|domain| url_lower.contains(domain))
+        specific_domains
+            .iter()
+            .any(|domain| url_lower.contains(domain))
     }
 
     /// Validate audio URL and extract metadata
     async fn validate_audio_url(&self, url: &str) -> Result<AudioMetadata> {
         // Perform HEAD request first to check headers
         let head_response = self.client.head(url).send().await?;
-        
+
         if !head_response.status().is_success() {
             return Err(anyhow!("HTTP request failed: {}", head_response.status()));
         }
@@ -152,11 +156,13 @@ impl EnhancedHttpSource {
         let audio_types = [
             "audio/",
             "application/ogg",
-            "application/x-mpegurl", // M3U8 playlists
+            "application/x-mpegurl",         // M3U8 playlists
             "application/vnd.apple.mpegurl", // HLS playlists
         ];
 
-        audio_types.iter().any(|audio_type| content_type.starts_with(audio_type))
+        audio_types
+            .iter()
+            .any(|audio_type| content_type.starts_with(audio_type))
     }
 
     /// Probe content by downloading a small portion to check if it's audio
@@ -192,12 +198,13 @@ impl EnhancedHttpSource {
 
         // Check for common audio file signatures
         match &bytes[0..4] {
-            [0x49, 0x44, 0x33, _] => true, // ID3 (MP3)
-            [0xFF, 0xFB, _, _] => true,     // MP3
-            [0xFF, 0xF3, _, _] => true,     // MP3
-            [0xFF, 0xF2, _, _] => true,     // MP3
+            [0x49, 0x44, 0x33, _] => true,    // ID3 (MP3)
+            [0xFF, 0xFB, _, _] => true,       // MP3
+            [0xFF, 0xF3, _, _] => true,       // MP3
+            [0xFF, 0xF2, _, _] => true,       // MP3
             [0x4F, 0x67, 0x67, 0x53] => true, // OGG
-            [0x52, 0x49, 0x46, 0x46] => {  // RIFF (WAV)
+            [0x52, 0x49, 0x46, 0x46] => {
+                // RIFF (WAV)
                 if bytes.len() >= 12 {
                     &bytes[8..12] == b"WAVE"
                 } else {
@@ -220,7 +227,7 @@ impl EnhancedHttpSource {
                 }
             }
         }
-        
+
         "Unknown Track".to_string()
     }
 
@@ -235,7 +242,7 @@ impl EnhancedHttpSource {
 
         // Replace underscores and hyphens with spaces
         let title = title.replace('_', " ").replace('-', " ");
-        
+
         // Capitalize first letter of each word
         title
             .split_whitespace()
@@ -266,7 +273,11 @@ impl EnhancedHttpSource {
     }
 
     /// Create a Lavalink track from metadata
-    async fn create_track_from_metadata(&self, url: &str, metadata: AudioMetadata) -> Result<Track> {
+    async fn create_track_from_metadata(
+        &self,
+        url: &str,
+        metadata: AudioMetadata,
+    ) -> Result<Track> {
         let track = Track {
             encoded: base64::engine::general_purpose::STANDARD.encode(url),
             info: TrackInfo {
@@ -312,7 +323,7 @@ mod tests {
     #[test]
     fn test_http_url_validation() {
         let source = EnhancedHttpSource::new();
-        
+
         assert!(source.is_valid_http_url("https://example.com/audio.mp3"));
         assert!(source.is_valid_http_url("http://example.com/stream"));
         assert!(!source.is_valid_http_url("ftp://example.com/file"));
@@ -322,7 +333,7 @@ mod tests {
     #[test]
     fn test_other_source_detection() {
         let source = EnhancedHttpSource::new();
-        
+
         assert!(source.should_be_handled_by_other_source("https://soundcloud.com/artist/track"));
         assert!(source.should_be_handled_by_other_source("https://youtube.com/watch?v=123"));
         assert!(!source.should_be_handled_by_other_source("https://example.com/audio.mp3"));
@@ -331,31 +342,49 @@ mod tests {
     #[test]
     fn test_filename_extraction() {
         let source = EnhancedHttpSource::new();
-        
-        assert_eq!(source.extract_filename_from_url("https://example.com/my_song.mp3"), "my_song.mp3");
-        assert_eq!(source.extract_filename_from_url("https://example.com/path/to/audio.wav"), "audio.wav");
-        assert_eq!(source.extract_filename_from_url("https://example.com/"), "Unknown Track");
+
+        assert_eq!(
+            source.extract_filename_from_url("https://example.com/my_song.mp3"),
+            "my_song.mp3"
+        );
+        assert_eq!(
+            source.extract_filename_from_url("https://example.com/path/to/audio.wav"),
+            "audio.wav"
+        );
+        assert_eq!(
+            source.extract_filename_from_url("https://example.com/"),
+            "Unknown Track"
+        );
     }
 
     #[test]
     fn test_title_cleaning() {
         let source = EnhancedHttpSource::new();
-        
-        assert_eq!(source.clean_filename_for_title("my_awesome_song.mp3"), "My Awesome Song");
-        assert_eq!(source.clean_filename_for_title("track-01-intro.wav"), "Track 01 Intro");
-        assert_eq!(source.clean_filename_for_title("UPPERCASE_TRACK.flac"), "UPPERCASE TRACK");
+
+        assert_eq!(
+            source.clean_filename_for_title("my_awesome_song.mp3"),
+            "My Awesome Song"
+        );
+        assert_eq!(
+            source.clean_filename_for_title("track-01-intro.wav"),
+            "Track 01 Intro"
+        );
+        assert_eq!(
+            source.clean_filename_for_title("UPPERCASE_TRACK.flac"),
+            "UPPERCASE TRACK"
+        );
     }
 
     #[test]
     fn test_audio_signature_detection() {
         let source = EnhancedHttpSource::new();
-        
+
         // MP3 signature
         assert!(source.has_audio_signature(&[0xFF, 0xFB, 0x90, 0x00]));
-        
+
         // OGG signature
         assert!(source.has_audio_signature(&[0x4F, 0x67, 0x67, 0x53]));
-        
+
         // Not audio
         assert!(!source.has_audio_signature(&[0x89, 0x50, 0x4E, 0x47])); // PNG
     }
