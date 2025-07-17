@@ -9,6 +9,10 @@ pub mod streaming;
 // Audio filter system
 pub mod filters;
 
+// Audio source implementations
+#[cfg(feature = "audio-sources")]
+pub mod sources;
+
 #[cfg(test)]
 mod filter_tests;
 
@@ -214,6 +218,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use base64::Engine;
 use regex::Regex;
+use tracing::warn;
 use tracing::{debug, info, warn};
 
 use tokio::process::Command as AsyncCommand;
@@ -279,14 +284,27 @@ pub struct HttpAudioSource;
 #[derive(Clone)]
 pub struct YouTubeAudioSource;
 
-/// SoundCloud audio source (placeholder)
+/// SoundCloud audio source with API integration
 #[derive(Clone)]
-pub struct SoundCloudAudioSource;
+pub struct SoundCloudAudioSource {
+    #[cfg(feature = "audio-sources")]
+    api_client: Option<std::sync::Arc<sources::SoundCloudApiClient>>,
+}
 
 impl SoundCloudAudioSource {
     #[allow(dead_code)] // Used in tests
     pub fn new() -> Self {
-        Self
+        Self {
+            #[cfg(feature = "audio-sources")]
+            api_client: None,
+        }
+    }
+
+    #[cfg(feature = "audio-sources")]
+    pub fn with_api_client(api_client: std::sync::Arc<sources::SoundCloudApiClient>) -> Self {
+        Self {
+            api_client: Some(api_client),
+        }
     }
 }
 
@@ -853,6 +871,121 @@ impl AudioSource for SoundCloudAudioSource {
             });
         }
 
+        #[cfg(feature = "audio-sources")]
+        {
+            if let Some(ref api_client) = self.api_client {
+                // Use SoundCloud API
+                match api_client.resolve_url(identifier).await {
+                    Ok(sc_track) => {
+                        match api_client.to_lavalink_track(&sc_track).await {
+                            Ok(track) => Ok(LoadResult {
+                                load_type: LoadType::Track,
+                                data: Some(LoadResultData::Track(Box::new(track))),
+                            }),
+                            Err(e) => Ok(LoadResult {
+                                load_type: LoadType::Error,
+                                data: Some(LoadResultData::Exception(Exception {
+                                    message: Some("Failed to convert SoundCloud track".to_string()),
+                                    severity: Severity::Common,
+                                    cause: e.to_string(),
+                                })),
+                            }),
+                        }
+                    }
+                    Err(e) => Ok(LoadResult {
+                        load_type: LoadType::Error,
+                        data: Some(LoadResultData::Exception(Exception {
+                            message: Some("Failed to resolve SoundCloud URL".to_string()),
+                            severity: Severity::Common,
+                            cause: e.to_string(),
+                        })),
+                    }),
+                }
+            } else {
+                // Fallback to yt-dlp implementation
+                self.load_track_fallback(identifier).await
+            }
+        }
+
+        #[cfg(not(feature = "audio-sources"))]
+        {
+            self.load_track_fallback(identifier).await
+        }
+    }
+
+    async fn search(&self, query: &str) -> Result<LoadResult> {
+        #[cfg(feature = "audio-sources")]
+        {
+            if let Some(ref api_client) = self.api_client {
+                // Use SoundCloud API for search
+                match api_client.search_tracks(query, Some(20)).await {
+                    Ok(sc_tracks) => {
+                        if sc_tracks.is_empty() {
+                            Ok(LoadResult {
+                                load_type: LoadType::Empty,
+                                data: None,
+                            })
+                        } else {
+                            let mut tracks = Vec::new();
+                            for sc_track in sc_tracks {
+                                match api_client.to_lavalink_track(&sc_track).await {
+                                    Ok(track) => tracks.push(track),
+                                    Err(e) => {
+                                        warn!("Failed to convert SoundCloud track {}: {}", sc_track.id, e);
+                                    }
+                                }
+                            }
+
+                            if tracks.is_empty() {
+                                Ok(LoadResult {
+                                    load_type: LoadType::Empty,
+                                    data: None,
+                                })
+                            } else {
+                                Ok(LoadResult {
+                                    load_type: LoadType::Search,
+                                    data: Some(LoadResultData::Search(tracks)),
+                                })
+                            }
+                        }
+                    }
+                    Err(e) => Ok(LoadResult {
+                        load_type: LoadType::Error,
+                        data: Some(LoadResultData::Exception(Exception {
+                            message: Some("SoundCloud search failed".to_string()),
+                            severity: Severity::Common,
+                            cause: e.to_string(),
+                        })),
+                    }),
+                }
+            } else {
+                // Fallback to yt-dlp search
+                self.search_fallback(query).await
+            }
+        }
+
+        #[cfg(not(feature = "audio-sources"))]
+        {
+            self.search_fallback(query).await
+        }
+    }
+}
+
+impl SoundCloudAudioSource {
+    /// Fallback track loading using yt-dlp
+    async fn load_track_fallback(&self, identifier: &str) -> Result<LoadResult> {
+        // Direct URL - validate and normalize
+        if !self.is_valid_soundcloud_url(identifier) {
+            return Ok(LoadResult {
+                load_type: LoadType::Error,
+                data: Some(LoadResultData::Exception(Exception {
+                    message: Some("Invalid SoundCloud URL".to_string()),
+                    severity: Severity::Common,
+                    cause: "URL is not a valid SoundCloud URL".to_string(),
+                })),
+            });
+        }
+
         // Use yt-dlp to extract track information
         match self.extract_track_info(identifier).await {
             Ok(track_info) => {
@@ -884,7 +1017,8 @@ impl AudioSource for SoundCloudAudioSource {
         }
     }
 
-    async fn search(&self, query: &str) -> Result<LoadResult> {
+    /// Fallback search using yt-dlp
+    async fn search_fallback(&self, query: &str) -> Result<LoadResult> {
         // Use yt-dlp to search SoundCloud
         let search_query = format!("scsearch5:{query}");
 
@@ -912,9 +1046,7 @@ impl AudioSource for SoundCloudAudioSource {
             }),
         }
     }
-}
 
-impl SoundCloudAudioSource {
     /// Validate if the identifier is a valid SoundCloud URL
     fn is_valid_soundcloud_url(&self, identifier: &str) -> bool {
         // SoundCloud URL patterns

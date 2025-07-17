@@ -27,7 +27,7 @@ voice-encryption = ["discord", "songbird/builtin-queue"]
 
 # Audio processing features
 audio-processing = ["dep:symphonia", "dep:rubato", "dep:fundsp", "dep:num_cpus"]
-audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:html-escape", "dep:serde_json", "dep:base64", "tokio/process"]
+audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:html-escape", "dep:serde_json", "dep:base64", "dep:scraper", "dep:select", "dep:urlencoding", "tokio/process"]
 
 # Optional audio codecs (granular control)
 codec-mp3 = ["symphonia/mp3"]
@@ -94,8 +94,10 @@ symphonia = { version = "0.5", default-features = false, optional = true }
 rubato = { version = "0.14", default-features = false, optional = true }
 fundsp = { version = "0.20", default-features = false, optional = true }
 
-# HTTP client for audio sources (optional)
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"], optional = true }
+# HTTP client and audio sources (optional)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
+scraper = { version = "0.20", optional = true }
+select = { version = "0.6", optional = true }
 
 # Async utilities (minimal features)
 futures = { version = "0.3", default-features = false, features = ["std"] }
