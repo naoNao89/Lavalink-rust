@@ -42,6 +42,10 @@ application-*.yml
 !application.yml
 !application-example.yml
 
+# External plugin sources (cloned during CI/CD)
+youtube-source/
+youtube-source-external/
+
 # Nix files
 result
 result-*

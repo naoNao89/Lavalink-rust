@@ -98,7 +98,9 @@ macro_rules! generate_discord_fallback_handlers {
                                 artwork_url: None,
                                 isrc: None,
                             },
+                            #[cfg(feature = "plugins")]
                             plugin_info: std::collections::HashMap::new(),
+                            #[cfg(feature = "rest-api")]
                             user_data: std::collections::HashMap::new(),
                         };
                         player_guard.current_track = Some(track);
@@ -475,10 +477,10 @@ pub async fn version_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
 }
 
 /// Stats handler - /v4/stats
-pub async fn stats_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let stats = state
+pub async fn stats_handler(State(app_state): State<Arc<AppState>>) -> impl IntoResponse {
+    let stats = app_state
         .stats_collector
-        .get_stats_with_players(&state.player_manager)
+        .get_stats_with_players(&app_state.player_manager)
         .await;
     (StatusCode::OK, Json(stats))
 }
@@ -929,7 +931,7 @@ pub async fn update_player_handler(
                         identifier: identifier.clone(),
                         is_seekable: true,
                         author: "Test Author".to_string(),
-                        length: 180000, // 3 minutes
+                        length: 180_000, // 3 minutes
                         is_stream: false,
                         position: 0,
                         title: format!("Test Track: {identifier}"),

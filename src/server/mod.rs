@@ -5,7 +5,9 @@ use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 // Import player management types (needed for both Discord and standalone modes)
-use crate::player::{PlayerEvent, PlayerEventHandler, PlayerManager};
+#[cfg(feature = "websocket")]
+use crate::player::PlayerEventHandler;
+use crate::player::{PlayerEvent, PlayerManager};
 
 #[cfg(feature = "server")]
 use axum::{
@@ -119,7 +121,7 @@ impl LavalinkServer {
     pub async fn new(config: LavalinkConfig) -> Result<Self> {
         let info = Info::new();
         #[cfg(feature = "websocket")]
-        let sessions = Arc::new(dashmap::DashMap::new());
+        let sessions = Arc::new(dashmap::DashMap::<String, WebSocketSession>::new());
         #[cfg(feature = "server")]
         let stats_collector = Arc::new(StatsCollector::new());
 
@@ -349,6 +351,7 @@ impl LavalinkServer {
 
     /// Perform cleanup operations during shutdown
     #[allow(dead_code)] // Used by server shutdown logic
+    #[allow(clippy::await_holding_lock)] // Acceptable during shutdown for proper cleanup
     async fn cleanup(&self) {
         info!("Shutting down Lavalink server...");
 
@@ -383,8 +386,8 @@ impl LavalinkServer {
 
         // Shutdown plugin manager
         info!("Shutting down plugin manager...");
-        if let Ok(mut plugin_manager) = self.app_state.plugin_manager.write() {
-            plugin_manager.unload_all_plugins();
+        if let Ok(mut plugin_manager) = self.app_state.plugin_manager.try_write() {
+            plugin_manager.unload_all_plugins().await;
         }
 
         info!("Cleanup completed");

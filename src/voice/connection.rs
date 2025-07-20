@@ -713,9 +713,8 @@ impl VoiceConnectionManager {
             // Convert VoiceConnectionType to VoiceCallHandle
             if let Some(connection) = self.voice_client.get_connection(&guild_id).await {
                 return Ok(Some(Self::convert_connection_to_handle(connection)));
-            } else {
-                return Ok(None);
             }
+            return Ok(None);
         }
 
         // Check circuit breaker state

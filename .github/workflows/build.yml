@@ -34,6 +34,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Clone YouTube Source Plugin
+        run: |
+          echo "Cloning YouTube source plugin from external repository..."
+          git clone --depth 1 --branch plugin https://github.com/lavalink-devs/youtube-source.git youtube-source-external
+          echo "YouTube source plugin cloned successfully"
+
+      - name: Setup Java for YouTube Plugin Build
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Build YouTube Plugin with Gradle
+        run: |
+          cd youtube-source-external
+          echo "Building YouTube source plugin..."
+          chmod +x gradlew
+          ./gradlew build --no-daemon
+          echo "Plugin build completed"
+
+          # Create plugins directory if it doesn't exist
+          mkdir -p ../plugins
+
+          # Copy built plugin JAR to plugins directory
+          find . -name "youtube-plugin-*.jar" -path "*/build/libs/*" -exec cp {} ../plugins/ \;
+
+          # List what was copied
+          echo "Plugin JARs copied to plugins directory:"
+          ls -la ../plugins/
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -85,6 +115,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Clone YouTube Source Plugin
+        run: |
+          echo "Cloning YouTube source plugin from external repository..."
+          git clone --depth 1 --branch plugin https://github.com/lavalink-devs/youtube-source.git youtube-source-external
+          echo "YouTube source plugin cloned successfully"
+
+      - name: Setup Java for YouTube Plugin Build
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Build YouTube Plugin with Gradle
+        run: |
+          cd youtube-source-external
+          echo "Building YouTube source plugin..."
+          chmod +x gradlew
+          ./gradlew build --no-daemon
+          echo "Plugin build completed"
+
+          # Create plugins directory if it doesn't exist
+          mkdir -p ../plugins
+
+          # Copy built plugin JAR to plugins directory
+          find . -name "youtube-plugin-*.jar" -path "*/build/libs/*" -exec cp {} ../plugins/ \;
+
+          # List what was copied
+          echo "Plugin JARs copied to plugins directory:"
+          ls -la ../plugins/
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -171,6 +231,13 @@ jobs:
         with:
           name: ${{ steps.artifact.outputs.name }}
           path: ${{ steps.artifact.outputs.binary }}
+
+      - name: Upload YouTube plugin JAR artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-plugin-${{ matrix.target }}
+          path: plugins/youtube-plugin-*.jar
+          if-no-files-found: warn
 
   publish:
     name: Publish to crates.io

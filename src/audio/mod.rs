@@ -1,6 +1,17 @@
 // Audio processing and source management module
 // This will handle audio sources, track loading, and audio processing
 
+/// Simple HTML entity decoder for common entities
+fn decode_html_entities(input: &str) -> String {
+    input
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+}
+
 #[cfg(feature = "discord")]
 pub mod quality;
 #[cfg(feature = "discord")]
@@ -218,7 +229,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use base64::Engine;
 use regex::Regex;
-use tracing::warn;
 use tracing::{debug, info, warn};
 
 use tokio::process::Command as AsyncCommand;
@@ -301,6 +311,7 @@ impl SoundCloudAudioSource {
     }
 
     #[cfg(feature = "audio-sources")]
+    #[allow(dead_code)]
     pub fn with_api_client(api_client: std::sync::Arc<sources::SoundCloudApiClient>) -> Self {
         Self {
             api_client: Some(api_client),
@@ -356,9 +367,28 @@ pub struct VimeoAudioSource;
 #[derive(Clone)]
 pub struct NicoAudioSource;
 
-/// Local file audio source (placeholder)
+/// Local file audio source
 #[derive(Clone)]
-pub struct LocalAudioSource;
+pub struct LocalAudioSource {
+    #[cfg(feature = "audio-sources")]
+    inner: sources::LocalAudioSource,
+}
+
+impl LocalAudioSource {
+    #[allow(dead_code)] // Used in tests
+    pub fn new() -> Self {
+        Self {
+            #[cfg(feature = "audio-sources")]
+            inner: sources::LocalAudioSource::new(),
+        }
+    }
+}
+
+impl Default for LocalAudioSource {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Fallback audio source for unsupported platforms (Spotify, Apple Music, Deezer)
 /// Converts unsupported URLs to YouTube searches
@@ -380,7 +410,7 @@ impl AudioSourceManager {
             sources.push(AudioSourceType::YouTube(YouTubeAudioSource));
         }
         if config.is_none_or(|c| c.soundcloud.unwrap_or(true)) {
-            sources.push(AudioSourceType::SoundCloud(SoundCloudAudioSource));
+            sources.push(AudioSourceType::SoundCloud(SoundCloudAudioSource::new()));
         }
         if config.is_none_or(|c| c.bandcamp.unwrap_or(true)) {
             sources.push(AudioSourceType::Bandcamp(BandcampAudioSource));
@@ -395,7 +425,7 @@ impl AudioSourceManager {
             sources.push(AudioSourceType::Nico(NicoAudioSource));
         }
         if config.is_some_and(|c| c.local.unwrap_or(false)) {
-            sources.push(AudioSourceType::Local(LocalAudioSource));
+            sources.push(AudioSourceType::Local(LocalAudioSource::new()));
         }
 
         // Always add fallback for unsupported sources
@@ -1329,9 +1359,9 @@ impl BandcampAudioSource {
                 .map(|m| m.as_str())
                 .unwrap_or("Unknown Artist");
 
-            // Clean up HTML entities
-            let title = html_escape::decode_html_entities(title).to_string();
-            let artist = html_escape::decode_html_entities(artist).to_string();
+            // Clean up HTML entities (simple implementation)
+            let title = decode_html_entities(title);
+            let artist = decode_html_entities(artist);
 
             // Create a track info
             let track_info = crate::protocol::TrackInfo {
@@ -1981,127 +2011,142 @@ impl AudioSource for NicoAudioSource {
 #[async_trait]
 impl AudioSource for LocalAudioSource {
     fn name(&self) -> &str {
-        "local"
+        #[cfg(feature = "audio-sources")]
+        {
+            self.inner.name()
+        }
+        #[cfg(not(feature = "audio-sources"))]
+        {
+            "local"
+        }
     }
 
     fn can_handle(&self, identifier: &str) -> bool {
-        // Handle file:// URLs and local file paths
-        if identifier.starts_with("file://") {
-            let path = identifier.strip_prefix("file://").unwrap_or(identifier);
-            return std::path::Path::new(path).exists();
+        #[cfg(feature = "audio-sources")]
+        {
+            self.inner.can_handle(identifier)
         }
+        #[cfg(not(feature = "audio-sources"))]
+        {
+            // Handle file:// URLs and local file paths
+            if identifier.starts_with("file://") {
+                let path = identifier.strip_prefix("file://").unwrap_or(identifier);
+                return std::path::Path::new(path).exists();
+            }
 
-        // Handle direct file paths (no protocol)
-        if !identifier.contains("://") {
-            return std::path::Path::new(identifier).exists();
+            // Handle direct file paths (no protocol)
+            if !identifier.contains("://") {
+                return std::path::Path::new(identifier).exists();
+            }
+
+            false
         }
-
-        false
     }
 
     async fn load_track(&self, identifier: &str) -> Result<LoadResult> {
-        // Normalize the path
-        let file_path = if identifier.starts_with("file://") {
-            identifier.strip_prefix("file://").unwrap_or(identifier)
-        } else {
-            identifier
-        };
-
-        let path = std::path::Path::new(file_path);
-
-        // Check if file exists
-        if !path.exists() {
-            return Ok(LoadResult {
-                load_type: LoadType::Error,
-                data: Some(LoadResultData::Exception(Exception {
-                    message: Some("File not found".to_string()),
-                    severity: Severity::Common,
-                    cause: "File does not exist".to_string(),
-                })),
-            });
+        #[cfg(feature = "audio-sources")]
+        {
+            self.inner.load_track(identifier).await
         }
+        #[cfg(not(feature = "audio-sources"))]
+        {
+            // Fallback implementation when audio-sources feature is disabled
+            let file_path = if identifier.starts_with("file://") {
+                identifier.strip_prefix("file://").unwrap_or(identifier)
+            } else {
+                identifier
+            };
 
-        // Check if it's a file (not a directory)
-        if !path.is_file() {
-            return Ok(LoadResult {
-                load_type: LoadType::Error,
-                data: Some(LoadResultData::Exception(Exception {
-                    message: Some("Path is not a file".to_string()),
-                    severity: Severity::Common,
-                    cause: "Path points to a directory or special file".to_string(),
-                })),
+            let path = std::path::Path::new(file_path);
+
+            if !path.exists() {
+                return Ok(LoadResult {
+                    load_type: LoadType::Error,
+                    data: Some(LoadResultData::Exception(Exception {
+                        message: Some("File not found".to_string()),
+                        severity: Severity::Common,
+                        cause: "File does not exist".to_string(),
+                    })),
+                });
+            }
+
+            if !path.is_file() {
+                return Ok(LoadResult {
+                    load_type: LoadType::Error,
+                    data: Some(LoadResultData::Exception(Exception {
+                        message: Some("Path is not a file".to_string()),
+                        severity: Severity::Common,
+                        cause: "Path points to a directory or special file".to_string(),
+                    })),
+                });
+            }
+
+            let title = path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .unwrap_or("Unknown Title");
+
+            let track_info = crate::protocol::TrackInfo {
+                identifier: file_path.to_string(),
+                is_seekable: true,
+                author: "Local File".to_string(),
+                length: 0, // Cannot determine without audio processing
+                is_stream: false,
+                position: 0,
+                title: title.to_string(),
+                uri: Some(format!("file://{file_path}")),
+                artwork_url: None,
+                isrc: None,
+                source_name: "local".to_string(),
+            };
+
+            let track_data = serde_json::json!({
+                "identifier": file_path,
+                "source": "local",
+                "uri": format!("file://{}", file_path),
+                "title": title,
+                "author": "Local File",
+                "duration": 0
             });
+
+            let encoded = base64::Engine::encode(
+                &base64::engine::general_purpose::STANDARD,
+                track_data.to_string(),
+            );
+
+            let track = create_track(encoded, track_info);
+
+            Ok(LoadResult {
+                load_type: LoadType::Track,
+                data: Some(LoadResultData::Track(Box::new(track))),
+            })
         }
-
-        // Extract metadata from file
-        let _file_name = path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("Unknown File");
-
-        let title = path
-            .file_stem()
-            .and_then(|stem| stem.to_str())
-            .unwrap_or("Unknown Title");
-
-        // Get file size for duration estimation (rough approximation)
-        let file_size = std::fs::metadata(path)
-            .map(|metadata| metadata.len())
-            .unwrap_or(0);
-
-        // Rough duration estimation (assuming average bitrate of 128kbps)
-        // This is very approximate - real implementation would use audio metadata libraries
-        let estimated_duration = if file_size > 0 {
-            (file_size * 8) / (128 * 1000) * 1000 // Convert to milliseconds
-        } else {
-            0
-        };
-
-        let track_info = crate::protocol::TrackInfo {
-            identifier: file_path.to_string(),
-            is_seekable: true,
-            author: "Local File".to_string(),
-            length: estimated_duration,
-            is_stream: false,
-            position: 0,
-            title: title.to_string(),
-            uri: Some(format!("file://{file_path}")),
-            artwork_url: None,
-            isrc: None,
-            source_name: "local".to_string(),
-        };
-
-        // Create track data for encoding
-        let track_data = serde_json::json!({
-            "identifier": file_path,
-            "source": "local",
-            "uri": format!("file://{}", file_path),
-            "title": title,
-            "author": "Local File",
-            "duration": estimated_duration
-        });
-
-        let encoded = base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            track_data.to_string(),
-        );
-
-        let track = create_track(encoded, track_info);
-
-        Ok(LoadResult {
-            load_type: LoadType::Track,
-            data: Some(LoadResultData::Track(Box::new(track))),
-        })
     }
 
     async fn search(&self, query: &str) -> Result<LoadResult> {
-        // Local search could scan directories for matching files
-        // For now, return empty as this is complex to implement properly
-        let _ = query; // Suppress unused parameter warning
-        Ok(LoadResult {
-            load_type: LoadType::Empty,
-            data: None,
-        })
+        #[cfg(feature = "audio-sources")]
+        {
+            let tracks = self.inner.search_tracks(query, Some(20)).await?;
+            if tracks.is_empty() {
+                Ok(LoadResult {
+                    load_type: LoadType::Empty,
+                    data: None,
+                })
+            } else {
+                Ok(LoadResult {
+                    load_type: LoadType::Search,
+                    data: Some(LoadResultData::Search(tracks)),
+                })
+            }
+        }
+        #[cfg(not(feature = "audio-sources"))]
+        {
+            let _ = query; // Suppress unused parameter warning
+            Ok(LoadResult {
+                load_type: LoadType::Empty,
+                data: None,
+            })
+        }
     }
 }
 
@@ -2138,7 +2183,6 @@ impl AudioSource for AudioSourceManager {
                             identifier,
                             e
                         );
-                        continue;
                     }
                 }
             }
@@ -2176,7 +2220,6 @@ impl AudioSource for AudioSourceManager {
                             query,
                             e
                         );
-                        continue;
                     }
                 }
             }

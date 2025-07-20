@@ -27,7 +27,7 @@ voice-encryption = ["discord", "songbird/builtin-queue"]
 
 # Audio processing features
 audio-processing = ["dep:symphonia", "dep:rubato", "dep:fundsp", "dep:num_cpus"]
-audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:html-escape", "dep:serde_json", "dep:base64", "dep:scraper", "dep:select", "dep:urlencoding", "tokio/process"]
+audio-sources = ["audio-processing", "dep:reqwest", "reqwest/json", "reqwest/stream", "dep:url", "dep:regex", "dep:serde_json", "dep:base64", "dep:scraper", "dep:urlencoding", "tokio/process"]
 
 # Optional audio codecs (granular control)
 codec-mp3 = ["symphonia/mp3"]
@@ -46,9 +46,9 @@ tracing-appender = ["dep:tracing-appender"]
 # Plugin system
 plugins = ["dep:libloading", "dep:libc", "dep:urlencoding", "dep:serde_json"]
 
-# Security and cryptography
-crypto = ["dep:aws-lc-rs", "dep:curve25519-dalek", "dep:rand"]
-tls = ["dep:rustls", "crypto"]
+# Security and cryptography (minimal)
+crypto = ["dep:rand"]
+tls = ["dep:rustls"]
 
 # Development and testing features
 dev-tools = ["dep:mockall", "dep:wiremock", "dep:criterion"]
@@ -96,8 +96,7 @@ fundsp = { version = "0.20", default-features = false, optional = true }
 
 # HTTP client and audio sources (optional)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"], optional = true }
-scraper = { version = "0.20", optional = true }
-select = { version = "0.6", optional = true }
+scraper = { version = "0.20", default-features = false, optional = true }
 
 # Async utilities (minimal features)
 futures = { version = "0.3", default-features = false, features = ["std"] }
@@ -108,10 +107,8 @@ async-trait = { version = "0.1", default-features = false }
 anyhow = { version = "1.0", default-features = false, features = ["std"] }
 thiserror = { version = "1.0", default-features = false }
 
-# Cryptography (optional)
-aws-lc-rs = { version = "1.13", default-features = false, optional = true }
-curve25519-dalek = { version = "4.1", default-features = false, optional = true }
-rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"], optional = true }
+# TLS support (optional)
+rustls = { version = "0.23", default-features = false, features = ["ring"], optional = true }
 
 # Plugin system (optional)
 libloading = { version = "0.8", default-features = false, optional = true }
@@ -135,7 +132,6 @@ url = { version = "2.5", default-features = false, optional = true }
 regex = { version = "1.11", default-features = false, features = ["std"], optional = true }
 rand = { version = "0.9", default-features = false, features = ["std", "std_rng"], optional = true }
 urlencoding = { version = "2.1", default-features = false, optional = true }
-html-escape = { version = "0.2", default-features = false, optional = true }
 
 # Optional development and testing dependencies
 mockall = { version = "0.13", optional = true }
@@ -252,9 +248,7 @@ opt-level = 1
 [profile.dev.package.audiopus]
 opt-level = 2
 
-# Crypto dependencies
-[profile.dev.package.aws-lc-rs]
-opt-level = 2
+# TLS dependencies
 [profile.dev.package.rustls]
 opt-level = 1
 
@@ -263,3 +257,8 @@ opt-level = 1
 opt-level = 1
 [profile.dev.package.reqwest]
 opt-level = 1
+
+# Binary targets
+[[bin]]
+name = "lavalink-rust"
+path = "src/main.rs"

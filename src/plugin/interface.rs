@@ -95,8 +95,8 @@ impl PluginInterfaceWrapper {
             unsafe {
                 let schema_ptr = get_schema();
                 if !schema_ptr.is_null() {
-                    let schema_str = CStr::from_ptr(schema_ptr).to_string_lossy();
-                    serde_json::from_str(&schema_str).ok()
+                    let schema_cstr = CStr::from_ptr(schema_ptr).to_string_lossy();
+                    serde_json::from_str(&schema_cstr).ok()
                 } else {
                     None
                 }

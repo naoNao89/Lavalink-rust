@@ -137,7 +137,7 @@ impl Track {
                     identifier: "dQw4w9WgXcQ".to_string(),
                     is_seekable: true,
                     author: "RickAstleyVEVO".to_string(),
-                    length: 212000,
+                    length: 212_000,
                     is_stream: false,
                     position: 0,
                     title: "Rick Astley - Never Gonna Give You Up".to_string(),

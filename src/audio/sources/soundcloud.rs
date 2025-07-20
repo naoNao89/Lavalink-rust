@@ -6,13 +6,13 @@
 use anyhow::{anyhow, Result};
 use base64::Engine;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use serde::Deserialize;
+use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use url::Url;
 
-use crate::protocol::{Exception, LoadResult, LoadResultData, LoadType, Severity, Track};
+use crate::protocol::Track;
 
 /// SoundCloud API client configuration
 #[derive(Debug, Clone)]
@@ -38,36 +38,48 @@ impl Default for SoundCloudConfig {
 #[derive(Debug, Deserialize)]
 struct TokenResponse {
     access_token: String,
+    #[allow(dead_code)]
     token_type: String,
     expires_in: u64,
+    #[allow(dead_code)]
     scope: String,
+    #[allow(dead_code)]
     refresh_token: Option<String>,
 }
 
 /// SoundCloud track information from API
 #[derive(Debug, Deserialize)]
-struct SoundCloudTrack {
-    id: u64,
-    title: String,
-    description: Option<String>,
-    duration: u64, // in milliseconds
-    permalink_url: String,
-    stream_url: Option<String>,
-    download_url: Option<String>,
-    artwork_url: Option<String>,
-    user: SoundCloudUser,
+pub struct SoundCloudTrack {
+    pub id: u64,
+    pub title: String,
+    #[allow(dead_code)]
+    pub description: Option<String>,
+    pub duration: u64, // in milliseconds
+    pub permalink_url: String,
+    #[allow(dead_code)]
+    pub stream_url: Option<String>,
+    #[allow(dead_code)]
+    pub download_url: Option<String>,
+    pub artwork_url: Option<String>,
+    pub user: SoundCloudUser,
+    #[allow(dead_code)]
     genre: Option<String>,
+    #[allow(dead_code)]
     tag_list: Option<String>,
+    #[allow(dead_code)]
     playback_count: Option<u64>,
     access: Option<String>, // "playable", "preview", "blocked"
 }
 
 /// SoundCloud user information
 #[derive(Debug, Deserialize)]
-struct SoundCloudUser {
-    id: u64,
-    username: String,
+pub struct SoundCloudUser {
+    #[allow(dead_code)]
+    pub id: u64,
+    pub username: String,
+    #[allow(dead_code)]
     permalink: String,
+    #[allow(dead_code)]
     avatar_url: Option<String>,
 }
 
@@ -75,7 +87,9 @@ struct SoundCloudUser {
 #[derive(Debug, Deserialize)]
 struct SoundCloudSearchResponse {
     collection: Vec<SoundCloudTrack>,
+    #[allow(dead_code)]
     next_href: Option<String>,
+    #[allow(dead_code)]
     query_urn: Option<String>,
 }
 
@@ -84,6 +98,7 @@ struct SoundCloudSearchResponse {
 struct SoundCloudStreamResponse {
     url: String,
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     stream_type: String,
 }
 
@@ -103,6 +118,7 @@ pub struct SoundCloudApiClient {
 
 impl SoundCloudApiClient {
     /// Create a new SoundCloud API client
+    #[allow(dead_code)]
     pub fn new(config: SoundCloudConfig) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
@@ -146,7 +162,7 @@ impl SoundCloudApiClient {
         let response = self
             .client
             .post(&auth_url)
-            .header("Authorization", format!("Basic {}", encoded_credentials))
+            .header("Authorization", format!("Basic {encoded_credentials}"))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&[("grant_type", "client_credentials")])
             .send()
@@ -192,7 +208,7 @@ impl SoundCloudApiClient {
         let response = self
             .client
             .get(&resolve_url)
-            .header("Authorization", format!("OAuth {}", access_token))
+            .header("Authorization", format!("OAuth {access_token}"))
             .query(&[("url", url)])
             .send()
             .await?;
@@ -221,7 +237,7 @@ impl SoundCloudApiClient {
         let response = self
             .client
             .get(&search_url)
-            .header("Authorization", format!("OAuth {}", access_token))
+            .header("Authorization", format!("OAuth {access_token}"))
             .query(&[
                 ("q", query),
                 ("limit", &limit.to_string()),
@@ -250,7 +266,7 @@ impl SoundCloudApiClient {
         let response = self
             .client
             .get(&stream_url)
-            .header("Authorization", format!("OAuth {}", access_token))
+            .header("Authorization", format!("OAuth {access_token}"))
             .send()
             .await?;
 
@@ -291,10 +307,10 @@ impl SoundCloudApiClient {
             encoded: base64::engine::general_purpose::STANDARD.encode(&identifier), // Simple encoding for now
             info: crate::protocol::TrackInfo {
                 identifier: identifier.clone(),
-                seekable: true,
+                is_seekable: true,
                 author: sc_track.user.username.clone(),
                 length: sc_track.duration,
-                stream: false, // SoundCloud tracks are not live streams
+                is_stream: false, // SoundCloud tracks are not live streams
                 position: 0,
                 title: sc_track.title.clone(),
                 uri: Some(sc_track.permalink_url.clone()),
@@ -302,8 +318,10 @@ impl SoundCloudApiClient {
                 isrc: None, // SoundCloud doesn't provide ISRC
                 source_name: "soundcloud".to_string(),
             },
-            plugin_info: None,
-            user_data: None,
+            #[cfg(feature = "plugins")]
+            plugin_info: std::collections::HashMap::new(),
+            #[cfg(feature = "rest-api")]
+            user_data: std::collections::HashMap::new(),
         };
 
         Ok(track)
@@ -311,6 +329,7 @@ impl SoundCloudApiClient {
 }
 
 /// Validate if a URL is a valid SoundCloud URL
+#[allow(dead_code)]
 pub fn is_valid_soundcloud_url(url: &str) -> bool {
     if let Ok(parsed_url) = Url::parse(url) {
         if let Some(host) = parsed_url.host_str() {
@@ -321,7 +340,8 @@ pub fn is_valid_soundcloud_url(url: &str) -> bool {
 }
 
 /// Extract track ID from SoundCloud URL if possible
-pub fn extract_track_id(url: &str) -> Option<String> {
+#[allow(dead_code)]
+pub fn extract_track_id(_url: &str) -> Option<String> {
     // This would require additional parsing logic
     // For now, return None and use the resolve endpoint
     None

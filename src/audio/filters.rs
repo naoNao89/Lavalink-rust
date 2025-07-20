@@ -8,9 +8,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info};
 
-#[cfg(feature = "audio-processing")]
-use fundsp::hacker::*;
-
 use crate::protocol::filters::*;
 
 /// Audio format information for filter processing
@@ -18,6 +15,7 @@ use crate::protocol::filters::*;
 pub struct AudioFormat {
     pub sample_rate: f32,
     pub channels: usize,
+    #[allow(dead_code)]
     pub bits_per_sample: u32,
 }
 
@@ -37,6 +35,7 @@ pub trait AudioFilter: Send + Sync {
     fn process(&mut self, samples: &mut [f32], format: &AudioFormat) -> Result<()>;
 
     /// Get the filter name for debugging
+    #[allow(dead_code)]
     fn name(&self) -> &'static str;
 
     /// Check if the filter is enabled
@@ -46,6 +45,7 @@ pub trait AudioFilter: Send + Sync {
     fn reset(&mut self);
 
     /// Get filter latency in samples
+    #[allow(dead_code)]
     fn latency(&self) -> usize {
         0
     }
@@ -75,6 +75,7 @@ impl FilterChain {
     }
 
     /// Clear all filters
+    #[allow(dead_code)]
     pub fn clear(&mut self) {
         self.filters.clear();
         self.enabled = false;
@@ -108,6 +109,7 @@ impl FilterChain {
     }
 
     /// Get total latency of the filter chain
+    #[allow(dead_code)]
     pub fn total_latency(&self) -> usize {
         self.filters.iter().map(|f| f.latency()).sum()
     }
@@ -122,13 +124,14 @@ pub struct VolumeFilter {
 impl VolumeFilter {
     pub fn new(volume: f32) -> Self {
         Self {
-            volume: volume.max(0.0).min(5.0), // Clamp to reasonable range
+            volume: volume.clamp(0.0, 5.0), // Clamp to reasonable range
             enabled: volume != 1.0,
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_volume(&mut self, volume: f32) {
-        self.volume = volume.max(0.0).min(5.0);
+        self.volume = volume.clamp(0.0, 5.0);
         self.enabled = volume != 1.0;
     }
 }
@@ -161,8 +164,10 @@ impl AudioFilter for VolumeFilter {
 
 /// Equalizer band filter
 pub struct EqualizerBand {
+    #[allow(dead_code)]
     band: i32,
     gain: f32,
+    #[allow(dead_code)]
     frequency: f32,
     enabled: bool,
 }

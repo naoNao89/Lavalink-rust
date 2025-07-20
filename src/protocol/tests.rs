@@ -48,10 +48,10 @@ mod info_tests {
         assert_eq!(info.version.major, 4);
         assert_eq!(info.version.minor, 0);
         assert_eq!(info.version.patch, 0);
-        assert_eq!(info.build_time, 1664223916812);
+        assert_eq!(info.build_time, 1_664_223_916_812);
         assert_eq!(info.git.branch, "master");
         assert_eq!(info.git.commit, "85c5ab5");
-        assert_eq!(info.git.commit_time, 1664223916812);
+        assert_eq!(info.git.commit_time, 1_664_223_916_812);
         assert_eq!(info.jvm, "N/A - Rust");
         assert_eq!(info.lavaplayer, "N/A - Native Rust");
         assert!(info.source_managers.contains(&"youtube".to_string()));
@@ -97,7 +97,7 @@ mod info_tests {
 
         assert_eq!(git_info.branch, "feature/rust-migration");
         assert_eq!(git_info.commit, "abc123def456");
-        assert_eq!(git_info.commit_time, 1700000000000);
+        assert_eq!(git_info.commit_time, 1_700_000_000_000);
     }
 }
 
@@ -134,7 +134,7 @@ mod track_tests {
         assert_eq!(track.info.identifier, "dQw4w9WgXcQ");
         assert!(track.info.is_seekable);
         assert_eq!(track.info.author, "RickAstleyVEVO");
-        assert_eq!(track.info.length, 212000);
+        assert_eq!(track.info.length, 212_000);
         assert!(!track.info.is_stream);
         assert_eq!(track.info.position, 0);
         assert_eq!(track.info.title, "Rick Astley - Never Gonna Give You Up");
@@ -159,7 +159,7 @@ mod track_tests {
                 identifier: "dQw4w9WgXcQ".to_string(),
                 is_seekable: true,
                 author: "RickAstleyVEVO".to_string(),
-                length: 212000,
+                length: 212_000,
                 is_stream: false,
                 position: 0,
                 title: "Rick Astley - Never Gonna Give You Up".to_string(),
@@ -309,7 +309,7 @@ mod error_tests {
         let error: ErrorResponse =
             test_json_roundtrip(json).expect("Failed to deserialize ErrorResponse");
 
-        assert_eq!(error.timestamp, 1667857581613);
+        assert_eq!(error.timestamp, 1_667_857_581_613);
         assert_eq!(error.status, 404);
         assert_eq!(error.error, "Not Found");
         assert_eq!(error.trace, Some("...".to_string()));
@@ -376,7 +376,7 @@ mod omissible_tests {
 
     #[test]
     fn test_omissible_omitted() {
-        let json = r#"{}"#;
+        let json = r"{}";
 
         #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
         struct TestStruct {

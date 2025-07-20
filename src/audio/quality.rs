@@ -497,7 +497,7 @@ impl QualityPreset {
                 buffer_config: BufferConfig {
                     playout_buffer_length: 10, // Maximum stability
                     playout_spike_length: 5,
-                    decode_state_timeout_ms: 120000,
+                    decode_state_timeout_ms: 120_000,
                 },
                 opus_quality: 10,        // Maximum Opus quality
                 adaptive_quality: false, // Don't downgrade from maximum

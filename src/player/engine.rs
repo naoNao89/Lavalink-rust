@@ -482,6 +482,7 @@ impl AudioPlayerEngine {
         if filters.low_pass.is_present() {
             debug!("Low pass filter enabled");
         }
+        #[cfg(feature = "plugins")]
         if !filters.plugin_filters.is_empty() {
             debug!(
                 "Plugin filters enabled: {:?}",
