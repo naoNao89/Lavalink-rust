@@ -16,7 +16,7 @@ pub use loader::*;
 /// Enhanced plugin manager for handling Lavalink plugins
 pub struct PluginManager {
     plugins: HashMap<String, Box<dyn LavalinkPlugin + Send + Sync>>,
-    dynamic_loader: DynamicPluginLoader,
+    pub dynamic_loader: DynamicPluginLoader,
 }
 
 /// Trait for Lavalink plugins
@@ -27,6 +27,15 @@ pub trait LavalinkPlugin {
 
     /// Get the plugin version
     fn version(&self) -> &str;
+
+
+
+    /// Shutdown the plugin
+    async fn shutdown(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+
 }
 
 impl PluginManager {
@@ -54,6 +63,22 @@ impl PluginManager {
         }
     }
 
+
+
+    /// Unregister a plugin
+    pub async fn unregister_plugin(&mut self, name: &str) -> Result<()> {
+        if let Some(mut plugin) = self.plugins.remove(name) {
+            // Shutdown the plugin
+            if let Err(e) = plugin.shutdown().await {
+                tracing::warn!("Error shutting down plugin '{}': {}", name, e);
+            }
+            tracing::info!("Unregistered plugin: {}", name);
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Plugin '{}' not found", name))
+        }
+    }
+
     /// Get plugin by name
     pub fn get_plugin(&self, name: &str) -> Option<&(dyn LavalinkPlugin + Send + Sync)> {
         self.plugins.get(name).map(|boxed| boxed.as_ref())
@@ -63,6 +88,8 @@ impl PluginManager {
     pub fn get_plugin_names(&self) -> Vec<String> {
         self.plugins.keys().cloned().collect()
     }
+
+
 
     /// Load all dynamic plugins from the plugins directory
     pub fn load_dynamic_plugins(&mut self) -> Result<Vec<LoadedPlugin>> {
@@ -85,11 +112,20 @@ impl PluginManager {
     }
 
     /// Unload all plugins
-    pub fn unload_all_plugins(&mut self) {
-        if let Err(e) = self.dynamic_loader.unload_all_plugins() {
-            tracing::error!("Failed to unload all plugins: {}", e);
+    pub async fn unload_all_plugins(&mut self) {
+        // Shutdown all registered plugins
+        let plugin_names: Vec<String> = self.plugins.keys().cloned().collect();
+        for name in plugin_names {
+            if let Err(e) = self.unregister_plugin(&name).await {
+                tracing::error!("Failed to unregister plugin '{}': {}", name, e);
+            }
         }
-        self.plugins.clear();
+
+        // Unload dynamic plugins
+        if let Err(e) = self.dynamic_loader.unload_all_plugins() {
+            tracing::error!("Failed to unload dynamic plugins: {}", e);
+        }
+
         tracing::info!("Unloaded all plugins");
     }
 }
@@ -98,6 +134,7 @@ impl PluginManager {
 pub struct ExamplePlugin {
     name: String,
     version: String,
+    initialized: bool,
 }
 
 impl ExamplePlugin {
@@ -105,8 +142,11 @@ impl ExamplePlugin {
         Self {
             name: "example-plugin".to_string(),
             version: "1.0.0".to_string(),
+            initialized: false,
         }
     }
+
+
 }
 
 impl Default for ExamplePlugin {
@@ -124,6 +164,19 @@ impl LavalinkPlugin for ExamplePlugin {
     fn version(&self) -> &str {
         &self.version
     }
+
+
+
+    async fn shutdown(&mut self) -> Result<()> {
+        if !self.initialized {
+            return Err(anyhow::anyhow!("Plugin is not initialized"));
+        }
+        self.initialized = false;
+        tracing::info!("Shutdown example plugin: {}", self.name);
+        Ok(())
+    }
+
+
 }
 
 impl Default for PluginManager {
