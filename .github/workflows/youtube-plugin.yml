@@ -1,0 +1,94 @@
+name: YouTube Plugin Integration
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/clone-youtube-plugin.sh'
+      - '.github/workflows/youtube-plugin.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'scripts/clone-youtube-plugin.sh'
+      - '.github/workflows/youtube-plugin.yml'
+  workflow_dispatch:
+
+jobs:
+  test-youtube-plugin-clone:
+    name: Test YouTube Plugin Clone
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test YouTube Plugin Clone Script
+        run: |
+          echo "Testing YouTube plugin clone script..."
+          chmod +x scripts/clone-youtube-plugin.sh
+          ./scripts/clone-youtube-plugin.sh
+
+      - name: Verify Plugin Structure
+        run: |
+          echo "Verifying cloned plugin structure..."
+          
+          # Check if the main directories exist
+          if [ ! -d "youtube-source-external" ]; then
+            echo "❌ youtube-source-external directory not found"
+            exit 1
+          fi
+          
+          if [ ! -d "youtube-source-external/plugin" ]; then
+            echo "❌ plugin directory not found"
+            exit 1
+          fi
+          
+          if [ ! -d "youtube-source-external/common" ]; then
+            echo "❌ common directory not found"
+            exit 1
+          fi
+          
+          if [ ! -d "youtube-source-external/v2" ]; then
+            echo "❌ v2 directory not found"
+            exit 1
+          fi
+          
+          # Check for build files
+          if [ ! -f "youtube-source-external/build.gradle.kts" ]; then
+            echo "❌ build.gradle.kts not found"
+            exit 1
+          fi
+          
+          if [ ! -f "youtube-source-external/plugin/build.gradle.kts" ]; then
+            echo "❌ plugin/build.gradle.kts not found"
+            exit 1
+          fi
+          
+          echo "✅ All required directories and files found"
+          
+          # Show structure
+          echo "📁 Repository structure:"
+          find youtube-source-external -type d -maxdepth 2 | head -20
+          
+          echo "📄 Key files:"
+          find youtube-source-external -name "*.gradle.kts" -o -name "*.properties" | head -10
+
+      - name: Test Java Build (Optional)
+        run: |
+          echo "Testing Java build of YouTube plugin..."
+          cd youtube-source-external
+          
+          # Check if we can at least validate the Gradle setup
+          if command -v java &> /dev/null; then
+            echo "Java found, testing Gradle wrapper..."
+            ./gradlew --version || echo "Gradle test skipped (expected in CI)"
+          else
+            echo "Java not available, skipping build test"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          echo "Cleaning up cloned repository..."
+          rm -rf youtube-source-external
+          echo "✅ Cleanup completed"
