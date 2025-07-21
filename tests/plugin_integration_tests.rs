@@ -3,7 +3,6 @@
 
 use lavalink_rust::plugin::{ExamplePlugin, PluginManager};
 
-
 /// Test plugin integration with server components
 #[tokio::test]
 #[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
