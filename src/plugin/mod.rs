@@ -91,7 +91,10 @@ impl PluginManager {
     }
 
     /// Register a plugin
-    pub async fn register_plugin(&mut self, mut plugin: Box<dyn LavalinkPlugin + Send + Sync>) -> Result<()> {
+    pub async fn register_plugin(
+        &mut self,
+        mut plugin: Box<dyn LavalinkPlugin + Send + Sync>,
+    ) -> Result<()> {
         let name = plugin.name().to_string();
 
         // Check if plugin is already registered
