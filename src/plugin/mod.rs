@@ -28,14 +28,10 @@ pub trait LavalinkPlugin {
     /// Get the plugin version
     fn version(&self) -> &str;
 
-
-
     /// Shutdown the plugin
     async fn shutdown(&mut self) -> Result<()> {
         Ok(())
     }
-
-
 }
 
 impl PluginManager {
@@ -63,8 +59,6 @@ impl PluginManager {
         }
     }
 
-
-
     /// Unregister a plugin
     pub async fn unregister_plugin(&mut self, name: &str) -> Result<()> {
         if let Some(mut plugin) = self.plugins.remove(name) {
@@ -88,8 +82,6 @@ impl PluginManager {
     pub fn get_plugin_names(&self) -> Vec<String> {
         self.plugins.keys().cloned().collect()
     }
-
-
 
     /// Load all dynamic plugins from the plugins directory
     pub fn load_dynamic_plugins(&mut self) -> Result<Vec<LoadedPlugin>> {
@@ -145,8 +137,6 @@ impl ExamplePlugin {
             initialized: false,
         }
     }
-
-
 }
 
 impl Default for ExamplePlugin {
@@ -165,8 +155,6 @@ impl LavalinkPlugin for ExamplePlugin {
         &self.version
     }
 
-
-
     async fn shutdown(&mut self) -> Result<()> {
         if !self.initialized {
             return Err(anyhow::anyhow!("Plugin is not initialized"));
@@ -175,8 +163,6 @@ impl LavalinkPlugin for ExamplePlugin {
         tracing::info!("Shutdown example plugin: {}", self.name);
         Ok(())
     }
-
-
 }
 
 impl Default for PluginManager {
