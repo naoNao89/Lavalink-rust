@@ -37,7 +37,7 @@ jobs:
       - name: Clone YouTube Source Plugin
         run: |
           echo "Cloning YouTube source plugin from external repository..."
-          git clone --depth 1 --branch plugin https://github.com/lavalink-devs/youtube-source.git youtube-source-external
+          git clone --depth 1 --branch main https://github.com/lavalink-devs/youtube-source.git youtube-source-external
           echo "YouTube source plugin cloned successfully"
 
       - name: Setup Java for YouTube Plugin Build
@@ -119,7 +119,7 @@ jobs:
       - name: Clone YouTube Source Plugin
         run: |
           echo "Cloning YouTube source plugin from external repository..."
-          git clone --depth 1 --branch plugin https://github.com/lavalink-devs/youtube-source.git youtube-source-external
+          git clone --depth 1 --branch main https://github.com/lavalink-devs/youtube-source.git youtube-source-external
           echo "YouTube source plugin cloned successfully"
 
       - name: Setup Java for YouTube Plugin Build
