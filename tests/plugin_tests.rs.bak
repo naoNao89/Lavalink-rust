@@ -24,7 +24,6 @@ async fn test_plugin_manager_creation() {
 
 /// Test plugin manager creation with custom config
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_manager_with_config() {
     let config = PluginsConfig {
         plugins: None,
@@ -39,7 +38,6 @@ async fn test_plugin_manager_with_config() {
 
 /// Test plugin registration and lifecycle
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_registration() {
     let mut plugin_manager = PluginManager::new();
     let plugin = Box::new(ExamplePlugin::new());
@@ -57,7 +55,6 @@ async fn test_plugin_registration() {
 
 /// Test duplicate plugin registration
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_duplicate_plugin_registration() {
     let mut plugin_manager = PluginManager::new();
     let plugin1 = Box::new(ExamplePlugin::new());
@@ -81,7 +78,6 @@ async fn test_duplicate_plugin_registration() {
 
 /// Test plugin unregistration
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_unregistration() {
     let mut plugin_manager = PluginManager::new();
     let plugin = Box::new(ExamplePlugin::new());
@@ -102,7 +98,6 @@ async fn test_plugin_unregistration() {
 
 /// Test unregistering non-existent plugin
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_unregister_nonexistent_plugin() {
     let mut plugin_manager = PluginManager::new();
 
@@ -113,7 +108,6 @@ async fn test_unregister_nonexistent_plugin() {
 
 /// Test plugin functionality
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_functionality() {
     let mut plugin_manager = PluginManager::new();
     let plugin = Box::new(ExamplePlugin::new());
@@ -151,7 +145,6 @@ async fn test_plugin_functionality() {
 
 /// Test unloading all plugins
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_unload_all_plugins() {
     let mut plugin_manager = PluginManager::new();
 
@@ -226,7 +219,6 @@ impl LavalinkPlugin for TestPlugin {
 
 /// Test plugin lifecycle tracking
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_lifecycle_tracking() {
     let mut plugin_manager = PluginManager::new();
     let test_plugin = TestPlugin::new("lifecycle-test".to_string());
@@ -253,7 +245,6 @@ async fn test_plugin_lifecycle_tracking() {
 
 /// Test concurrent plugin operations
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_concurrent_plugin_operations() {
     let plugin_manager = Arc::new(Mutex::new(PluginManager::new()));
     let mut handles = Vec::new();
@@ -292,7 +283,6 @@ async fn test_concurrent_plugin_operations() {
 
 /// Test dynamic plugin discovery
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_dynamic_plugin_discovery() {
     use std::fs;
     use tempfile::TempDir;
@@ -344,7 +334,6 @@ async fn test_dynamic_plugin_discovery() {
 
 /// Test dynamic plugin metadata access
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_dynamic_plugin_metadata() {
     let plugin_manager = PluginManager::new();
 
@@ -363,7 +352,6 @@ async fn test_dynamic_plugin_metadata() {
 /// Test plugin loading without plugins feature
 #[cfg(not(feature = "plugins"))]
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_loading_without_feature() {
     use std::path::Path;
     use tempfile::TempDir;
@@ -389,7 +377,6 @@ async fn test_plugin_loading_without_feature() {
 
 /// Test error handling in plugin operations
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_error_handling() {
     /// Error-prone test plugin
     struct ErrorPlugin {
