@@ -31,6 +31,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -83,6 +91,14 @@ jobs:
           - x86_64-unknown-linux-musl
           - aarch64-unknown-linux-gnu
     steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -178,6 +194,14 @@ jobs:
     needs: [test, build]
     if: github.event_name == 'workflow_call' && github.ref == 'refs/heads/main'
     steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -225,6 +249,14 @@ jobs:
             platforms: linux/amd64,linux/arm64
             artifact: lavalink-rust-linux-x64-musl
     steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v4
 

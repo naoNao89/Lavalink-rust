@@ -55,7 +55,7 @@ jobs:
   deploy-docs:
     needs: build-docs
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CLOUDFLARE_PROJECT_NAME != ''
     permissions:
       contents: read
       deployments: write
