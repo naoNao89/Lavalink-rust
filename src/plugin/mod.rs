@@ -58,6 +58,11 @@ pub trait LavalinkPlugin {
     fn get_config_schema(&self) -> Option<serde_json::Value> {
         None
     }
+
+    /// Update plugin configuration
+    async fn update_config(&mut self, _config: serde_json::Value) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl PluginManager {
@@ -257,6 +262,12 @@ impl LavalinkPlugin for ExamplePlugin {
                 }
             }
         }))
+    }
+
+    async fn update_config(&mut self, config: serde_json::Value) -> Result<()> {
+        tracing::info!("Plugin {} received config update: {}", self.name, config);
+        // In a real implementation, you would parse and apply the configuration
+        Ok(())
     }
 }
 

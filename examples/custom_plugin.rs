@@ -5,7 +5,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use lavalink_rust::plugin::{LavalinkPlugin, PluginManager};
 use serde_json::Value;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -43,7 +42,7 @@ impl Default for AudioEnhancementConfig {
 }
 
 /// Plugin statistics
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct PluginStatistics {
     pub tracks_processed: u64,
     pub enhancements_applied: u64,
@@ -78,19 +77,19 @@ impl AudioEnhancementPlugin {
         let mut enhancements = Vec::new();
 
         if config.auto_normalize {
-            enhancements.push("auto-normalize");
+            enhancements.push("auto-normalize".to_string());
         }
 
         if config.bass_boost > 0.0 {
-            enhancements.push(&format!("bass-boost-{}", config.bass_boost));
+            enhancements.push(format!("bass-boost-{}", config.bass_boost));
         }
 
         if config.treble_boost > 0.0 {
-            enhancements.push(&format!("treble-boost-{}", config.treble_boost));
+            enhancements.push(format!("treble-boost-{}", config.treble_boost));
         }
 
         if config.noise_reduction {
-            enhancements.push("noise-reduction");
+            enhancements.push("noise-reduction".to_string());
         }
 
         // Update statistics
@@ -330,7 +329,7 @@ async fn main() -> Result<()> {
         plugin.on_player_event("track_end").await?;
 
         // Test configuration update
-        let new_config = serde_json::json!({
+        let _new_config = serde_json::json!({
             "enabled": true,
             "auto_normalize": true,
             "bass_boost": 2.5,
