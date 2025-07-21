@@ -15,7 +15,6 @@ use tokio::sync::Mutex;
 
 /// Test plugin manager creation and basic operations
 #[tokio::test]
-#[ignore = "Plugin API has changed - tests need to be updated for new plugin system"]
 async fn test_plugin_manager_creation() {
     let plugin_manager = PluginManager::new();
 
