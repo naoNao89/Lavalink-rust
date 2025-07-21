@@ -11,7 +11,7 @@ categories = ["multimedia::audio", "network-programming", "web-programming"]
 
 # Feature flags for optional functionality
 [features]
-default = ["server", "discord", "audio-processing", "audio-sources", "rest-api", "websocket", "plugins", "metrics"]
+default = ["server", "discord", "audio-processing", "audio-sources", "rest-api", "websocket", "plugins", "metrics", "system-stats"]
 
 # Core server features
 server = ["dep:axum", "dep:tower", "dep:tower-http", "dep:hyper", "tokio/signal", "tokio/fs"]
@@ -39,6 +39,7 @@ codec-opus = ["voice-encryption"]
 
 # Monitoring and observability
 metrics = ["dep:metrics", "dep:metrics-exporter-prometheus", "server"]
+system-stats = ["dep:sysinfo", "server"]
 tracing-json = ["tracing-subscriber/json"]
 tracing-appender = ["dep:tracing-appender"]
 
@@ -116,6 +117,7 @@ libc = { version = "0.2", default-features = false, optional = true }
 # Metrics and monitoring (optional)
 metrics = { version = "0.24", default-features = false, optional = true }
 metrics-exporter-prometheus = { version = "0.17", default-features = false, features = ["http-listener"], optional = true }
+sysinfo = { version = "0.36", default-features = false, features = ["system"], optional = true }
 
 # Core utilities (always included)
 uuid = { version = "1.11", default-features = false, features = ["v4", "serde"] }

@@ -476,7 +476,10 @@ pub async fn version_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
 
 /// Stats handler - /v4/stats
 pub async fn stats_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
-    let stats = state.stats_collector.get_stats().await;
+    let stats = state
+        .stats_collector
+        .get_stats_with_players(&state.player_manager)
+        .await;
     (StatusCode::OK, Json(stats))
 }
 
