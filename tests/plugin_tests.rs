@@ -10,6 +10,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use lavalink_rust::config::PluginsConfig;
 use lavalink_rust::plugin::{ExamplePlugin, LavalinkPlugin, PluginManager};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Test plugin manager creation and basic operations
 #[tokio::test]

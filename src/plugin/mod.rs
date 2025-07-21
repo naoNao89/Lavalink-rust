@@ -3,6 +3,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use serde_json;
 use std::collections::HashMap;
 
 use crate::config::PluginsConfig;
@@ -28,9 +29,34 @@ pub trait LavalinkPlugin {
     /// Get the plugin version
     fn version(&self) -> &str;
 
+    /// Get the plugin description
+    fn description(&self) -> &str {
+        "No description provided"
+    }
+
+    /// Initialize the plugin
+    async fn initialize(&mut self) -> Result<()> {
+        Ok(())
+    }
+
     /// Shutdown the plugin
     async fn shutdown(&mut self) -> Result<()> {
         Ok(())
+    }
+
+    /// Handle track loading
+    async fn on_track_load(&self, _identifier: &str) -> Result<Option<String>> {
+        Ok(None)
+    }
+
+    /// Handle player events
+    async fn on_player_event(&self, _event: &str) -> Result<()> {
+        Ok(())
+    }
+
+    /// Get plugin configuration schema
+    fn get_config_schema(&self) -> Option<serde_json::Value> {
+        None
     }
 }
 
@@ -57,6 +83,29 @@ impl PluginManager {
             plugins: HashMap::new(),
             dynamic_loader,
         }
+    }
+
+    /// Register a plugin
+    pub async fn register_plugin(&mut self, mut plugin: Box<dyn LavalinkPlugin + Send + Sync>) -> Result<()> {
+        let name = plugin.name().to_string();
+
+        // Check if plugin is already registered
+        if self.plugins.contains_key(&name) {
+            return Err(anyhow::anyhow!("Plugin '{}' is already registered", name));
+        }
+
+        // Initialize the plugin
+        plugin.initialize().await?;
+
+        // Store the plugin
+        self.plugins.insert(name.clone(), plugin);
+        tracing::info!("Registered plugin: {}", name);
+        Ok(())
+    }
+
+    /// Get plugin count
+    pub fn plugin_count(&self) -> usize {
+        self.plugins.len()
     }
 
     /// Unregister a plugin
@@ -137,6 +186,14 @@ impl ExamplePlugin {
             initialized: false,
         }
     }
+
+    pub fn with_name(name: String) -> Self {
+        Self {
+            name,
+            version: "1.0.0".to_string(),
+            initialized: false,
+        }
+    }
 }
 
 impl Default for ExamplePlugin {
@@ -155,6 +212,16 @@ impl LavalinkPlugin for ExamplePlugin {
         &self.version
     }
 
+    fn description(&self) -> &str {
+        "Example plugin for testing purposes"
+    }
+
+    async fn initialize(&mut self) -> Result<()> {
+        self.initialized = true;
+        tracing::info!("Initialized example plugin: {}", self.name);
+        Ok(())
+    }
+
     async fn shutdown(&mut self) -> Result<()> {
         if !self.initialized {
             return Err(anyhow::anyhow!("Plugin is not initialized"));
@@ -162,6 +229,34 @@ impl LavalinkPlugin for ExamplePlugin {
         self.initialized = false;
         tracing::info!("Shutdown example plugin: {}", self.name);
         Ok(())
+    }
+
+    async fn on_track_load(&self, identifier: &str) -> Result<Option<String>> {
+        let result = format!("Processed by {} - {}", self.name, identifier);
+        Ok(Some(result))
+    }
+
+    async fn on_player_event(&self, event: &str) -> Result<()> {
+        tracing::debug!("Plugin {} received player event: {}", self.name, event);
+        Ok(())
+    }
+
+    fn get_config_schema(&self) -> Option<serde_json::Value> {
+        Some(serde_json::json!({
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable or disable the plugin"
+                },
+                "debug": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable debug logging"
+                }
+            }
+        }))
     }
 }
 
