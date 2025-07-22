@@ -24,6 +24,10 @@ pub mod filters;
 #[cfg(feature = "audio-sources")]
 pub mod sources;
 
+// ARM-specific audio backend
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+pub mod arm_backend;
+
 #[cfg(test)]
 mod filter_tests;
 

@@ -61,6 +61,20 @@ standard = ["default", "metrics", "plugins", "dep:serde_json", "dep:base64", "de
 full = ["standard", "codec-aac", "codec-vorbis", "codec-opus", "voice-receive", "tracing-json", "tracing-appender"]
 full-audio = ["audio-processing", "audio-sources", "codec-mp3", "codec-flac", "codec-wav", "codec-aac", "codec-vorbis", "codec-opus"]
 
+# ARM/IoT specific feature bundles
+arm-iot = ["minimal", "arm-optimizations", "resource-monitoring", "adaptive-quality"]
+arm-tv-box = ["arm-iot", "alsa-backend", "low-memory"]
+arm-embedded = ["minimal", "arm-optimizations", "low-memory", "no-std-compat"]
+
+# ARM-specific features
+arm-optimizations = ["dep:num_cpus"]  # Enable ARM-specific optimizations
+neon-simd = []  # Enable NEON SIMD instructions for audio processing
+alsa-backend = ["dep:alsa"]  # Use ALSA audio backend for ARM devices
+resource-monitoring = ["dep:sysinfo"]  # Monitor ARM device resources
+adaptive-quality = []  # Adaptive quality based on device capabilities
+low-memory = []  # Optimizations for low-memory ARM devices
+no-std-compat = []  # Compatibility layer for no-std environments
+
 [dependencies]
 # Core async runtime (minimal features)
 tokio = { version = "1.45", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
@@ -137,6 +151,9 @@ urlencoding = { version = "2.1", default-features = false, optional = true }
 mockall = { version = "0.13", optional = true }
 wiremock = { version = "0.6", optional = true }
 criterion = { version = "0.5", features = ["html_reports"], optional = true }
+
+# ARM-specific dependencies
+alsa = { version = "0.9", optional = true, default-features = false }
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -262,3 +279,20 @@ opt-level = 1
 [[bin]]
 name = "lavalink-rust"
 path = "src/main.rs"
+
+# ARM-specific build configurations
+[target.'cfg(target_arch = "arm")']
+rustflags = ["-C", "target-feature=+neon"]
+
+[target.'cfg(all(target_arch = "arm", target_os = "linux"))']
+rustflags = ["-C", "link-arg=-Wl,--as-needed"]
+
+# ARM cross-compilation targets
+[target.armv7-unknown-linux-gnueabihf]
+rustflags = ["-C", "target-feature=+neon", "-C", "target-cpu=cortex-a7"]
+
+[target.armv7-unknown-linux-musleabihf]
+rustflags = ["-C", "target-feature=+neon", "-C", "target-cpu=cortex-a7", "-C", "link-arg=-static"]
+
+[target.arm-unknown-linux-gnueabihf]
+rustflags = ["-C", "target-cpu=arm1176jzf-s"]

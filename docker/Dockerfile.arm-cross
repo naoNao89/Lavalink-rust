@@ -1,0 +1,93 @@
+# Multi-stage Dockerfile for ARM cross-compilation
+FROM rust:1.88-slim as builder
+
+# Install cross-compilation dependencies
+RUN apt-get update && apt-get install -y \
+    gcc-arm-linux-gnueabihf \
+    gcc-arm-linux-gnueabi \
+    libc6-dev-armhf-cross \
+    libc6-dev-armel-cross \
+    pkg-config \
+    libssl-dev \
+    libasound2-dev \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ARM targets
+RUN rustup target add armv7-unknown-linux-gnueabihf \
+    && rustup target add arm-unknown-linux-gnueabihf \
+    && rustup target add armv7-unknown-linux-musleabihf
+
+# Set up cross-compilation environment
+ENV CC_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
+    CXX_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++ \
+    AR_armv7_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
+    CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
+    CC_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
+    CXX_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++ \
+    AR_arm_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
+    CARGO_TARGET_ARM_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy source code
+COPY . .
+
+# Build for ARM targets
+RUN cargo build --target armv7-unknown-linux-gnueabihf --no-default-features --features "arm-tv-box" --release
+
+# Runtime stage for ARM devices
+FROM debian:bookworm-slim as runtime-arm
+
+# Install runtime dependencies for ARM
+RUN apt-get update && apt-get install -y \
+    libasound2 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -r -s /bin/false lavalink
+
+# Copy binary from builder stage
+COPY --from=builder /workspace/target/armv7-unknown-linux-gnueabihf/release/lavalink-rust /usr/local/bin/
+
+# Create directories
+RUN mkdir -p /opt/lavalink/config /opt/lavalink/logs \
+    && chown -R lavalink:lavalink /opt/lavalink
+
+# Copy default configuration
+COPY --chown=lavalink:lavalink config/application.yml /opt/lavalink/config/
+
+USER lavalink
+WORKDIR /opt/lavalink
+
+# Expose port
+EXPOSE 2333
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:2333/v4/info || exit 1
+
+# Start Lavalink
+CMD ["lavalink-rust", "--config", "/opt/lavalink/config/application.yml"]
+
+# Development stage with debugging tools
+FROM runtime-arm as development
+
+USER root
+
+# Install development tools
+RUN apt-get update && apt-get install -y \
+    curl \
+    htop \
+    strace \
+    gdb \
+    valgrind \
+    && rm -rf /var/lib/apt/lists/*
+
+USER lavalink
+
+# Override entrypoint for development
+CMD ["lavalink-rust", "--config", "/opt/lavalink/config/application.yml", "--log-level", "debug"]
