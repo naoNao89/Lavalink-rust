@@ -3,6 +3,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
 use crate::config::PluginsConfig;
@@ -16,7 +17,7 @@ pub use loader::*;
 /// Enhanced plugin manager for handling Lavalink plugins
 pub struct PluginManager {
     plugins: HashMap<String, Box<dyn LavalinkPlugin + Send + Sync>>,
-    dynamic_loader: DynamicPluginLoader,
+    pub dynamic_loader: DynamicPluginLoader,
 }
 
 /// Trait for Lavalink plugins
@@ -27,6 +28,47 @@ pub trait LavalinkPlugin {
 
     /// Get the plugin version
     fn version(&self) -> &str;
+
+    /// Get the plugin description
+    #[allow(dead_code)]
+    fn description(&self) -> &str {
+        "No description provided"
+    }
+
+    /// Initialize the plugin
+    #[allow(dead_code)]
+    async fn initialize(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Shutdown the plugin
+    async fn shutdown(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Handle track loading
+    #[allow(dead_code)]
+    async fn on_track_load(&self, _identifier: &str) -> Result<Option<String>> {
+        Ok(None)
+    }
+
+    /// Handle player events
+    #[allow(dead_code)]
+    async fn on_player_event(&self, _event: &str) -> Result<()> {
+        Ok(())
+    }
+
+    /// Get plugin configuration schema
+    #[allow(dead_code)]
+    fn get_config_schema(&self) -> Option<JsonValue> {
+        None
+    }
+
+    /// Update plugin configuration
+    #[allow(dead_code)]
+    async fn update_config(&mut self, _config: JsonValue) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl PluginManager {
@@ -51,6 +93,48 @@ impl PluginManager {
         Self {
             plugins: HashMap::new(),
             dynamic_loader,
+        }
+    }
+
+    /// Register a plugin
+    #[allow(dead_code)]
+    pub async fn register_plugin(
+        &mut self,
+        mut plugin: Box<dyn LavalinkPlugin + Send + Sync>,
+    ) -> Result<()> {
+        let name = plugin.name().to_string();
+
+        // Check if plugin is already registered
+        if self.plugins.contains_key(&name) {
+            return Err(anyhow::anyhow!("Plugin '{}' is already registered", name));
+        }
+
+        // Initialize the plugin
+        plugin.initialize().await?;
+
+        // Store the plugin
+        self.plugins.insert(name.clone(), plugin);
+        tracing::info!("Registered plugin: {}", name);
+        Ok(())
+    }
+
+    /// Get plugin count
+    #[allow(dead_code)]
+    pub fn plugin_count(&self) -> usize {
+        self.plugins.len()
+    }
+
+    /// Unregister a plugin
+    pub async fn unregister_plugin(&mut self, name: &str) -> Result<()> {
+        if let Some(mut plugin) = self.plugins.remove(name) {
+            // Shutdown the plugin
+            if let Err(e) = plugin.shutdown().await {
+                tracing::warn!("Error shutting down plugin '{}': {}", name, e);
+            }
+            tracing::info!("Unregistered plugin: {}", name);
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Plugin '{}' not found", name))
         }
     }
 
@@ -85,11 +169,20 @@ impl PluginManager {
     }
 
     /// Unload all plugins
-    pub fn unload_all_plugins(&mut self) {
-        if let Err(e) = self.dynamic_loader.unload_all_plugins() {
-            tracing::error!("Failed to unload all plugins: {}", e);
+    pub async fn unload_all_plugins(&mut self) {
+        // Shutdown all registered plugins
+        let plugin_names: Vec<String> = self.plugins.keys().cloned().collect();
+        for name in plugin_names {
+            if let Err(e) = self.unregister_plugin(&name).await {
+                tracing::error!("Failed to unregister plugin '{}': {}", name, e);
+            }
         }
-        self.plugins.clear();
+
+        // Unload dynamic plugins
+        if let Err(e) = self.dynamic_loader.unload_all_plugins() {
+            tracing::error!("Failed to unload dynamic plugins: {}", e);
+        }
+
         tracing::info!("Unloaded all plugins");
     }
 }
@@ -98,6 +191,7 @@ impl PluginManager {
 pub struct ExamplePlugin {
     name: String,
     version: String,
+    initialized: bool,
 }
 
 impl ExamplePlugin {
@@ -105,6 +199,16 @@ impl ExamplePlugin {
         Self {
             name: "example-plugin".to_string(),
             version: "1.0.0".to_string(),
+            initialized: false,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn with_name(name: String) -> Self {
+        Self {
+            name,
+            version: "1.0.0".to_string(),
+            initialized: false,
         }
     }
 }
@@ -123,6 +227,59 @@ impl LavalinkPlugin for ExamplePlugin {
 
     fn version(&self) -> &str {
         &self.version
+    }
+
+    fn description(&self) -> &str {
+        "Example plugin for testing purposes"
+    }
+
+    async fn initialize(&mut self) -> Result<()> {
+        self.initialized = true;
+        tracing::info!("Initialized example plugin: {}", self.name);
+        Ok(())
+    }
+
+    async fn shutdown(&mut self) -> Result<()> {
+        if !self.initialized {
+            return Err(anyhow::anyhow!("Plugin is not initialized"));
+        }
+        self.initialized = false;
+        tracing::info!("Shutdown example plugin: {}", self.name);
+        Ok(())
+    }
+
+    async fn on_track_load(&self, identifier: &str) -> Result<Option<String>> {
+        let result = format!("Processed by {} - {}", self.name, identifier);
+        Ok(Some(result))
+    }
+
+    async fn on_player_event(&self, event: &str) -> Result<()> {
+        tracing::debug!("Plugin {} received player event: {}", self.name, event);
+        Ok(())
+    }
+
+    fn get_config_schema(&self) -> Option<serde_json::Value> {
+        Some(serde_json::json!({
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable or disable the plugin"
+                },
+                "debug": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable debug logging"
+                }
+            }
+        }))
+    }
+
+    async fn update_config(&mut self, config: serde_json::Value) -> Result<()> {
+        tracing::info!("Plugin {} received config update: {}", self.name, config);
+        // In a real implementation, you would parse and apply the configuration
+        Ok(())
     }
 }
 

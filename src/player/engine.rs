@@ -17,6 +17,7 @@ use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 
 use super::{PlayerEvent, TrackEndReason};
+use crate::audio::filters::{AudioFilterManager, AudioFormat};
 #[cfg(feature = "discord")]
 use crate::audio::quality::NetworkMetrics;
 #[cfg(not(feature = "discord"))]
@@ -70,6 +71,8 @@ pub struct AudioPlayerEngine {
     quality_manager: Arc<RwLock<AudioQualityManager>>,
     /// Audio streaming manager for enhanced stream handling
     streaming_manager: Arc<AudioStreamingManager>,
+    /// Audio filter manager for processing audio effects
+    filter_manager: Arc<AudioFilterManager>,
 }
 
 #[allow(dead_code)]
@@ -79,6 +82,14 @@ impl AudioPlayerEngine {
         let quality_manager =
             AudioQualityManager::with_preset(guild_id.clone(), QualityPreset::Medium);
         let streaming_manager = AudioStreamingManager::new(guild_id.clone());
+
+        // Create audio filter manager with default format
+        let audio_format = AudioFormat {
+            sample_rate: 48000.0,
+            channels: 2,
+            bits_per_sample: 16,
+        };
+        let filter_manager = AudioFilterManager::new(audio_format);
 
         Self {
             current_track: Arc::new(RwLock::new(None)),
@@ -100,6 +111,7 @@ impl AudioPlayerEngine {
             current_track_handle: Arc::new(RwLock::new(None)),
             quality_manager: Arc::new(RwLock::new(quality_manager)),
             streaming_manager: Arc::new(streaming_manager),
+            filter_manager: Arc::new(filter_manager),
         }
     }
 
@@ -115,6 +127,14 @@ impl AudioPlayerEngine {
         let quality_manager = AudioQualityManager::new(quality_config);
         let streaming_manager = AudioStreamingManager::new(guild_id.clone());
 
+        // Create audio filter manager with default format
+        let audio_format = AudioFormat {
+            sample_rate: 48000.0,
+            channels: 2,
+            bits_per_sample: 16,
+        };
+        let filter_manager = AudioFilterManager::new(audio_format);
+
         Self {
             current_track: Arc::new(RwLock::new(None)),
             decoder: Arc::new(Mutex::new(None)),
@@ -135,6 +155,7 @@ impl AudioPlayerEngine {
             current_track_handle: Arc::new(RwLock::new(None)),
             quality_manager: Arc::new(RwLock::new(quality_manager)),
             streaming_manager: Arc::new(streaming_manager),
+            filter_manager: Arc::new(filter_manager),
         }
     }
 
@@ -404,6 +425,11 @@ impl AudioPlayerEngine {
         // Store the new filters
         *self.filters.write().await = filters.clone();
 
+        // Update the filter manager with new filters
+        if let Err(e) = self.filter_manager.update_filters(&filters).await {
+            warn!("Failed to update filter manager: {}", e);
+        }
+
         // Apply volume filter to current Songbird track if playing (Discord mode only)
         #[cfg(feature = "discord")]
         if let Some(track_handle) = self.current_track_handle.read().await.as_ref() {
@@ -456,6 +482,7 @@ impl AudioPlayerEngine {
         if filters.low_pass.is_present() {
             debug!("Low pass filter enabled");
         }
+        #[cfg(feature = "plugins")]
         if !filters.plugin_filters.is_empty() {
             debug!(
                 "Plugin filters enabled: {:?}",
@@ -467,6 +494,21 @@ impl AudioPlayerEngine {
             "Successfully applied audio filters in guild {}",
             self.guild_id
         );
+        Ok(())
+    }
+
+    /// Process audio samples through the filter chain
+    pub async fn process_audio_filters(&self, samples: &mut [f32]) -> Result<()> {
+        if self.filter_manager.is_enabled().await {
+            self.filter_manager.process_audio(samples).await?;
+        }
+        Ok(())
+    }
+
+    /// Reset all audio filters
+    pub async fn reset_filters(&self) -> Result<()> {
+        self.filter_manager.reset().await;
+        info!("Reset audio filters in guild {}", self.guild_id);
         Ok(())
     }
 

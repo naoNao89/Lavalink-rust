@@ -10,7 +10,10 @@ use tokio::time::{interval, Duration, Instant};
 use rand::prelude::*;
 use tracing::{debug, error, info, warn};
 
-use crate::protocol::{messages::VoiceState, Event, Filters, Message, PlayerState, Track};
+use crate::protocol::{
+    messages::{Event, Message, VoiceState},
+    Filters, PlayerState, Track,
+};
 use crate::voice::{connection::VoiceConnectionEvent, VoiceConnectionManager};
 
 /// Enhanced player state with voice connection details
@@ -387,39 +390,39 @@ impl PlayerManager {
 
                 let players_guard = players.read().await;
                 for player in players_guard.values() {
-                    let mut player_guard = player.write().await;
+                    let mut player_state = player.write().await;
 
                     // Update position for playing tracks
                     let mut track_ended = false;
                     let mut end_reason = TrackEndReason::Finished;
                     let mut ended_track = None;
-                    let guild_id = player_guard.guild_id.clone();
+                    let guild_id = player_state.guild_id.clone();
 
                     // Check if we have a current track and if it's playing
                     let should_update =
-                        player_guard.current_track.is_some() && !player_guard.paused;
-                    let track_length = player_guard
+                        player_state.current_track.is_some() && !player_state.paused;
+                    let track_length = player_state
                         .current_track
                         .as_ref()
                         .map(|t| t.info.length)
                         .unwrap_or(0);
-                    let end_time = player_guard.end_time;
+                    let end_time = player_state.end_time;
 
                     if should_update {
-                        let elapsed = player_guard.last_update.elapsed();
-                        player_guard.position += elapsed.as_millis() as u64;
-                        player_guard.last_update = Instant::now();
+                        let elapsed = player_state.last_update.elapsed();
+                        player_state.position += elapsed.as_millis() as u64;
+                        player_state.last_update = Instant::now();
 
                         // Check if track should end
                         if let Some(end_time) = end_time {
-                            if player_guard.position >= end_time {
+                            if player_state.position >= end_time {
                                 track_ended = true;
-                                ended_track = player_guard.current_track.clone();
+                                ended_track = player_state.current_track.clone();
                                 end_reason = TrackEndReason::Finished;
                             }
-                        } else if track_length > 0 && player_guard.position >= track_length {
+                        } else if track_length > 0 && player_state.position >= track_length {
                             track_ended = true;
-                            ended_track = player_guard.current_track.clone();
+                            ended_track = player_state.current_track.clone();
                             end_reason = TrackEndReason::Finished;
                         }
                     }
@@ -440,7 +443,7 @@ impl PlayerManager {
 
                         // Try to play next track from queue if the end reason allows it
                         if end_reason_clone.may_start_next() {
-                            let next_track = player_guard.get_next_track();
+                            let next_track = player_state.get_next_track();
 
                             if let Some(next_track) = next_track {
                                 info!(
@@ -449,18 +452,18 @@ impl PlayerManager {
                                 );
 
                                 // Set new track
-                                player_guard.current_track = Some(next_track.clone());
-                                player_guard.position = 0;
-                                player_guard.end_time = None;
-                                player_guard.paused = false;
-                                player_guard.last_update = Instant::now();
+                                player_state.current_track = Some(next_track.clone());
+                                player_state.position = 0;
+                                player_state.end_time = None;
+                                player_state.paused = false;
+                                player_state.last_update = Instant::now();
 
                                 // Update state
-                                player_guard.state.position = 0;
-                                player_guard.state.time = chrono::Utc::now();
+                                player_state.state.position = 0;
+                                player_state.state.time = chrono::Utc::now();
 
                                 // Start playback with audio engine
-                                if let Some(ref engine) = player_guard.audio_engine {
+                                if let Some(ref engine) = player_state.audio_engine {
                                     let engine_clone = engine.clone();
                                     let track_clone = next_track.clone();
 
@@ -475,28 +478,28 @@ impl PlayerManager {
                                 }
                             } else {
                                 // No more tracks in queue
-                                player_guard.current_track = None;
-                                player_guard.position = 0;
-                                player_guard.end_time = None;
+                                player_state.current_track = None;
+                                player_state.position = 0;
+                                player_state.end_time = None;
                                 info!("Queue is empty for guild {}", guild_id);
                             }
                         } else {
                             // End reason doesn't allow auto-play (e.g., stopped manually)
-                            player_guard.current_track = None;
-                            player_guard.position = 0;
-                            player_guard.end_time = None;
+                            player_state.current_track = None;
+                            player_state.position = 0;
+                            player_state.end_time = None;
                         }
                     }
 
                     // Update player state
-                    player_guard.state.position = player_guard.position;
-                    player_guard.state.time = chrono::Utc::now();
+                    player_state.state.position = player_state.position;
+                    player_state.state.time = chrono::Utc::now();
 
                     // Emit player update
                     if let Some(ref sender) = event_sender {
                         let _ = sender.send(PlayerEvent::PlayerUpdate {
-                            guild_id: player_guard.guild_id.clone(),
-                            state: player_guard.state.clone(),
+                            guild_id: player_state.guild_id.clone(),
+                            state: player_state.state.clone(),
                         });
                     }
                 }
@@ -1488,9 +1491,8 @@ impl PlayerEventHandler {
                         by_remote,
                     } => {
                         // Create WebSocket closed event similar to original Lavalink
-                        let websocket_event = crate::protocol::Event::websocket_closed(
-                            guild_id, code, reason, by_remote,
-                        );
+                        let websocket_event =
+                            Event::websocket_closed(guild_id, code, reason, by_remote);
                         let message = Message::event(websocket_event);
                         self.broadcast_to_sessions(message).await;
                     }
@@ -1573,7 +1575,7 @@ mod tests {
                 identifier: "test_id".to_string(),
                 is_seekable: true,
                 author: "test_author".to_string(),
-                length: 180000,
+                length: 180_000,
                 is_stream: false,
                 position: 0,
                 title: "Test Track".to_string(),

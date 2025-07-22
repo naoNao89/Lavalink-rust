@@ -36,13 +36,41 @@ jobs:
         with:
           name: lavalink-rust-linux-arm64
 
-      - name: Create release archives
+      - name: Download YouTube Plugin JAR (x64)
+        uses: actions/download-artifact@v4
+        with:
+          name: youtube-plugin-x86_64-unknown-linux-gnu
+          path: plugins-x64/
+
+      - name: Download YouTube Plugin JAR (x64-musl)
+        uses: actions/download-artifact@v4
+        with:
+          name: youtube-plugin-x86_64-unknown-linux-musl
+          path: plugins-x64-musl/
+
+      - name: Download YouTube Plugin JAR (ARM64)
+        uses: actions/download-artifact@v4
+        with:
+          name: youtube-plugin-aarch64-unknown-linux-gnu
+          path: plugins-arm64/
+
+      - name: Create release archives with YouTube plugin
         run: |
-          # Create archives for each binary
-          tar -czf lavalink-rust-linux-x64.tar.gz lavalink-rust
-          tar -czf lavalink-rust-linux-x64-musl.tar.gz lavalink-rust-musl
-          tar -czf lavalink-rust-linux-arm64.tar.gz lavalink-rust-arm64
-          
+          # Create plugins directory for each binary and copy plugins
+          mkdir -p plugins-final
+          cp plugins-x64/*.jar plugins-final/ 2>/dev/null || echo "No x64 plugins found"
+          cp plugins-x64-musl/*.jar plugins-final/ 2>/dev/null || echo "No x64-musl plugins found"
+          cp plugins-arm64/*.jar plugins-final/ 2>/dev/null || echo "No ARM64 plugins found"
+
+          # Create archives for each binary with plugins
+          mkdir -p lavalink-rust-x64 && cp lavalink-rust lavalink-rust-x64/ && cp -r plugins-final lavalink-rust-x64/plugins
+          mkdir -p lavalink-rust-x64-musl && cp lavalink-rust-musl lavalink-rust-x64-musl/ && cp -r plugins-final lavalink-rust-x64-musl/plugins
+          mkdir -p lavalink-rust-arm64 && cp lavalink-rust-arm64 lavalink-rust-arm64/ && cp -r plugins-final lavalink-rust-arm64/plugins
+
+          tar -czf lavalink-rust-linux-x64.tar.gz -C lavalink-rust-x64 .
+          tar -czf lavalink-rust-linux-x64-musl.tar.gz -C lavalink-rust-x64-musl .
+          tar -czf lavalink-rust-linux-arm64.tar.gz -C lavalink-rust-arm64 .
+
           # Create checksums
           sha256sum *.tar.gz > checksums.txt
 
