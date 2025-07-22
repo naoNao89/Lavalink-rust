@@ -116,7 +116,7 @@ async fn test_plugin_lifecycle_with_application() {
 
     // Register multiple plugins
     for i in 1..=3 {
-        let plugin = Box::new(ExamplePlugin::with_name(format!("lifecycle-plugin-{}", i)));
+        let plugin = Box::new(ExamplePlugin::with_name(format!("lifecycle-plugin-{i}")));
         plugin_manager.register_plugin(plugin).await.unwrap();
     }
 
@@ -241,7 +241,7 @@ async fn test_plugin_manager_thread_safety() {
         let manager = plugin_manager.clone();
 
         let handle = tokio::spawn(async move {
-            let plugin_name = format!("thread-safe-plugin-{}", i);
+            let plugin_name = format!("thread-safe-plugin-{i}");
             let plugin = Box::new(ExamplePlugin::with_name(plugin_name.clone()));
 
             // Register plugin
@@ -273,7 +273,7 @@ async fn test_plugin_manager_thread_safety() {
     // Wait for all tasks to complete
     for handle in handles {
         let plugin_name = handle.await.unwrap();
-        println!("Completed thread safety test for: {}", plugin_name);
+        println!("Completed thread safety test for: {plugin_name}");
     }
 
     // Verify all plugins were properly cleaned up

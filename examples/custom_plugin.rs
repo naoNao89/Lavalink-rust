@@ -50,6 +50,12 @@ pub struct PluginStatistics {
     pub average_processing_time_ms: f64,
 }
 
+impl Default for AudioEnhancementPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AudioEnhancementPlugin {
     pub fn new() -> Self {
         Self {
@@ -71,7 +77,7 @@ impl AudioEnhancementPlugin {
         let config = self.config.read().await;
 
         if !config.enabled {
-            return Ok(format!("Track {} - enhancements disabled", track_id));
+            return Ok(format!("Track {track_id} - enhancements disabled"));
         }
 
         let mut enhancements = Vec::new();
@@ -104,11 +110,10 @@ impl AudioEnhancementPlugin {
         }
 
         if enhancements.is_empty() {
-            Ok(format!("Track {} - no enhancements applied", track_id))
+            Ok(format!("Track {track_id} - no enhancements applied"))
         } else {
             Ok(format!(
-                "Track {} enhanced with: {}",
-                track_id,
+                "Track {track_id} enhanced with: {}",
                 enhancements.join(", ")
             ))
         }
@@ -158,7 +163,7 @@ impl LavalinkPlugin for AudioEnhancementPlugin {
     async fn on_track_load(&self, identifier: &str) -> Result<Option<String>> {
         match self.apply_enhancements(identifier).await {
             Ok(result) => {
-                println!("🎶 Enhanced track: {}", result);
+                println!("🎶 Enhanced track: {result}");
                 Ok(Some(result))
             }
             Err(e) => {
@@ -167,7 +172,7 @@ impl LavalinkPlugin for AudioEnhancementPlugin {
                     let mut stats = self.statistics.write().await;
                     stats.errors_encountered += 1;
                 }
-                println!("❌ Enhancement error for {}: {}", identifier, e);
+                println!("❌ Enhancement error for {identifier}: {e}");
                 Err(e)
             }
         }
@@ -194,7 +199,7 @@ impl LavalinkPlugin for AudioEnhancementPlugin {
                 }
             }
             _ => {
-                println!("   ℹ️ Other event: {}", event);
+                println!("   ℹ️ Other event: {event}");
             }
         }
 
@@ -255,32 +260,32 @@ impl LavalinkPlugin for AudioEnhancementPlugin {
 
         if let Some(enabled) = config.get("enabled").and_then(|v| v.as_bool()) {
             current_config.enabled = enabled;
-            println!("   - Enabled: {}", enabled);
+            println!("   - Enabled: {enabled}");
         }
 
         if let Some(auto_normalize) = config.get("auto_normalize").and_then(|v| v.as_bool()) {
             current_config.auto_normalize = auto_normalize;
-            println!("   - Auto normalize: {}", auto_normalize);
+            println!("   - Auto normalize: {auto_normalize}");
         }
 
         if let Some(bass_boost) = config.get("bass_boost").and_then(|v| v.as_f64()) {
             current_config.bass_boost = bass_boost as f32;
-            println!("   - Bass boost: {}", bass_boost);
+            println!("   - Bass boost: {bass_boost}");
         }
 
         if let Some(treble_boost) = config.get("treble_boost").and_then(|v| v.as_f64()) {
             current_config.treble_boost = treble_boost as f32;
-            println!("   - Treble boost: {}", treble_boost);
+            println!("   - Treble boost: {treble_boost}");
         }
 
         if let Some(noise_reduction) = config.get("noise_reduction").and_then(|v| v.as_bool()) {
             current_config.noise_reduction = noise_reduction;
-            println!("   - Noise reduction: {}", noise_reduction);
+            println!("   - Noise reduction: {noise_reduction}");
         }
 
         if let Some(max_volume) = config.get("max_volume").and_then(|v| v.as_f64()) {
             current_config.max_volume = max_volume as f32;
-            println!("   - Max volume: {}", max_volume);
+            println!("   - Max volume: {max_volume}");
         }
 
         println!("✅ Configuration updated successfully");
@@ -320,7 +325,7 @@ async fn main() -> Result<()> {
         // Test track loading
         let result = plugin.on_track_load("test-track-123").await?;
         if let Some(enhancement_result) = result {
-            println!("Enhancement result: {}", enhancement_result);
+            println!("Enhancement result: {enhancement_result}");
         }
 
         // Test player events

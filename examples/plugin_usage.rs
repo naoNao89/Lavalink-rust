@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
         // Test track loading
         let track_result = plugin.on_track_load("example-track-123").await?;
         if let Some(result) = track_result {
-            println!("  🎵 Track load result: {}", result);
+            println!("  🎵 Track load result: {result}");
         }
 
         // Test player events
@@ -109,7 +109,7 @@ async fn main() -> Result<()> {
     // List remaining plugins
     println!("\n📋 Remaining plugins:");
     for name in plugin_manager.get_plugin_names() {
-        println!("  - {}", name);
+        println!("  - {name}");
     }
 
     // Test error handling
@@ -119,7 +119,7 @@ async fn main() -> Result<()> {
     let duplicate_plugin = Box::new(ExamplePlugin::with_name("demo-plugin-1".to_string()));
     match plugin_manager.register_plugin(duplicate_plugin).await {
         Ok(_) => println!("  ⚠️ Unexpected success registering duplicate"),
-        Err(e) => println!("  ✅ Correctly rejected duplicate: {}", e),
+        Err(e) => println!("  ✅ Correctly rejected duplicate: {e}"),
     }
 
     // Try to unregister non-existent plugin
@@ -128,7 +128,7 @@ async fn main() -> Result<()> {
         .await
     {
         Ok(_) => println!("  ⚠️ Unexpected success unregistering non-existent plugin"),
-        Err(e) => println!("  ✅ Correctly rejected non-existent plugin: {}", e),
+        Err(e) => println!("  ✅ Correctly rejected non-existent plugin: {e}"),
     }
 
     // Try to get non-existent plugin

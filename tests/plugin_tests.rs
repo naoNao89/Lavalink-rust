@@ -262,7 +262,7 @@ async fn test_concurrent_plugin_operations() {
     // Register plugins concurrently
     for i in 0..5 {
         let manager = plugin_manager.clone();
-        let plugin_name = format!("concurrent-plugin-{}", i);
+        let plugin_name = format!("concurrent-plugin-{i}");
 
         let handle = tokio::spawn(async move {
             let plugin = Box::new(ExamplePlugin::with_name(plugin_name.clone()));
@@ -281,7 +281,7 @@ async fn test_concurrent_plugin_operations() {
         if success {
             successful_registrations += 1;
         }
-        println!("Plugin {} registration: {}", plugin_name, success);
+        println!("Plugin {plugin_name} registration: {success}");
     }
 
     // Verify all plugins were registered successfully
@@ -308,9 +308,9 @@ async fn test_dynamic_plugin_discovery() {
         _ => "so", // Linux and other Unix-like systems
     };
 
-    let plugin1_path = plugins_dir.join(format!("plugin1.{}", plugin_extension));
-    let plugin2_path = plugins_dir.join(format!("plugin2.{}", plugin_extension));
-    let plugin3_path = plugins_dir.join(format!("plugin3.{}", plugin_extension));
+    let plugin1_path = plugins_dir.join(format!("plugin1.{plugin_extension}"));
+    let plugin2_path = plugins_dir.join(format!("plugin2.{plugin_extension}"));
+    let plugin3_path = plugins_dir.join(format!("plugin3.{plugin_extension}"));
     let non_plugin_path = plugins_dir.join("not_a_plugin.txt");
 
     fs::write(&plugin1_path, b"fake plugin content").unwrap();
@@ -337,9 +337,9 @@ async fn test_dynamic_plugin_discovery() {
         .map(|p| p.file_name().unwrap().to_string_lossy().to_string())
         .collect();
 
-    assert!(discovered_names.contains(&format!("plugin1.{}", plugin_extension)));
-    assert!(discovered_names.contains(&format!("plugin2.{}", plugin_extension)));
-    assert!(discovered_names.contains(&format!("plugin3.{}", plugin_extension)));
+    assert!(discovered_names.contains(&format!("plugin1.{plugin_extension}")));
+    assert!(discovered_names.contains(&format!("plugin2.{plugin_extension}")));
+    assert!(discovered_names.contains(&format!("plugin3.{plugin_extension}")));
     assert!(!discovered_names.contains(&"not_a_plugin.txt".to_string()));
 }
 

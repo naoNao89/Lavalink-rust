@@ -3,7 +3,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use serde_json;
+use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 
 use crate::config::PluginsConfig;
@@ -30,11 +30,13 @@ pub trait LavalinkPlugin {
     fn version(&self) -> &str;
 
     /// Get the plugin description
+    #[allow(dead_code)]
     fn description(&self) -> &str {
         "No description provided"
     }
 
     /// Initialize the plugin
+    #[allow(dead_code)]
     async fn initialize(&mut self) -> Result<()> {
         Ok(())
     }
@@ -45,22 +47,26 @@ pub trait LavalinkPlugin {
     }
 
     /// Handle track loading
+    #[allow(dead_code)]
     async fn on_track_load(&self, _identifier: &str) -> Result<Option<String>> {
         Ok(None)
     }
 
     /// Handle player events
+    #[allow(dead_code)]
     async fn on_player_event(&self, _event: &str) -> Result<()> {
         Ok(())
     }
 
     /// Get plugin configuration schema
-    fn get_config_schema(&self) -> Option<serde_json::Value> {
+    #[allow(dead_code)]
+    fn get_config_schema(&self) -> Option<JsonValue> {
         None
     }
 
     /// Update plugin configuration
-    async fn update_config(&mut self, _config: serde_json::Value) -> Result<()> {
+    #[allow(dead_code)]
+    async fn update_config(&mut self, _config: JsonValue) -> Result<()> {
         Ok(())
     }
 }
@@ -91,6 +97,7 @@ impl PluginManager {
     }
 
     /// Register a plugin
+    #[allow(dead_code)]
     pub async fn register_plugin(
         &mut self,
         mut plugin: Box<dyn LavalinkPlugin + Send + Sync>,
@@ -112,6 +119,7 @@ impl PluginManager {
     }
 
     /// Get plugin count
+    #[allow(dead_code)]
     pub fn plugin_count(&self) -> usize {
         self.plugins.len()
     }
@@ -195,6 +203,7 @@ impl ExamplePlugin {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_name(name: String) -> Self {
         Self {
             name,
