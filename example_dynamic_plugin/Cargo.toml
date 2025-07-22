@@ -1,0 +1,15 @@
+[package]
+name = "example_dynamic_plugin"
+version = "1.0.0"
+edition = "2021"
+
+[lib]
+name = "example_dynamic_plugin"
+crate-type = ["cdylib"]
+
+[dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
