@@ -10,13 +10,63 @@ plugins:
 #    another_key: another_value
 
 lavalink:
+  # ============================================================================
+  # PLUGIN CONFIGURATION FOR RUST LAVALINK
+  # ============================================================================
+  # IMPORTANT: Rust Lavalink uses a different format than Java Lavalink!
+  #
+  # ❌ WRONG (Java Lavalink format):
+  # plugins:
+  #   - dependency: "com.github.example:plugin:1.0.0"
+  #
+  # ✅ CORRECT (Rust Lavalink format):
+  # plugins:
+  #   plugins:
+  #     - dependency: "com.github.example:plugin:1.0.0"
+  #
+  # The extra 'plugins:' level is required because Rust uses a PluginsConfig struct
+  # ============================================================================
   plugins:
-#    - dependency: "com.github.example:example-plugin:1.0.0" # required, the coordinates of your plugin
-#      repository: "https://maven.example.com/releases" # optional, defaults to the Lavalink releases repository by default
-#      snapshot: false # optional, defaults to false, used to tell Lavalink to use the snapshot repository instead of the release repository
-#  pluginsDir: "./plugins" # optional, defaults to "./plugins"
-#  defaultPluginRepository: "https://maven.lavalink.dev/releases" # optional, defaults to the Lavalink release repository
-#  defaultPluginSnapshotRepository: "https://maven.lavalink.dev/snapshots" # optional, defaults to the Lavalink snapshot repository
+    # Array of plugin dependencies - add your plugins here
+    plugins: []
+      # Popular plugins (uncomment and modify versions as needed):
+
+      # LavaSrc - Additional audio sources (Spotify, Apple Music, Deezer, etc.)
+      # - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.0.0"
+      #   repository: "https://maven.lavalink.dev/releases"
+      #   snapshot: false
+
+      # YouTube Source - Enhanced YouTube support
+      # - dependency: "dev.lavalink.youtube:youtube-plugin:1.13.3"
+      #   repository: "https://maven.lavalink.dev/releases"
+      #   snapshot: false
+
+      # LavaSearch - Advanced search capabilities
+      # - dependency: "com.github.topi314.lavasearch:lavasearch-plugin:1.0.0"
+      #   repository: "https://maven.lavalink.dev/releases"
+      #   snapshot: false
+
+      # LavaLyrics - Lyrics support
+      # - dependency: "com.github.topi314.lavalyrics:lavalyrics-plugin:1.0.0"
+      #   repository: "https://maven.lavalink.dev/releases"
+      #   snapshot: false
+
+      # Custom plugin example:
+      # - dependency: "com.github.yourname:your-plugin:1.0.0"
+      #   repository: "https://your-maven-repo.com/releases"
+      #   snapshot: false
+
+      # Snapshot version example:
+      # - dependency: "com.github.example:snapshot-plugin:1.0.0-SNAPSHOT"
+      #   repository: "https://maven.lavalink.dev/snapshots"
+      #   snapshot: true
+
+    # Plugin directory (optional, defaults to "./plugins")
+    pluginsDir: "./plugins"
+    # Default plugin repository (optional, defaults to Lavalink releases)
+    defaultPluginRepository: "https://maven.lavalink.dev/releases"
+    # Default plugin snapshot repository (optional, defaults to Lavalink snapshots)
+    defaultPluginSnapshotRepository: "https://maven.lavalink.dev/snapshots"
   server:
     password: "youshallnotpass"
     sources:
